@@ -1,0 +1,49 @@
+{{!-- GM file tree: folders + architecture files. --}}
+{{#if tree}}
+<div class="crns-tree">
+
+  <div class="crns-tree-header" data-action="tree-drop-root">
+    <span class="crns-tree-title">{{localize "CRNS.Tree.Title"}}</span>
+    <span class="crns-tree-hdr-btns">
+      <button type="button" class="crns-icon-btn" data-action="tree-new-folder" title="{{localize "CRNS.Tree.NewFolder"}}"><i class="fas fa-folder-plus"></i></button>
+      <button type="button" class="crns-icon-btn" data-action="tree-new-arch" title="{{localize "CRNS.Tree.NewArch"}}"><i class="fas fa-file-circle-plus"></i></button>
+      <button type="button" class="crns-icon-btn" data-action="tree-import" title="{{localize "CRNS.Tree.Import"}}"><i class="fas fa-file-import"></i></button>
+      <button type="button" class="crns-icon-btn" data-action="tree-toggle" title="{{localize "CRNS.Tree.Collapse"}}"><i class="fas fa-angles-left"></i></button>
+    </span>
+  </div>
+
+  <input type="file" class="crns-import-file" accept="application/json,.json" hidden />
+
+  <div class="crns-tree-list">
+    {{#each tree.nodes as |node|}}
+      {{#if (crnsEq node.type "folder")}}
+      <div class="crns-tree-row crns-tree-folder" data-node-id="{{node.id}}" data-node-type="folder" draggable="true" style="padding-left:{{node.indent}}px">
+        <button type="button" class="crns-tree-twist" data-action="folder-toggle" title="{{localize "CRNS.Tree.Toggle"}}">
+          <i class="fas {{#if node.open}}fa-chevron-down{{else}}fa-chevron-right{{/if}}"></i>
+        </button>
+        <i class="fas fa-folder crns-tree-glyph"></i>
+        <span class="crns-tree-name" title="{{localize "CRNS.Tree.RenameHint"}}">{{node.name}}</span>
+        <span class="crns-tree-row-btns">
+          <button type="button" class="crns-icon-btn" data-action="folder-new-folder" title="{{localize "CRNS.Tree.NewFolder"}}"><i class="fas fa-folder-plus"></i></button>
+          <button type="button" class="crns-icon-btn" data-action="folder-new-arch" title="{{localize "CRNS.Tree.NewArch"}}"><i class="fas fa-file-circle-plus"></i></button>
+          <button type="button" class="crns-icon-btn" data-action="folder-delete" title="{{localize "CRNS.Tree.Delete"}}"><i class="fas fa-trash"></i></button>
+        </span>
+      </div>
+      {{else}}
+      <div class="crns-tree-row crns-tree-arch" data-node-id="{{node.id}}" data-node-type="arch" data-arch-id="{{node.archId}}" draggable="true" style="padding-left:{{node.indent}}px">
+        <i class="fas fa-microchip crns-tree-glyph"></i>
+        <span class="crns-tree-name" title="{{localize "CRNS.Tree.RenameHint"}}">{{node.name}}</span>
+        <span class="crns-tree-row-btns">
+          <button type="button" class="crns-icon-btn" data-action="arch-open" title="{{localize "CRNS.Tree.OpenArch"}}"><i class="fas fa-folder-open"></i></button>
+          <button type="button" class="crns-icon-btn" data-action="arch-edit" title="{{localize "CRNS.Tree.EditArch"}}"><i class="fas fa-pen-to-square"></i></button>
+          <button type="button" class="crns-icon-btn" data-action="arch-duplicate" title="{{localize "CRNS.Tree.Duplicate"}}"><i class="fas fa-copy"></i></button>
+          <button type="button" class="crns-icon-btn" data-action="arch-export" title="{{localize "CRNS.Tree.Export"}}"><i class="fas fa-file-export"></i></button>
+          <button type="button" class="crns-icon-btn" data-action="arch-delete" title="{{localize "CRNS.Tree.Delete"}}"><i class="fas fa-trash"></i></button>
+        </span>
+      </div>
+      {{/if}}
+    {{/each}}
+  </div>
+
+</div>
+{{/if}}

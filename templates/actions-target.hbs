@@ -1,0 +1,40 @@
+{{!-- Right-zone TARGET panel (SPEC §14.5). Always rendered: shows the current
+      target (portrait, name, kind, REZ bar when resolvable, damage box, clear
+      button) or an empty-state placeholder. `actions.target` is the VM. --}}
+<div class="crns-zone crns-zone-right">
+  <div class="crns-zone-head">{{localize "CRNS.Actions.TargetLabel"}}</div>
+  {{#if actions.target.ref}}
+  <div class="crns-target-panel">
+    <div class="crns-target-top">
+      <img class="crns-target-portrait" src="{{actions.target.img}}" alt="{{actions.target.name}}" />
+      <div class="crns-target-ident">
+        <div class="crns-target-name">{{actions.target.name}}</div>
+        <div class="crns-target-kind">{{actions.target.kindLabel}}</div>
+      </div>
+      <button type="button" class="crns-icon-btn crns-target-clear" data-action="clear-target"
+              title="{{localize "CRNS.Actions.ClearTarget"}}"><i class="fas fa-xmark"></i></button>
+    </div>
+    {{#if actions.target.hasRez}}
+    <div class="crns-target-rez">
+      <div class="crns-rez-bar"><span style="width:{{actions.target.rezPct}}%"></span></div>
+      <span class="crns-rez-val">{{actions.target.rez}}/{{actions.target.rezMax}}</span>
+    </div>
+    {{/if}}
+    {{#if actions.target.damageBox}}
+    <div class="crns-damagebox">
+      <input type="number" name="dmgamount" value="{{actions.target.damageBox.amount}}" min="0" />
+      <button type="button" class="crns-btn" data-action="apply-target-damage"
+              data-target-ref="{{actions.target.damageBox.ref}}">
+        <i class="fas fa-heart-crack"></i> {{localize "CRNS.Actions.ApplyDamage"}}
+      </button>
+    </div>
+    {{/if}}
+  </div>
+  {{else}}
+  <div class="crns-zone-empty">
+    <i class="fas fa-crosshairs"></i>
+    <div class="crns-zone-empty-title">{{localize "CRNS.Actions.NoTargetTitle"}}</div>
+    <div class="crns-zone-empty-hint">{{localize "CRNS.Actions.NoTargetHint"}}</div>
+  </div>
+  {{/if}}
+</div>

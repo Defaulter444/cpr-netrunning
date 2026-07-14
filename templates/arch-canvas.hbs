@@ -1,0 +1,175 @@
+{{!-- Architecture viewport: matrix rain + transformed stage of floor cards. --}}
+{{#if canvas}}
+  {{#if canvas.empty}}
+  <div class="crns-canvas-empty">
+    <i class="fas fa-network-wired"></i>
+    <div class="crns-canvas-empty-hint">{{localize canvas.emptyHint}}</div>
+  </div>
+  {{else}}
+  <canvas class="crns-rain"></canvas>
+  <div class="crns-stage">
+    <svg class="crns-lines" preserveAspectRatio="none"></svg>
+    {{#each canvas.floors as |floor|}}
+    <div class="crns-floor-wrap" data-floor-index="{{floor.index}}">
+      <div class="crns-floor{{#if floor.isRoot}} root{{/if}}{{#if floor.controlChip}} controlled{{/if}}" data-floor-index="{{floor.index}}"
+           data-floor-id="{{floor.floorId}}"{{#if floor.controlColor}} style="--control-color:{{floor.controlColor}}"{{/if}}
+           {{#if floor.description}}title="{{floor.description}}"{{/if}}>
+
+        <div class="crns-floor-head">
+          <span class="crns-floor-n">{{floor.number}}</span>
+          <img class="crns-floor-glyph" src="{{floor.icon}}" alt="" />
+          {{#if floor.isRoot}}<img class="crns-floor-root" src="{{floor.rootIcon}}" alt="" />{{/if}}
+          <span class="crns-floor-title">{{floor.label}}</span>
+          {{#if floor.showDv}}<span class="crns-floor-dv">{{localize "CRNS.Editor.DV"}} {{floor.dv}}</span>{{/if}}
+          {{#if floor.gmGear}}
+          <button type="button" class="crns-icon-btn crns-floor-gear" data-action="floor-gear" title="{{localize "CRNS.Canvas.GmFloor"}}"><i class="fas fa-gear"></i></button>
+          {{/if}}
+        </div>
+
+        {{!-- floor markers: breach / virus / control / eyedee (cloaks are arch-level) --}}
+        <div class="crns-floor-markers">
+          {{#if floor.markers.isPassword}}
+          <span class="crns-fm crns-fm-lock{{#if floor.markers.breached}} breached{{/if}}" title="{{floor.markers.lockTitle}}">
+            <i class="fas {{#if floor.markers.breached}}fa-lock-open{{else}}fa-lock{{/if}}"></i>
+          </span>
+          {{/if}}
+          {{#each floor.markers.viruses as |vr|}}
+          <span class="crns-fm crns-fm-virus" title="{{vr.title}}"{{#if vr.gm}} data-action="fx-clear-marker" data-floor-id="{{../floor.floorId}}" data-kind="virus" data-id="{{vr.id}}"{{/if}}>
+            <i class="fas fa-virus"></i>{{#if vr.gm}}<i class="fas fa-xmark crns-fm-x"></i>{{/if}}
+          </span>
+          {{/each}}
+          {{#if floor.markers.control}}
+          <span class="crns-fm crns-fm-control" style="--control-color:{{floor.markers.control.color}}" title="{{floor.markers.control.title}}"{{#if floor.markers.control.gm}} data-action="fx-clear-control" data-floor-id="{{floor.floorId}}"{{/if}}>
+            <i class="fas fa-tower-cell"></i> {{floor.markers.control.name}}
+          </span>
+          {{/if}}
+          {{#if floor.markers.eyedeeAccessed}}
+          <span class="crns-fm crns-fm-eyedee" title="{{localize "CRNS.Canvas.Accessed"}}"><i class="fas fa-folder-open"></i></span>
+          {{/if}}
+          {{#each floor.markers.eyedee as |ed|}}
+          <span class="crns-fm crns-fm-accessor" title="{{ed.title}}"{{#if ed.gm}} data-action="fx-clear-eyedee" data-floor-id="{{../floor.floorId}}" data-pid="{{ed.pid}}"{{/if}}>
+            <img src="{{ed.img}}" alt="{{ed.name}}" />{{#if ed.gm}}<i class="fas fa-xmark crns-fm-x"></i>{{/if}}
+          </span>
+          {{/each}}
+        </div>
+
+        {{#if floor.gmGear}}
+        <div class="crns-floor-gearpop">
+          {{#if floor.isPassword}}
+          <button type="button" class="crns-mini" data-action="fx-toggle-breach" data-floor-id="{{floor.floorId}}" data-value="{{#if floor.markers.breached}}false{{else}}true{{/if}}">
+            <i class="fas fa-lock-open"></i> {{localize "CRNS.Canvas.ToggleBreach"}}
+          </button>
+          {{/if}}
+          {{#if floor.isControlNode}}
+          {{#if floor.controlChip}}
+          <button type="button" class="crns-mini" data-action="fx-clear-control" data-floor-id="{{floor.floorId}}">
+            <i class="fas fa-xmark"></i> {{localize "CRNS.Canvas.ClearControl"}}
+          </button>
+          {{/if}}
+          <select class="crns-fx-control-sel" data-action="fx-set-control" data-floor-id="{{floor.floorId}}">
+            <option value="">{{localize "CRNS.Canvas.SetControl"}}…</option>
+            {{#each floor.runnersForControl as |r|}}
+            <option value="{{r.pid}}">{{r.name}}</option>
+            {{/each}}
+          </select>
+          {{/if}}
+        </div>
+        {{/if}}
+
+        {{#if floor.entities.length}}
+        <div class="crns-floor-chips">
+          {{#each floor.entities as |ent|}}
+          {{> "modules/cyberpunk-red-netrunning-suite/templates/entity-card.hbs" ent=ent}}
+          {{/each}}
+        </div>
+        {{/if}}
+
+        {{#if floor.participants.length}}
+        <div class="crns-floor-runners">
+          {{#each floor.participants as |p|}}
+          <div class="crns-runner-slot">
+            <div class="crns-runner-chip{{#if p.isMine}} mine{{/if}}{{#if p.selected}} selected{{/if}}"
+                 data-entity-ref="{{p.ref}}" data-pid="{{p.pid}}"
+                 {{#if p.gmDraggable}}draggable="true"{{/if}}
+                 style="--runner-color:{{p.color}}" title="{{p.name}}">
+              <img src="{{p.img}}" alt="{{p.name}}" />
+              <span class="crns-runner-name">{{p.name}}</span>
+            </div>
+            {{#if p.progMinis.length}}
+            <div class="crns-prog-minis">
+              {{#each p.progMinis as |mp|}}
+              <span class="crns-prog-mini crns-prog-{{mp.cls}}{{#if mp.derezzed}} derezzed{{/if}}{{#if mp.selected}} selected{{/if}}{{#if mp.selectable}} selectable{{/if}}"
+                    data-entity-ref="{{mp.ref}}" title="{{mp.name}}">
+                <span class="crns-prog-mini-code">{{mp.code}}</span>
+                <i class="fas {{mp.icon}}"></i>
+                {{#if mp.hasRez}}<span class="crns-prog-mini-rez">{{mp.rez}}</span>{{/if}}
+                {{#if mp.targets.length}}
+                <span class="crns-prog-mini-targets">
+                  {{#each mp.targets as |tg|}}<i class="fas fa-crosshairs" style="color:{{tg.color}}" title="{{tg.name}}"></i>{{/each}}
+                </span>
+                {{/if}}
+              </span>
+              {{/each}}
+            </div>
+            {{/if}}
+          </div>
+          {{/each}}
+        </div>
+        {{/if}}
+
+        {{#if floor.showMoveHere}}
+        <button type="button" class="crns-move-here" data-action="floor-move-here" data-floor-index="{{floor.index}}">
+          <i class="fas fa-arrow-down-to-line"></i> {{localize "CRNS.Canvas.MoveHere"}}
+        </button>
+        {{/if}}
+      </div>
+
+      {{#unless floor.isRoot}}
+      <div class="crns-link">
+        <div class="crns-link-spine"></div>
+        <div class="crns-link-flow"></div>
+        <div class="crns-link-packet"></div>
+      </div>
+      {{/unless}}
+    </div>
+    {{/each}}
+
+    {{#if canvas.fogStub}}
+    <div class="crns-floor-wrap crns-fog-wrap">
+      <div class="crns-link crns-link-fog">
+        <div class="crns-link-spine"></div>
+      </div>
+      <div class="crns-floor crns-fog-stub" title="{{localize "CRNS.Canvas.MoreFloors"}}">
+        <div class="crns-fog-glitch">???</div>
+        <div class="crns-fog-hint">{{localize "CRNS.Canvas.MoreFloors"}}</div>
+        {{#if canvas.fogStubMove}}
+        <button type="button" class="crns-move-here crns-fog-move" data-action="floor-move-here"
+                data-floor-index="{{canvas.fogStubIndex}}" title="{{localize "CRNS.Canvas.Advance"}}">
+          <i class="fas fa-arrow-down-to-line"></i> {{localize "CRNS.Canvas.Advance"}}
+        </button>
+        {{/if}}
+      </div>
+    </div>
+    {{/if}}
+  </div>
+
+  {{!-- Arch-level cloak strip (Addendum 6): fixed overlay at the top of the
+        viewport (not pan/zoomed). GM sees all cloaks + can ✕; a player sees only
+        their own. --}}
+  {{#if canvas.hasCloaks}}
+  <div class="crns-cloak-strip" aria-label="{{localize "CRNS.Chat.Cloak"}}">
+    {{#each canvas.cloakStrip as |ck|}}
+    <span class="crns-cloak-mark" title="{{ck.title}}"{{#if ck.gm}} data-action="fx-clear-cloak" data-cloak-id="{{ck.id}}"{{/if}}>
+      <i class="fas fa-user-ninja"></i><span class="crns-cloak-n">{{ck.n}}</span>{{#if ck.gm}}<i class="fas fa-xmark crns-cloak-x"></i>{{/if}}
+    </span>
+    {{/each}}
+  </div>
+  {{/if}}
+
+  <div class="crns-zoom-overlay">
+    <button type="button" class="crns-icon-btn" data-action="cam-zoom-in" title="{{localize "CRNS.Canvas.ZoomIn"}}"><i class="fas fa-plus"></i></button>
+    <button type="button" class="crns-icon-btn" data-action="cam-zoom-out" title="{{localize "CRNS.Canvas.ZoomOut"}}"><i class="fas fa-minus"></i></button>
+    <button type="button" class="crns-icon-btn" data-action="cam-reset" title="{{localize "CRNS.Canvas.ZoomReset"}}"><i class="fas fa-crosshairs"></i></button>
+  </div>
+  {{/if}}
+{{/if}}

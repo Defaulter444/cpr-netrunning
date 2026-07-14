@@ -1,0 +1,50 @@
+{{!-- Netrunning Suite shell: composite layout. Full styling arrives in Phase E. --}}
+<div class="crns-root theme-{{theme}}{{#unless isGM}} no-left{{/unless}}{{#if state.collapsedLeft}} left-collapsed{{/if}}{{#if state.collapsedRight}} right-collapsed{{/if}}"{{#if barHeight}} style="--crns-bar-h:{{barHeight}}px"{{/if}}>
+
+  {{!-- Left: GM file tree (collapsible rail ↔ expanded tree). Players get no
+        left column at all — .no-left collapses the grid track (see CSS). --}}
+  {{#if isGM}}
+  <aside class="crns-left">
+    {{#if state.collapsedLeft}}
+    <div class="crns-tree-rail">
+      <button type="button" class="crns-icon-btn" data-action="tree-toggle" title="{{localize "CRNS.Tree.Title"}}">
+        <i class="fas fa-sitemap"></i>
+      </button>
+    </div>
+    {{else}}
+    {{> "modules/cyberpunk-red-netrunning-suite/templates/tree.hbs"}}
+    {{/if}}
+  </aside>
+  {{/if}}
+
+  {{!-- Main column --}}
+  <main class="crns-main">
+    <div class="crns-tabs">
+      {{> "modules/cyberpunk-red-netrunning-suite/templates/tabs.hbs"}}
+    </div>
+
+    <div class="crns-center">
+      {{#if editor}}
+      <div class="crns-editor">
+        {{> "modules/cyberpunk-red-netrunning-suite/templates/editor.hbs"}}
+      </div>
+      {{else}}
+      <div class="crns-viewport">
+        {{> "modules/cyberpunk-red-netrunning-suite/templates/arch-canvas.hbs"}}
+      </div>
+      {{/if}}
+    </div>
+
+    <div class="crns-actionbar">
+      {{> "modules/cyberpunk-red-netrunning-suite/templates/actions.hbs"}}
+    </div>
+  </main>
+
+  {{!-- Right: GM runner panel --}}
+  {{#if isGM}}
+  <aside class="crns-right">
+    {{> "modules/cyberpunk-red-netrunning-suite/templates/runners.hbs"}}
+  </aside>
+  {{/if}}
+
+</div>

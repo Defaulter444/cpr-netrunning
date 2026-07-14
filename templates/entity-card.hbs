@@ -1,0 +1,38 @@
+{{!-- Shared ICE/Demon/prog chip partial. `ent` is one entity view-model. --}}
+<div class="crns-chip{{#if ent.isDemon}} demon{{/if}}{{#if ent.isProgram}} prog{{/if}}{{#if ent.isTrap}} trap{{/if}}{{#if ent.isDeployed}} deployed{{/if}}{{#if ent.derezzed}} derezzed{{/if}}{{#if ent.selected}} selected{{/if}}{{#if ent.selectable}} selectable{{/if}}"
+     data-entity-ref="{{ent.ref}}"{{#if ent.actorId}} data-actor-id="{{ent.actorId}}"{{/if}}{{#if ent.isDeployed}} data-deploy-target="{{ent.targetRef}}"{{/if}}{{#if ent.gmDraggable}} draggable="true"{{/if}}
+     {{#if ent.tip}}title="{{ent.tip}}"{{/if}}>
+  <div class="crns-chip-portrait">
+    <img src="{{ent.img}}" alt="{{ent.name}}" />
+    {{#if ent.derezzed}}<i class="fas fa-xmark crns-chip-x"></i>{{/if}}
+    {{#if ent.isChasing}}<i class="fas fa-person-running crns-chip-chase" title="{{ent.chaseTitle}}"></i>
+    {{else if ent.isTrap}}<i class="fas fa-land-mine-on crns-chip-trap" title="{{localize "CRNS.Canvas.Trap"}}"></i>{{/if}}
+  </div>
+  <div class="crns-chip-body">
+    <div class="crns-chip-name">{{#if ent.code}}<span class="crns-chip-code">{{ent.code}}</span> {{/if}}{{ent.name}}</div>
+    <div class="crns-chip-rez">
+      <div class="crns-rez-bar"><span style="width:{{ent.rezPct}}%"></span></div>
+      <span class="crns-rez-val">{{ent.rez}}/{{ent.rezMax}}</span>
+    </div>
+  </div>
+  {{#if ent.owner}}
+  <span class="crns-ent-owner" style="--owner-color:{{ent.owner.color}}" title="{{ent.owner.title}}">
+    <img src="{{ent.owner.img}}" alt="{{ent.owner.name}}" />
+  </span>
+  {{/if}}
+  {{#if ent.tether}}
+  <span class="crns-ent-tether" style="--tether-color:{{ent.tether.color}}" title="{{ent.tether.title}}">
+    <i class="fas fa-link"></i>
+  </span>
+  {{/if}}
+  {{#if ent.slid}}
+  <span class="crns-ent-slid" title="{{localize "CRNS.Canvas.Slid"}}"><i class="fas fa-eye-slash"></i></span>
+  {{/if}}
+  {{#if ent.targets.length}}
+  <div class="crns-chip-targets">
+    {{#each ent.targets as |tg|}}
+    <i class="fas fa-crosshairs crns-target-chip" style="color:{{tg.color}}" title="{{tg.name}}"></i>
+    {{/each}}
+  </div>
+  {{/if}}
+</div>

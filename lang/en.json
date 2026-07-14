@@ -1,0 +1,323 @@
+{
+  "CRNS": {
+    "Button": {
+      "Open": "Netrunning Suite"
+    },
+    "Tree": {
+      "Untitled": "Untitled Architecture",
+      "Title": "Architectures",
+      "NewFolder": "New folder",
+      "NewArch": "New architecture",
+      "NewFolderTitle": "New folder name",
+      "NewArchTitle": "New architecture name",
+      "Import": "Import architecture",
+      "Collapse": "Collapse panel",
+      "Toggle": "Expand / collapse",
+      "RenameHint": "Double-click to rename",
+      "RenameTitle": "Rename",
+      "OpenArch": "Open",
+      "EditArch": "Edit",
+      "Duplicate": "Duplicate",
+      "Export": "Export",
+      "Delete": "Delete",
+      "DeleteTitle": "Confirm deletion",
+      "DeleteArchConfirm": "Delete architecture «{name}» and its ICE/Demon actors?",
+      "DeleteFolderConfirm": "Delete folder «{name}» and everything inside it?",
+      "CopySuffix": "(copy)",
+      "OK": "OK",
+      "Cancel": "Cancel"
+    },
+    "Tabs": {
+      "Editing": "Editing",
+      "EditToggle": "Toggle editor",
+      "Close": "Close tab"
+    },
+    "Editor": {
+      "Floors": "Floors",
+      "Demons": "Demons",
+      "Save": "Save",
+      "Cancel": "Cancel",
+      "DV": "DV",
+      "MoveUp": "Move up",
+      "MoveDown": "Move down",
+      "InsertAfter": "Insert floor after",
+      "DeleteFloor": "Delete floor",
+      "LabelPlaceholder": "Custom label",
+      "DescPlaceholder": "GM notes: what this file or control node holds…",
+      "Ice": "ICE",
+      "Demon": "Demon",
+      "AddIce": "ICE",
+      "AddDemon": "Demon",
+      "Remove": "Remove",
+      "PickIce": "Choose Black ICE",
+      "PickDemon": "Choose Demon",
+      "DemonBudgetFull": "Demon budget exhausted for this architecture."
+    },
+    "Floor": {
+      "password": "Password",
+      "file": "File",
+      "controlnode": "Control Node",
+      "custom": "Custom"
+    },
+    "Canvas": {
+      "EmptyGM": "No architecture is open. Open one from the file tree, or activate a tab.",
+      "EmptyRunner": "You are not connected to any architecture. Wait for the GM to jack you in.",
+      "EmptySpectator": "No architecture to watch. Wait for a runner to jack in.",
+      "EmptyNone": "Nothing to display.",
+      "ZoomIn": "Zoom in",
+      "ZoomOut": "Zoom out",
+      "ZoomReset": "Recenter",
+      "MoveHere": "Move here",
+      "Advance": "Advance into the unknown",
+      "OwnedBy": "Netrunner's ICE: {name}",
+      "Breached": "Breached",
+      "Locked": "Locked",
+      "CloakGM": "Cloak #{n} — {owner} — DV {dv}",
+      "CloakOwner": "Cloak #{n} — DV {dv}",
+      "Virus": "Virus",
+      "Controlled": "Controlled by {name}",
+      "Accessed": "File accessed",
+      "AccessedBy": "Accessed by {name}",
+      "MoreFloors": "Deeper floors — unknown",
+      "AttachedTo": "Attached to {name}",
+      "Slid": "Slid past",
+      "Trap": "Trap",
+      "GmFloor": "Floor overrides",
+      "ToggleBreach": "Toggle breached",
+      "SetControl": "Set controller",
+      "ClearControl": "Clear control",
+      "HideReveal": "Hide revealed floors",
+      "Standby": "Standby — escorting its owner, no target assigned",
+      "Chasing": "Chasing: {name}"
+    },
+    "Runners": {
+      "Title": "Netrunners",
+      "Collapse": "Collapse panel",
+      "Connect": "Connect to active architecture",
+      "Disconnect": "Disconnect",
+      "Remove": "Remove from roster",
+      "ActAs": "Act as this runner",
+      "NPC": "NPC",
+      "Position": "{arch} · floor {floor}",
+      "NoActiveTab": "Activate an architecture tab first.",
+      "NotEligible": "That actor has no equipped cyberdeck — it cannot netrun."
+    },
+    "Settings": {
+      "AllowSpectators": "Allow spectators",
+      "AllowSpectatorsHint": "Players without an equipped cyberdeck get the toolbar button and may join a run as read-only spectators.",
+      "SpectatorFreeMove": "Spectator free navigation",
+      "SpectatorFreeMoveHint": "Let spectators switch between architectures that currently have a runner in them.",
+      "AutoRollNPC": "Auto-roll GM entities",
+      "AutoRollNPCHint": "GM-controlled ICE, Demons and NPC runners automatically roll their defense/speed when a player attacks them.",
+      "Theme": "Interface theme",
+      "ThemeHint": "Matrix-style colour scheme for the Netrunning Suite window."
+    },
+    "Themes": {
+      "red": "Red",
+      "yellow": "Yellow",
+      "blue": "Blue",
+      "green": "Green"
+    },
+    "Errors": {
+      "NoGm": "No active GM to process the request.",
+      "SystemApi": "The Cyberpunk RED system did not respond as expected.",
+      "NoActions": "No NET actions left this turn.",
+      "NoDeck": "No equipped cyberdeck found.",
+      "MinFloor": "An architecture must have at least one floor.",
+      "TooManyIce": "A floor may hold at most 3 Black ICE.",
+      "UnknownIce": "Unknown Black ICE type.",
+      "UnknownDemon": "Unknown Demon type.",
+      "TooManyDemons": "Too many Demons for this architecture's floor count.",
+      "Cycle": "Cannot move a folder into itself.",
+      "BadImport": "The imported file is not a valid architecture.",
+      "NotYourTarget": "You can only apply damage to your current target.",
+      "FloorFull": "That floor has no free slot for this entity.",
+      "MoveStep": "You can only move one floor at a time.",
+      "PasswordBlocked": "You cannot move deeper past an un-breached password floor.",
+      "NoTarget": "Pick a target first.",
+      "TrapDerezFloor": "You must stand on the trap's floor to derez it.",
+      "NoControlledNode": "You do not control any node."
+    },
+    "Hints": {
+      "FreeRoll": "Hold Shift to roll without spending a NET action (e.g. defending against an attack)."
+    },
+    "Actions": {
+      "InterfaceRank": "Interface rank",
+      "PipsAria": "NET actions remaining this turn",
+      "JackIn": "Jack In",
+      "JackOut": "Jack Out",
+      "Reset": "Reset actions",
+      "ResetHint": "Reset your NET actions for a new turn.",
+      "ResetAll": "Reset all",
+      "Disconnect": "Disconnect",
+      "ClearTarget": "Clear target",
+      "UnknownTarget": "Unknown",
+      "Activate": "Activate program",
+      "Deactivate": "Deactivate program",
+      "ATK": "ATK",
+      "DEF": "DEF",
+      "DMG": "DMG",
+      "BlackIceHint": "Rezzed here — it also appears in the architecture as an entity.",
+      "AttackerDerez": "«{name}»: attacker program deactivated after use.",
+      "Attack": "Attack",
+      "Defense": "Defense",
+      "Speed": "Speed",
+      "Perception": "Perception",
+      "Damage": "Damage",
+      "Effect": "Effect",
+      "DemonAction": "Action (1d10+Interface)",
+      "CombatNumber": "Combat Number",
+      "NetActions": "NET actions",
+      "RezManage": "REZ",
+      "SetRez": "Set REZ",
+      "Restore": "Restore REZ",
+      "ApplyDamage": "Apply damage",
+      "DamageAmount": "Amount",
+      "DamageRunner": "Damage netrunner (HP)",
+      "WatchingHint": "You are watching this run. Nothing to act with.",
+      "NoSelection": "Select a runner or entity to act with.",
+      "Hit": "HIT",
+      "Miss": "MISS",
+      "Versus": "vs",
+      "TieNote": "Ties go to the defender — the attacker must exceed it.",
+      "AutoRollPrompt": "{attacker} attacked {target}. Roll its defense manually.",
+      "SpeedTest": "SPEED TEST",
+      "SpeedTestRoll": "Roll SPEED",
+      "SpeedAvoided": "ATTACK AVOIDED",
+      "SpeedFailed": "ATTACK LANDS",
+      "SpeedTieNote": "Ties go to the runner — the ICE must exceed the runner's SPEED.",
+      "ToQueue": "To top of queue",
+      "ActivateDemon": "Activate",
+      "Slide": "SLIDE",
+      "SlidPast": "SLID PAST",
+      "SlideBlocked": "BLOCKED",
+      "SlideTieNote": "The runner must exceed the ICE's Perception — ties go to the ICE.",
+      "NoSelectionTitle": "No selection",
+      "NoTargetTitle": "No target",
+      "NoTargetHint": "Right-click or press T on an entity to target it.",
+      "TargetLabel": "Target",
+      "KindRunner": "Netrunner",
+      "KindIce": "Black ICE",
+      "KindDemon": "Demon",
+      "KindProgram": "Program",
+      "ControlNode": "Control Node",
+      "ControlNodePick": "Pick a controlled node",
+      "DemonZap": "Zap",
+      "DemonReset": "Reset actions",
+      "DemonActions": "Demon actions",
+      "Follow": "Follows netrunner",
+      "AttachTo": "Attach to",
+      "Detach": "Detach",
+      "AttachmentNone": "—",
+      "AttachmentTo": "Attached to: {name}",
+      "DefensePrompt": "DEFENSE",
+      "DefenseRoll": "Defend",
+      "ResizeHint": "Drag to resize the action bar. Double-click to reset.",
+      "DisconnectConfirmTitle": "Disconnect runner?",
+      "DisconnectConfirm": "Disconnect {name} from the architecture?",
+      "StateRezzed": "Rezzed",
+      "StateTrap": "Trap",
+      "StateDeployed": "Deployed",
+      "AutoDerezHint": "Attacker programs deactivate automatically after a damage roll.",
+      "PipToggle": "Click: spend a filled pip / restore an empty one"
+    },
+    "ProgramClass": {
+      "booster": "Booster",
+      "defender": "Defender",
+      "attacker": "Attacker",
+      "blackice": "Black ICE"
+    },
+    "Chat": {
+      "DemonAction": "«{name}» acts with Combat Number {cn}.",
+      "IceReacts": "«{name}» reacts to the intrusion!",
+      "TurnQueue": "Turn queue",
+      "NoCombat": "No active combat — queue unchanged.",
+      "DemonActivated": "«{name}» activated — moved to the top of the turn queue.",
+      "ToQueue": "«{name}» moved to the top of the turn queue.",
+      "Backdoor": "Backdoor",
+      "Breached": "{name} forced a backdoor — the floor is BREACHED.",
+      "NotBreached": "{name} tried a backdoor — the floor holds.",
+      "Cloak": "Cloak",
+      "Cloaked": "{name} slips a cloak over their presence in the architecture.",
+      "Control": "Control Node",
+      "Controlled": "{name} seizes control of the node.",
+      "ControlFailed": "{name} tried to seize the node — the attempt fails.",
+      "Eyedee": "Eye-Dee",
+      "Accessed": "{name} cracks the file open.",
+      "AccessFailed": "{name} tried to access the file — no luck.",
+      "Virus": "Virus",
+      "VirusPlanted": "{name} plants a virus in the system core.",
+      "VirusFailed": "{name} tried to plant a virus — it does not take.",
+      "Pathfinder": "Pathfinder",
+      "PathfinderDone": "{name} maps the path ahead.",
+      "NodePulse": "Control Node",
+      "NodePulseBody": "The controller triggers the «{floor}» node.",
+      "Initiative": "NET initiative (1d10 + REF)",
+      "DamageTitle": "Damage",
+      "TookDamage": "«{name}» takes {n} damage.",
+      "DestroyedTitle": "Destroyed",
+      "Destroyed": "«{name}» derezzed."
+    },
+    "Ice": {
+      "Asp": {
+        "name": "Asp",
+        "effect": "Destroys a single random program installed on the target netrunner's cyberdeck."
+      },
+      "Giant": {
+        "name": "Giant",
+        "effect": "Does 3d6 damage directly to the target netrunner's brain. They are forcibly and unsafely jacked out of the NET architecture, suffering any consequences (except Giant)."
+      },
+      "Hellhound": {
+        "name": "Hellhound",
+        "effect": "Does 2d6 damage directly to the target netrunner's brain. Unless insulated, their cyberdeck catches fire along with their clothing. Until they spend a meat action to put themselves out, they take 2 damage directly to their HP whenever they end their turn. This effect does not stack."
+      },
+      "Kraken": {
+        "name": "Kraken",
+        "effect": "Does 3d6 damage directly to the target netrunner's brain. Until the end of their next turn, the target netrunner cannot progress deeper into the NET architecture, or jack out safely. They can still jack out unsafely, though."
+      },
+      "Liche": {
+        "name": "Liche",
+        "effect": "Target netrunner's INT, REF, and DEX are all lowered by 1d6 (minimum 1). The effect is largely psychosomatic and wears off after one hour."
+      },
+      "Raven": {
+        "name": "Raven",
+        "effect": "Derezzes a single random defender program which the target netrunner has rezzed, and deals 1d6 damage directly to their brain."
+      },
+      "Scorpion": {
+        "name": "Scorpion",
+        "effect": "Target netrunner's MOVE is lowered by 1d6 (minimum 1). The effect is largely psychosomatic and wears off after one hour."
+      },
+      "Skunk": {
+        "name": "Skunk",
+        "effect": "Until this program is derezzed, the target netrunner has -2 to all slide checks. Skunk can only affect a single netrunner, but the effects of multiple skunks can stack."
+      },
+      "Wisp": {
+        "name": "Wisp",
+        "effect": "Does 1d6 damage directly to the target netrunner's brain, and lowers the number of NET actions they can take on their next turn by 1 (minimum 2)."
+      },
+      "Dragon": {
+        "name": "Dragon",
+        "effect": "Deals 6d6 damage to a program."
+      },
+      "Killer": {
+        "name": "Killer",
+        "effect": "Deals 4d6 damage to a program."
+      },
+      "Sabertooth": {
+        "name": "Sabertooth",
+        "effect": "Deals 6d6 damage to a program."
+      }
+    },
+    "Demon": {
+      "imp": {
+        "name": "Imp"
+      },
+      "efreet": {
+        "name": "Efreet"
+      },
+      "balron": {
+        "name": "Balron"
+      }
+    }
+  }
+}

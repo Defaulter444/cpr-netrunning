@@ -1,0 +1,12 @@
+{{!-- Compact "apply damage → target" box. Rendered when `actions.damageBox`
+      is set (current user targets a damageable entity). Phase D. --}}
+{{#if actions.damageBox}}
+<div class="crns-damagebox">
+  <span class="crns-damagebox-label"><i class="fas fa-crosshairs"></i> {{actions.damageBox.name}}</span>
+  <input type="number" name="dmgamount" value="{{actions.damageBox.amount}}" min="0" />
+  <button type="button" class="crns-btn" data-action="apply-target-damage"
+          data-target-ref="{{actions.damageBox.ref}}">
+    <i class="fas fa-heart-crack"></i> {{localize "CRNS.Actions.ApplyDamage"}}
+  </button>
+</div>
+{{/if}}

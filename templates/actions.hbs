@@ -1,0 +1,299 @@
+{{!-- Static 3-zone action bar (SPEC §14.4/14.5). Fixed height; all three zones
+      always rendered (placeholders on empty) so selecting/targeting never
+      reflows the viewport. `actions` is built by apps/actions.js. --}}
+<div class="crns-actions crns-actions-{{actions.variant}}">
+
+{{!-- Slim drag handle on the TOP edge: drag to resize the bar (min 200px, max
+      55% of the window); double-click resets to the 290px default. --}}
+<div class="crns-bar-handle" data-action="bar-resize" title="{{localize "CRNS.Actions.ResizeHint"}}"
+     role="separator" aria-label="{{localize "CRNS.Actions.ResizeHint"}}"><span class="crns-bar-grip"></span></div>
+
+{{#if (crnsEq actions.variant "runner")}}
+  {{!-- ================= RUNNER VARIANT ================= --}}
+
+  {{!-- LEFT: selection panel --}}
+  <div class="crns-zone crns-zone-left">
+    <div class="crns-sel-head">
+      <img class="crns-act-avatar" src="{{actions.img}}" alt="{{actions.name}}" />
+      <div class="crns-act-headinfo">
+        <div class="crns-act-name">{{actions.name}}</div>
+        <span class="crns-badge crns-iface" title="{{localize "CRNS.Actions.InterfaceRank"}}">
+          <i class="fas fa-microchip"></i> {{actions.rank}}
+        </span>
+      </div>
+    </div>
+    <div class="crns-pips" data-pid="{{actions.pid}}" aria-label="{{localize "CRNS.Actions.PipsAria"}}">
+      {{#each actions.pips as |pip|}}<i class="fas {{#if pip.filled}}fa-circle{{else}}fa-circle-notch{{/if}} crns-pip" data-action="pip-toggle" data-filled="{{pip.filled}}" title="{{localize "CRNS.Actions.PipToggle"}}"></i>{{/each}}
+      <span class="crns-pips-num">{{actions.actionsValue}}/{{actions.actionsMax}}</span>
+    </div>
+    <div class="crns-act-controls">
+      {{#if actions.jackedIn}}
+      <button type="button" data-action="run-jack" data-pid="{{actions.pid}}" data-jack-in="false"
+              class="crns-btn"{{#if actions.noActions}} disabled title="{{localize "CRNS.Errors.NoActions"}}"{{/if}}>
+        <i class="fas fa-plug-circle-xmark"></i> {{localize "CRNS.Actions.JackOut"}}
+      </button>
+      {{else}}
+      <button type="button" data-action="run-jack" data-pid="{{actions.pid}}" data-jack-in="true"
+              class="crns-btn"{{#if actions.noActions}} disabled title="{{localize "CRNS.Errors.NoActions"}}"{{/if}}>
+        <i class="fas fa-plug"></i> {{localize "CRNS.Actions.JackIn"}}
+      </button>
+      {{/if}}
+      <button type="button" data-action="run-reset" data-pid="{{actions.pid}}" class="crns-btn"
+              title="{{localize "CRNS.Actions.ResetHint"}}">
+        <i class="fas fa-rotate"></i> {{localize "CRNS.Actions.Reset"}}
+      </button>
+      {{#if actions.isGM}}
+      <button type="button" data-action="run-reset-all" class="crns-btn">
+        <i class="fas fa-rotate-right"></i> {{localize "CRNS.Actions.ResetAll"}}
+      </button>
+      <button type="button" data-action="run-disconnect" data-pid="{{actions.pid}}" class="crns-btn crns-btn-warn">
+        <i class="fas fa-power-off"></i> {{localize "CRNS.Actions.Disconnect"}}
+      </button>
+      {{/if}}
+    </div>
+    {{#if actions.gmDamage}}
+    {{!-- GM-only: damage this SELECTED runner's HP directly (Addendum). --}}
+    <div class="crns-rezmgmt crns-runner-dmg">
+      <span class="crns-rezmgmt-label">{{localize "CRNS.Actions.DamageRunner"}}</span>
+      <input type="number" name="runnerdmg" value="{{actions.gmDamage.amount}}" min="0" placeholder="{{localize "CRNS.Actions.DamageAmount"}}" />
+      <button type="button" class="crns-mini" data-action="runner-damage-self" data-pid="{{actions.gmDamage.pid}}" title="{{localize "CRNS.Actions.ApplyDamage"}}"><i class="fas fa-heart-crack"></i></button>
+    </div>
+    {{/if}}
+  </div>
+
+  {{!-- CENTER: defence prompts + speed tests + abilities + programs (scroll) --}}
+  <div class="crns-zone crns-zone-center">
+    {{#if actions.defenseTests.length}}
+    <div class="crns-speedtests">
+      {{#each actions.defenseTests as |dt|}}
+      <div class="crns-speedtest crns-defensetest">
+        <span class="crns-speedtest-icon"><i class="fas fa-shield-halved"></i></span>
+        <span class="crns-speedtest-info">
+          <span class="crns-speedtest-ice">{{dt.attackerName}}</span>
+          <span class="crns-speedtest-label">{{localize "CRNS.Actions.DefensePrompt"}}</span>
+        </span>
+        <button type="button" class="crns-btn crns-btn-warn" data-action="defense-roll"
+                data-test-id="{{dt.id}}" data-pid="{{dt.pid}}" data-actor-id="{{dt.actorId}}">
+          <i class="fas fa-dice-d10"></i> {{localize "CRNS.Actions.DefenseRoll"}}
+        </button>
+        <button type="button" class="crns-icon-btn crns-speedtest-x" data-action="defense-dismiss"
+                data-test-id="{{dt.id}}" title="{{localize "CRNS.Actions.ClearTarget"}}"><i class="fas fa-xmark"></i></button>
+      </div>
+      {{/each}}
+    </div>
+    {{/if}}
+
+    {{#if actions.speedTests.length}}
+    <div class="crns-speedtests">
+      {{#each actions.speedTests as |st|}}
+      <div class="crns-speedtest">
+        <span class="crns-speedtest-icon"><i class="fas fa-triangle-exclamation"></i></span>
+        <span class="crns-speedtest-info">
+          <span class="crns-speedtest-ice">{{st.iceName}}</span>
+          <span class="crns-speedtest-label">{{localize "CRNS.Actions.SpeedTest"}}</span>
+        </span>
+        <button type="button" class="crns-btn crns-btn-warn" data-action="speed-test-roll"
+                data-test-id="{{st.id}}" data-pid="{{st.pid}}" data-actor-id="{{st.actorId}}">
+          <i class="fas fa-dice-d10"></i> {{localize "CRNS.Actions.SpeedTestRoll"}}
+        </button>
+        {{#if st.canDismiss}}
+        <button type="button" class="crns-icon-btn crns-speedtest-x" data-action="speed-test-dismiss"
+                data-test-id="{{st.id}}" title="{{localize "CRNS.Actions.ClearTarget"}}"><i class="fas fa-xmark"></i></button>
+        {{/if}}
+      </div>
+      {{/each}}
+    </div>
+    {{/if}}
+
+    <div class="crns-act-abilities" title="{{localize "CRNS.Hints.FreeRoll"}}">
+      {{#each actions.abilities as |ab|}}
+      <button type="button" class="crns-chip-btn{{#if ab.free}} free{{/if}}{{#if ab.dim}} dim{{/if}}" data-action="ability-roll"
+              data-pid="{{../actions.pid}}" data-actor-id="{{../actions.actorId}}"
+              data-ability="{{ab.key}}" data-free="{{ab.free}}">{{ab.label}}</button>
+      {{/each}}
+      {{#if actions.hasControl}}
+      <button type="button" class="crns-chip-btn crns-ctrl-node" data-action="control-node"
+              data-pid="{{actions.pid}}" data-arch-id="{{actions.archId}}"
+              data-nodes="{{actions.controlNodesJson}}">
+        <i class="fas fa-tower-cell"></i> {{localize "CRNS.Actions.ControlNode"}}
+      </button>
+      {{/if}}
+    </div>
+
+    {{#if actions.programs.length}}
+    {{!-- Vertical, information-rich program list (SPEC §14.3 / Task B): full-width
+          rows, class-colored left stripe, code + name/class, stat + state badges,
+          right-aligned action buttons. Scrolls to fill the remaining center height. --}}
+    <div class="crns-prog-list">
+      {{#each actions.programs as |pg|}}
+      <div class="crns-prog-row crns-prog-{{pg.cls}} crns-progclass-{{pg.classBucket}}{{#if pg.rezzed}} rezzed{{/if}}{{#if pg.derezzed}} derezzed{{/if}}{{#if pg.isTrap}} trap{{/if}}{{#if pg.isDeployed}} deployed{{/if}}"
+           title="{{pg.tip}}">
+        <span class="crns-prog-code" aria-hidden="true">{{pg.code}}</span>
+        <span class="crns-prog-ident">
+          <span class="crns-prog-name">{{pg.name}}</span>
+          <span class="crns-prog-classlabel"><i class="fas {{pg.icon}}"></i> {{localize pg.classLabel}}</span>
+        </span>
+        <span class="crns-prog-badges">
+          {{#if pg.showAtk}}<span class="crns-prog-stat crns-stat-atk" title="{{localize "CRNS.Actions.Attack"}}">{{localize "CRNS.Actions.ATK"}} +{{pg.atk}}</span>{{/if}}
+          {{#if pg.showDef}}<span class="crns-prog-stat crns-stat-def" title="{{localize "CRNS.Actions.Defense"}}">{{localize "CRNS.Actions.DEF"}} +{{pg.def}}</span>{{/if}}
+          {{#if pg.rezMax}}
+          <span class="crns-prog-stat crns-stat-rez" title="{{localize "CRNS.Actions.RezManage"}}">
+            <span class="crns-prog-rezval">{{localize "CRNS.Actions.RezManage"}} {{pg.rez}}/{{pg.rezMax}}</span>
+            <span class="crns-prog-rezmini"><span style="width:{{pg.rezPct}}%"></span></span>
+          </span>
+          {{/if}}
+        </span>
+        <span class="crns-prog-states">
+          {{#if pg.rezzed}}<span class="crns-prog-state crns-state-rezzed">{{localize "CRNS.Actions.StateRezzed"}}</span>{{/if}}
+          {{#if pg.isTrap}}<span class="crns-prog-state crns-state-trap"><i class="fas fa-land-mine-on"></i> {{localize "CRNS.Actions.StateTrap"}}</span>{{/if}}
+          {{#if pg.isDeployed}}<span class="crns-prog-state crns-state-deployed">{{localize "CRNS.Actions.StateDeployed"}}</span>{{/if}}
+          {{#if pg.autoDerezHint}}<span class="crns-prog-state crns-state-auto" title="{{localize "CRNS.Actions.AutoDerezHint"}}"><i class="fas fa-arrow-rotate-left"></i></span>{{/if}}
+        </span>
+        <span class="crns-prog-btns">
+          {{#if pg.rezzed}}
+          <button type="button" class="crns-mini" data-action="program-deactivate"
+                  data-pid="{{../actions.pid}}" data-actor-id="{{../actions.actorId}}"
+                  data-program-id="{{pg.id}}" data-cls="{{pg.cls}}"
+                  title="{{localize "CRNS.Actions.Deactivate"}}"><i class="fas fa-toggle-on"></i></button>
+            {{#if pg.canRoll}}
+            <button type="button" class="crns-mini" data-action="program-roll" data-exec="atk"
+                    data-pid="{{../actions.pid}}" data-actor-id="{{../actions.actorId}}"
+                    data-program-id="{{pg.id}}" data-is-attacker="{{pg.isAttacker}}">{{localize "CRNS.Actions.ATK"}}</button>
+            {{#if pg.hasDamage}}
+            <button type="button" class="crns-mini" data-action="program-roll" data-exec="damage"
+                    data-pid="{{../actions.pid}}" data-actor-id="{{../actions.actorId}}"
+                    data-program-id="{{pg.id}}" data-is-attacker="{{pg.isAttacker}}">{{localize "CRNS.Actions.DMG"}}</button>
+            {{/if}}
+            {{#if pg.showDefBtn}}
+            <button type="button" class="crns-mini" data-action="program-roll" data-exec="def"
+                    data-pid="{{../actions.pid}}" data-actor-id="{{../actions.actorId}}"
+                    data-program-id="{{pg.id}}" data-is-attacker="{{pg.isAttacker}}">{{localize "CRNS.Actions.DEF"}}</button>
+            {{/if}}
+            {{/if}}
+          {{else}}
+          <button type="button" class="crns-mini" data-action="program-activate"
+                  data-pid="{{../actions.pid}}" data-actor-id="{{../actions.actorId}}"
+                  data-program-id="{{pg.id}}" data-cls="{{pg.cls}}"
+                  title="{{localize "CRNS.Actions.Activate"}}"><i class="fas fa-toggle-off"></i></button>
+          {{/if}}
+        </span>
+      </div>
+      {{/each}}
+    </div>
+    {{/if}}
+  </div>
+
+  {{> "modules/cyberpunk-red-netrunning-suite/templates/actions-target.hbs"}}
+
+{{else if (crnsEq actions.variant "entity")}}
+  {{!-- ================= ENTITY VARIANT (GM) ================= --}}
+
+  {{!-- LEFT: selection panel --}}
+  <div class="crns-zone crns-zone-left">
+    <div class="crns-sel-head">
+      <img class="crns-act-avatar" src="{{actions.img}}" alt="{{actions.name}}" />
+      <div class="crns-act-headinfo">
+        <div class="crns-act-name">{{actions.name}}</div>
+      </div>
+    </div>
+    <div class="crns-act-rez">
+      <div class="crns-rez-bar"><span style="width:{{actions.rezPct}}%"></span></div>
+      <span class="crns-rez-val">{{actions.rez}}/{{actions.rezMax}}</span>
+    </div>
+    {{#if (crnsEq actions.entityKind "demon")}}
+    <div class="crns-pips" aria-label="{{localize "CRNS.Actions.DemonActions"}}">
+      {{#each actions.demonPips as |pip|}}<i class="fas {{#if pip.filled}}fa-circle{{else}}fa-circle-notch{{/if}}"></i>{{/each}}
+      <span class="crns-pips-num">{{actions.demonValue}}/{{actions.demonMax}}</span>
+    </div>
+    {{/if}}
+    <div class="crns-rezmgmt">
+      <span class="crns-rezmgmt-label">{{localize "CRNS.Actions.RezManage"}}</span>
+      <input type="number" name="rezval" value="{{actions.rez}}" min="0" max="{{actions.rezMax}}" />
+      <button type="button" class="crns-mini" data-action="ent-set-rez" data-actor-id="{{actions.actorId}}" title="{{localize "CRNS.Actions.SetRez"}}"><i class="fas fa-check"></i></button>
+      <input type="number" name="rezdmg" value="0" min="0" placeholder="{{localize "CRNS.Actions.DamageAmount"}}" />
+      <button type="button" class="crns-mini" data-action="ent-damage-self" data-actor-id="{{actions.actorId}}" title="{{localize "CRNS.Actions.ApplyDamage"}}"><i class="fas fa-heart-crack"></i></button>
+      <button type="button" class="crns-mini" data-action="ent-restore" data-actor-id="{{actions.actorId}}" title="{{localize "CRNS.Actions.Restore"}}"><i class="fas fa-rotate"></i></button>
+    </div>
+  </div>
+
+  {{!-- CENTER: entity action buttons --}}
+  <div class="crns-zone crns-zone-center">
+    {{#if (crnsEq actions.entityKind "ice")}}
+    <div class="crns-act-entbtns">
+      <button type="button" class="crns-btn" data-action="entity-stat" data-actor-id="{{actions.actorId}}" data-stat="atk">{{localize "CRNS.Actions.Attack"}}</button>
+      <button type="button" class="crns-btn" data-action="entity-stat" data-actor-id="{{actions.actorId}}" data-stat="def">{{localize "CRNS.Actions.Defense"}}</button>
+      <button type="button" class="crns-btn" data-action="entity-stat" data-actor-id="{{actions.actorId}}" data-stat="spd">{{localize "CRNS.Actions.Speed"}}</button>
+      <button type="button" class="crns-btn" data-action="entity-stat" data-actor-id="{{actions.actorId}}" data-stat="per">{{localize "CRNS.Actions.Perception"}}</button>
+      {{#if actions.hasDamage}}
+      <button type="button" class="crns-btn" data-action="entity-damage" data-actor-id="{{actions.actorId}}" data-formula="{{actions.damageFormula}}">{{localize "CRNS.Actions.Damage"}}</button>
+      {{/if}}
+      {{#if actions.effectKey}}
+      <button type="button" class="crns-btn" data-action="entity-effect" data-actor-id="{{actions.actorId}}" data-effect-key="{{actions.effectKey}}">{{localize "CRNS.Actions.Effect"}}</button>
+      {{/if}}
+      <button type="button" class="crns-btn" data-action="ent-to-queue" data-actor-id="{{actions.actorId}}" data-demon="false">
+        <i class="fas fa-forward-step"></i> {{localize "CRNS.Actions.ToQueue"}}
+      </button>
+    </div>
+    <div class="crns-ice-attach">
+      {{#if actions.showFollow}}
+      <label class="crns-ice-follow">
+        <input type="checkbox" data-action="ice-follow" data-actor-id="{{actions.actorId}}"{{#if actions.following}} checked{{/if}} />
+        {{localize "CRNS.Actions.Follow"}}
+      </label>
+      {{/if}}
+      <span class="crns-ice-attstatus">{{localize "CRNS.Actions.AttachmentTo" name=(crnsOr actions.attachedTo (localize "CRNS.Actions.AttachmentNone"))}}</span>
+      {{#if actions.hasAttachment}}
+      <button type="button" class="crns-mini" data-action="ice-detach" data-arch-id="{{actions.archId}}" data-ice-id="{{actions.iceId}}" data-prog-key="{{actions.progKey}}">{{localize "CRNS.Actions.Detach"}}</button>
+      {{/if}}
+      <select class="crns-ice-attsel" data-action="ice-attach" data-arch-id="{{actions.archId}}" data-ice-id="{{actions.iceId}}" data-prog-key="{{actions.progKey}}">
+        <option value="">{{localize "CRNS.Actions.AttachTo"}}…</option>
+        {{#each actions.attachChoices as |c|}}
+        <option value="{{c.pid}}"{{#if c.selected}} selected{{/if}}>{{c.name}}</option>
+        {{/each}}
+      </select>
+    </div>
+    {{else}}
+    <div class="crns-act-entbtns">
+      <button type="button" class="crns-btn crns-btn-warn" data-action="demon-zap" data-actor-id="{{actions.actorId}}"
+              {{#if actions.demonNoActions}} disabled title="{{localize "CRNS.Errors.NoActions"}}"{{/if}}>
+        <i class="fas fa-bolt"></i> {{localize "CRNS.Actions.DemonZap"}}
+      </button>
+      <button type="button" class="crns-btn" data-action="demon-action" data-actor-id="{{actions.actorId}}"
+              {{#if actions.demonNoActions}} disabled title="{{localize "CRNS.Errors.NoActions"}}"{{/if}}>{{localize "CRNS.Actions.DemonAction"}}</button>
+      <button type="button" class="crns-btn" data-action="demon-cn" data-actor-id="{{actions.actorId}}" data-cn="{{actions.combatNumber}}"
+              {{#if actions.demonNoActions}} disabled title="{{localize "CRNS.Errors.NoActions"}}"{{/if}}>{{localize "CRNS.Actions.CombatNumber"}} {{actions.combatNumber}}</button>
+      <button type="button" class="crns-btn" data-action="demon-reset" data-actor-id="{{actions.actorId}}">
+        <i class="fas fa-rotate"></i> {{localize "CRNS.Actions.DemonReset"}}
+      </button>
+      <button type="button" class="crns-btn" data-action="ent-to-queue" data-actor-id="{{actions.actorId}}" data-demon="true">
+        <i class="fas fa-forward-step"></i> {{localize "CRNS.Actions.ActivateDemon"}}
+      </button>
+    </div>
+    {{/if}}
+  </div>
+
+  {{> "modules/cyberpunk-red-netrunning-suite/templates/actions-target.hbs"}}
+
+{{else}}
+  {{!-- ================= SPECTATOR / NONE ================= --}}
+
+  {{!-- LEFT: empty selection placeholder --}}
+  <div class="crns-zone crns-zone-left">
+    <div class="crns-zone-empty">
+      <i class="fas fa-user-slash"></i>
+      <div class="crns-zone-empty-title">{{localize "CRNS.Actions.NoSelectionTitle"}}</div>
+      <div class="crns-zone-empty-hint">{{localize actions.hint}}</div>
+    </div>
+  </div>
+
+  {{!-- CENTER: watching hint --}}
+  <div class="crns-zone crns-zone-center">
+    <div class="crns-act-none">
+      <span class="crns-act-hint">{{localize actions.hint}}</span>
+    </div>
+  </div>
+
+  {{> "modules/cyberpunk-red-netrunning-suite/templates/actions-target.hbs"}}
+{{/if}}
+
+</div>

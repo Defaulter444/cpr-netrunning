@@ -1,0 +1,80 @@
+{{!-- Architecture editor (floor chain). GM draft editing. --}}
+{{#if editor}}
+<div class="crns-editor-body" data-arch-id="{{editor.archId}}">
+
+  <div class="crns-editor-head">
+    <input type="text" class="crns-editor-name" data-action="editor-name" value="{{editor.name}}" />
+    <div class="crns-editor-meta">
+      <span class="crns-editor-count">{{localize "CRNS.Editor.Floors"}}: {{editor.floorCount}}</span>
+      <span class="crns-editor-demons{{#if editor.demonBudgetFull}} full{{/if}}">{{localize "CRNS.Editor.Demons"}} {{editor.demons}}/{{editor.demonMax}}</span>
+    </div>
+    <div class="crns-editor-actions">
+      <button type="button" class="crns-btn crns-editor-savebtn{{#if editor.dirty}} dirty{{/if}}" data-action="editor-save">
+        {{#if editor.dirty}}<span class="crns-dirty-dot"></span>{{/if}}<i class="fas fa-floppy-disk"></i> {{localize "CRNS.Editor.Save"}}
+      </button>
+      <button type="button" class="crns-btn" data-action="editor-cancel"><i class="fas fa-xmark"></i> {{localize "CRNS.Editor.Cancel"}}</button>
+    </div>
+  </div>
+
+  <div class="crns-floor-chain">
+    {{#each editor.floors as |floor|}}
+    <div class="crns-floor-card" data-floor-id="{{floor.id}}">
+
+      <div class="crns-floor-top">
+        <span class="crns-floor-num">{{floor.number}}</span>
+        <img class="crns-floor-icon" src="{{floor.kindIcon}}" alt="" />
+        <select class="crns-floor-kind" data-action="floor-kind">
+          {{#each ../editor.kinds as |k|}}
+          <option value="{{k.id}}"{{#if (crnsEq k.id floor.kind)}} selected{{/if}}>{{k.label}}</option>
+          {{/each}}
+        </select>
+        {{#if floor.isCustom}}
+        <input type="text" class="crns-floor-label" data-action="floor-label" placeholder="{{localize "CRNS.Editor.LabelPlaceholder"}}" value="{{floor.label}}" />
+        {{/if}}
+        <label class="crns-floor-dv">{{localize "CRNS.Editor.DV"}} <input type="number" min="0" data-action="floor-dv" value="{{floor.dv}}" /></label>
+        <span class="crns-floor-ctrls">
+          <button type="button" class="crns-icon-btn" data-action="floor-up" title="{{localize "CRNS.Editor.MoveUp"}}"{{#if floor.isFirst}} disabled{{/if}}><i class="fas fa-arrow-up"></i></button>
+          <button type="button" class="crns-icon-btn" data-action="floor-down" title="{{localize "CRNS.Editor.MoveDown"}}"{{#if floor.isLast}} disabled{{/if}}><i class="fas fa-arrow-down"></i></button>
+          <button type="button" class="crns-icon-btn" data-action="floor-insert" title="{{localize "CRNS.Editor.InsertAfter"}}"><i class="fas fa-plus"></i></button>
+          <button type="button" class="crns-icon-btn" data-action="floor-delete" title="{{localize "CRNS.Editor.DeleteFloor"}}"{{#unless floor.canDelete}} disabled{{/unless}}><i class="fas fa-trash"></i></button>
+        </span>
+      </div>
+
+      <textarea class="crns-floor-desc" data-action="floor-desc" rows="2" placeholder="{{localize "CRNS.Editor.DescPlaceholder"}}">{{floor.description}}</textarea>
+
+      <div class="crns-floor-entities">
+        <div class="crns-ice-row">
+          <span class="crns-ent-label">{{localize "CRNS.Editor.Ice"}}</span>
+          {{#each floor.iceSlots as |slot|}}
+            {{#if slot.filled}}
+            <div class="crns-ice-slot filled" data-ice-id="{{slot.uid}}">
+              <img src="{{slot.img}}" alt="{{slot.name}}" />
+              <span class="crns-ent-name">{{slot.name}}</span>
+              <button type="button" class="crns-icon-btn crns-ent-remove" data-action="ice-remove" title="{{localize "CRNS.Editor.Remove"}}"><i class="fas fa-times"></i></button>
+            </div>
+            {{else}}
+            <button type="button" class="crns-ice-slot empty" data-action="ice-add"><i class="fas fa-plus"></i> {{localize "CRNS.Editor.AddIce"}}</button>
+            {{/if}}
+          {{/each}}
+        </div>
+
+        <div class="crns-demon-row">
+          <span class="crns-ent-label">{{localize "CRNS.Editor.Demon"}}</span>
+          {{#if floor.demon}}
+          <div class="crns-demon-slot filled">
+            <img src="{{floor.demon.img}}" alt="{{floor.demon.name}}" />
+            <span class="crns-ent-name">{{floor.demon.name}}</span>
+            <button type="button" class="crns-icon-btn crns-ent-remove" data-action="demon-remove" title="{{localize "CRNS.Editor.Remove"}}"><i class="fas fa-times"></i></button>
+          </div>
+          {{else}}
+          <button type="button" class="crns-demon-slot empty" data-action="demon-add"{{#if ../editor.demonBudgetFull}} disabled title="{{localize "CRNS.Editor.DemonBudgetFull"}}"{{/if}}><i class="fas fa-plus"></i> {{localize "CRNS.Editor.AddDemon"}}</button>
+          {{/if}}
+        </div>
+      </div>
+
+    </div>
+    {{/each}}
+  </div>
+
+</div>
+{{/if}}

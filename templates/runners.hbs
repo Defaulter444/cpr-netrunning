@@ -1,0 +1,54 @@
+{{!-- GM runner slide-out panel: collapsed rail ↔ expanded roster. --}}
+{{#if runners}}
+{{#if runners.collapsed}}
+<div class="crns-runners-rail">
+  <button type="button" class="crns-icon-btn" data-action="runners-toggle" title="{{localize "CRNS.Runners.Title"}}">
+    <i class="fas fa-users"></i>
+  </button>
+</div>
+{{else}}
+<div class="crns-runners">
+  <div class="crns-runners-head">
+    <span class="crns-runners-title">{{localize "CRNS.Runners.Title"}}</span>
+    <button type="button" class="crns-icon-btn" data-action="runners-toggle" title="{{localize "CRNS.Runners.Collapse"}}">
+      <i class="fas fa-angles-right"></i>
+    </button>
+  </div>
+
+  <div class="crns-runners-list">
+    {{#each runners.rows as |row|}}
+    <div class="crns-runner-row{{#if row.selected}} selected{{/if}}" data-pid="{{row.pid}}"
+         data-actor-uuid="{{row.actorUuid}}" data-user-id="{{row.userId}}">
+      <img class="crns-runner-avatar" src="{{row.img}}" alt="{{row.name}}" />
+      <div class="crns-runner-info">
+        <div class="crns-runner-line">
+          <span class="crns-runner-dot" style="background:{{row.color}}"></span>
+          <span class="crns-runner-name">{{row.name}}</span>
+        </div>
+        <div class="crns-runner-meta">
+          <span title="{{row.owner}}">{{row.owner}}</span>
+          <span class="crns-runner-rank">INT {{row.rank}}</span>
+          <span class="crns-runner-acts">{{row.actionsValue}}/{{row.actionsMax}}</span>
+          <span class="crns-runner-pos">{{row.position}}</span>
+        </div>
+      </div>
+      <div class="crns-runner-btns">
+        {{#if row.connected}}
+        <button type="button" class="crns-icon-btn" data-action="runner-disconnect" title="{{localize "CRNS.Runners.Disconnect"}}"><i class="fas fa-link-slash"></i></button>
+        {{else}}
+        <button type="button" class="crns-icon-btn" data-action="runner-connect" title="{{#if row.hasActiveTab}}{{localize "CRNS.Runners.Connect"}}{{else}}{{localize "CRNS.Runners.NoActiveTab"}}{{/if}}"{{#unless row.hasActiveTab}} disabled{{/unless}}><i class="fas fa-link"></i></button>
+        {{/if}}
+        <button type="button" class="crns-icon-btn" data-action="runner-act" title="{{localize "CRNS.Runners.ActAs"}}"><i class="fas fa-hand-pointer"></i></button>
+        {{#if row.hasReveal}}
+        <button type="button" class="crns-icon-btn" data-action="runner-hide-reveal" title="{{localize "CRNS.Canvas.HideReveal"}}"><i class="fas fa-eye-slash"></i></button>
+        {{/if}}
+        {{#if row.inSession}}
+        <button type="button" class="crns-icon-btn" data-action="runner-remove" title="{{localize "CRNS.Runners.Remove"}}"><i class="fas fa-trash"></i></button>
+        {{/if}}
+      </div>
+    </div>
+    {{/each}}
+  </div>
+</div>
+{{/if}}
+{{/if}}

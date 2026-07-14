@@ -1,0 +1,21 @@
+{{!-- Open-architecture tab strip. --}}
+<div class="crns-tabstrip">
+  {{#if tabsGM}}
+    {{#each tabsGM.tabs as |tab|}}
+    <div class="crns-tab{{#if tab.active}} active{{/if}}{{#if tab.editing}} editing{{/if}}" data-arch-id="{{tab.archId}}" data-action="tab-activate">
+      {{#if tab.editing}}<i class="fas fa-pen crns-tab-badge" title="{{localize "CRNS.Tabs.Editing"}}"></i>{{/if}}
+      <span class="crns-tab-name">{{tab.name}}</span>
+      <button type="button" class="crns-icon-btn crns-tab-edit" data-action="tab-edit" title="{{localize "CRNS.Tabs.EditToggle"}}"><i class="fas fa-pen-to-square"></i></button>
+      <button type="button" class="crns-icon-btn crns-tab-close" data-action="tab-close" title="{{localize "CRNS.Tabs.Close"}}"><i class="fas fa-times"></i></button>
+    </div>
+    {{/each}}
+  {{else}}
+    {{#if tabsSpectator}}
+      {{#each tabsSpectator.tabs as |tab|}}
+      <div class="crns-tab crns-tab-spectate{{#if tab.active}} active{{/if}}" data-arch-id="{{tab.archId}}" data-action="spectate-switch">
+        <span class="crns-tab-name">{{tab.name}}</span>
+      </div>
+      {{/each}}
+    {{/if}}
+  {{/if}}
+</div>

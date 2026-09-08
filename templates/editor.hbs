@@ -32,12 +32,44 @@
         <input type="text" class="crns-floor-label" data-action="floor-label" placeholder="{{localize "CRNS.Editor.LabelPlaceholder"}}" value="{{floor.label}}" />
         {{/if}}
         <label class="crns-floor-dv">{{localize "CRNS.Editor.DV"}} <input type="number" min="0" data-action="floor-dv" value="{{floor.dv}}" /></label>
+        <label class="crns-floor-check" title="{{localize "CRNS.Editor.Check"}}">
+          <select data-action="floor-check">
+            {{#each floor.checkChoices as |c|}}
+            <option value="{{c.id}}"{{#if (crnsEq c.id ../floor.check)}} selected{{/if}}>{{c.label}}</option>
+            {{/each}}
+          </select>
+        </label>
         <span class="crns-floor-ctrls">
           <button type="button" class="crns-icon-btn" data-action="floor-up" title="{{localize "CRNS.Editor.MoveUp"}}"{{#if floor.isFirst}} disabled{{/if}}><i class="fas fa-arrow-up"></i></button>
           <button type="button" class="crns-icon-btn" data-action="floor-down" title="{{localize "CRNS.Editor.MoveDown"}}"{{#if floor.isLast}} disabled{{/if}}><i class="fas fa-arrow-down"></i></button>
           <button type="button" class="crns-icon-btn" data-action="floor-insert" title="{{localize "CRNS.Editor.InsertAfter"}}"><i class="fas fa-plus"></i></button>
           <button type="button" class="crns-icon-btn" data-action="floor-delete" title="{{localize "CRNS.Editor.DeleteFloor"}}"{{#unless floor.canDelete}} disabled{{/unless}}><i class="fas fa-trash"></i></button>
         </span>
+      </div>
+
+      {{!-- Where this floor hangs. This one control is what turns the old
+            straight chain into a tree: pick a parent and the floor moves under
+            it, pick the same parent for two floors and the architecture forks
+            there. --}}
+      <div class="crns-floor-tree">
+        <label class="crns-floor-parent">
+          <span class="crns-floor-parent-lbl">{{localize "CRNS.Editor.Parent"}}</span>
+          <select data-action="floor-parent">
+            {{#each floor.parentChoices as |pc|}}
+            <option value="{{pc.id}}"{{#if (crnsEq pc.id ../floor.parent)}} selected{{/if}}>{{pc.label}}</option>
+            {{/each}}
+          </select>
+        </label>
+        <label class="crns-floor-gate" title="{{localize "CRNS.Editor.GateHint"}}">
+          <input type="checkbox" data-action="floor-gate"{{#if floor.gate}} checked{{/if}}{{#if floor.gateForced}} disabled{{/if}} />
+          <i class="fas fa-lock"></i> {{localize "CRNS.Editor.Gate"}}
+        </label>
+        <span class="crns-floor-depth" title="{{localize "CRNS.Editor.Branch"}}">
+          <i class="fas fa-layer-group"></i> {{floor.depth}}
+        </span>
+        {{#if floor.forks}}
+        <span class="crns-floor-forks"><i class="fas fa-code-branch"></i> {{localize "CRNS.Canvas.Forks" n=floor.forks}}</span>
+        {{/if}}
       </div>
 
       <textarea class="crns-floor-desc" data-action="floor-desc" rows="2" placeholder="{{localize "CRNS.Editor.DescPlaceholder"}}">{{floor.description}}</textarea>

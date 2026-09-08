@@ -14,6 +14,7 @@
  * last damage total this client rolled is stashed on app._lastDamage. */
 
 import { MODULE_ID, loc, esc, BLACK_ICE, DEMONS, ENTITY_ICONS, abbrFor, blackIceTypeForName } from "../constants.js";
+import * as tree from "../rules/tree.js";
 import { getWorld, mutate, notifyClients, canDerezTrap } from "../data.js";
 import * as bridge from "../cpr-bridge.js";
 
@@ -257,15 +258,19 @@ function abilityAvailability(part, session, archs) {
   const idx = part.floorIndex || 0;
   const floor = floors[idx] || null;
   const kind = floor?.kind || "";
+  const floorCheck = floor?.check || "";
   const fx = floor ? (session.floorState || {})[`${part.archId}:${floor.id}`] : null;
   const myPid = part.pid;
   const breached = !!(fx && fx.breached);
-  const isLast = idx === floors.length - 1;
+  const isLast = tree.isLeaf(floors, idx);
 
   const targetRef = (session.targets || {})[game.user.id] || "";
   const [tKind] = targetRef.split(":");
 
   return {
+    // A floor that names its own check lights THAT ability, whatever its kind.
+    // Without this a custom floor carries a DV nothing can be rolled against.
+    ...(floorCheck ? { [floorCheck]: !breached } : {}),
     backdoor: kind === "password" && !breached,
     cloak: true,
     control: kind === "controlnode" && (fx?.control?.pid ?? null) !== myPid,

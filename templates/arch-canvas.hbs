@@ -7,10 +7,35 @@
   </div>
   {{else}}
   <canvas class="crns-rain"></canvas>
-  <div class="crns-stage">
+  {{!-- The stage is a grid: one row per depth, one column per layout slot.
+        Columns come out fractional (a floor above two children sits at 0.5), so
+        every column is split in half and each card spans two half-columns —
+        that puts a parent exactly over the gap between its children, which is
+        where the connector wants it. --}}
+  <div class="crns-stage crns-tree" style="--rows:{{canvas.rows}}; --cols:{{canvas.cols}}">
     <svg class="crns-lines" preserveAspectRatio="none"></svg>
+
     {{#each canvas.floors as |floor|}}
-    <div class="crns-floor-wrap" data-floor-index="{{floor.index}}">
+    <div class="crns-floor-wrap{{#if floor.encrypted}} crns-wrap-fog{{/if}}"
+         data-floor-index="{{floor.index}}"
+         style="--row:{{floor.row}}; --col:{{floor.col}}">
+
+      {{#if floor.encrypted}}
+      {{!-- A sensed floor: the runner can tell it is there and nothing more.
+            Standing at a fork he sees how many ways it goes, not what is down
+            any of them. --}}
+      <div class="crns-floor crns-fog-stub" data-floor-index="{{floor.index}}"
+           title="{{localize "CRNS.Canvas.MoreFloors"}}">
+        <div class="crns-fog-glitch">???</div>
+        <div class="crns-fog-hint">{{floor.label}}</div>
+        {{#if floor.showMoveHere}}
+        <button type="button" class="crns-move-here crns-fog-move" data-action="floor-move-here"
+                data-floor-index="{{floor.index}}" title="{{localize "CRNS.Canvas.Advance"}}">
+          <i class="fas fa-arrow-down-to-line"></i> {{localize "CRNS.Canvas.Advance"}}
+        </button>
+        {{/if}}
+      </div>
+      {{else}}
       <div class="crns-floor{{#if floor.isRoot}} root{{/if}}{{#if floor.controlChip}} controlled{{/if}}" data-floor-index="{{floor.index}}"
            data-floor-id="{{floor.floorId}}"{{#if floor.controlColor}} style="--control-color:{{floor.controlColor}}"{{/if}}
            {{#if floor.description}}title="{{floor.description}}"{{/if}}>
@@ -79,7 +104,7 @@
         {{#if floor.entities.length}}
         <div class="crns-floor-chips">
           {{#each floor.entities as |ent|}}
-          {{> "modules/cyberpunk-red-netrunning-suite/templates/entity-card.hbs" ent=ent}}
+          {{> "modules/cpr-netrunning/templates/entity-card.hbs" ent=ent}}
           {{/each}}
         </div>
         {{/if}}
@@ -124,33 +149,9 @@
         {{/if}}
       </div>
 
-      {{#unless floor.isRoot}}
-      <div class="crns-link">
-        <div class="crns-link-spine"></div>
-        <div class="crns-link-flow"></div>
-        <div class="crns-link-packet"></div>
-      </div>
-      {{/unless}}
+      {{/if}}
     </div>
     {{/each}}
-
-    {{#if canvas.fogStub}}
-    <div class="crns-floor-wrap crns-fog-wrap">
-      <div class="crns-link crns-link-fog">
-        <div class="crns-link-spine"></div>
-      </div>
-      <div class="crns-floor crns-fog-stub" title="{{localize "CRNS.Canvas.MoreFloors"}}">
-        <div class="crns-fog-glitch">???</div>
-        <div class="crns-fog-hint">{{localize "CRNS.Canvas.MoreFloors"}}</div>
-        {{#if canvas.fogStubMove}}
-        <button type="button" class="crns-move-here crns-fog-move" data-action="floor-move-here"
-                data-floor-index="{{canvas.fogStubIndex}}" title="{{localize "CRNS.Canvas.Advance"}}">
-          <i class="fas fa-arrow-down-to-line"></i> {{localize "CRNS.Canvas.Advance"}}
-        </button>
-        {{/if}}
-      </div>
-    </div>
-    {{/if}}
   </div>
 
   {{!-- Arch-level cloak strip (Addendum 6): fixed overlay at the top of the

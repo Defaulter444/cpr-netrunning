@@ -14,7 +14,7 @@ import CPRChat from "/systems/cyberpunk-red-core/modules/chat/cpr-chat.js";
 import CPRCONFIG from "/systems/cyberpunk-red-core/modules/system/config.js";
 
 function sysError(e) {
-  console.error("cyberpunk-red-netrunning-suite | bridge", e);
+  console.error("cpr-netrunning | bridge", e);
   try { ui.notifications.error(loc("CRNS.Errors.SystemApi")); } catch (_e) { /* noop */ }
 }
 

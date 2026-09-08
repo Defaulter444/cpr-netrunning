@@ -12,7 +12,7 @@
       </button>
     </div>
     {{else}}
-    {{> "modules/cyberpunk-red-netrunning-suite/templates/tree.hbs"}}
+    {{> "modules/cpr-netrunning/templates/tree.hbs"}}
     {{/if}}
   </aside>
   {{/if}}
@@ -20,30 +20,30 @@
   {{!-- Main column --}}
   <main class="crns-main">
     <div class="crns-tabs">
-      {{> "modules/cyberpunk-red-netrunning-suite/templates/tabs.hbs"}}
+      {{> "modules/cpr-netrunning/templates/tabs.hbs"}}
     </div>
 
     <div class="crns-center">
       {{#if editor}}
       <div class="crns-editor">
-        {{> "modules/cyberpunk-red-netrunning-suite/templates/editor.hbs"}}
+        {{> "modules/cpr-netrunning/templates/editor.hbs"}}
       </div>
       {{else}}
       <div class="crns-viewport">
-        {{> "modules/cyberpunk-red-netrunning-suite/templates/arch-canvas.hbs"}}
+        {{> "modules/cpr-netrunning/templates/arch-canvas.hbs"}}
       </div>
       {{/if}}
     </div>
 
     <div class="crns-actionbar">
-      {{> "modules/cyberpunk-red-netrunning-suite/templates/actions.hbs"}}
+      {{> "modules/cpr-netrunning/templates/actions.hbs"}}
     </div>
   </main>
 
   {{!-- Right: GM runner panel --}}
   {{#if isGM}}
   <aside class="crns-right">
-    {{> "modules/cyberpunk-red-netrunning-suite/templates/runners.hbs"}}
+    {{> "modules/cpr-netrunning/templates/runners.hbs"}}
   </aside>
   {{/if}}
 

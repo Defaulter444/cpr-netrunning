@@ -1,6 +1,6 @@
 /* Shared constants and game-data tables for the Netrunning Suite. */
 
-export const MODULE_ID = "cyberpunk-red-netrunning-suite";
+export const MODULE_ID = "cpr-netrunning";
 export const SOCKET_NAME = `module.${MODULE_ID}`;
 export const TPL = (name) => `modules/${MODULE_ID}/templates/${name}.hbs`;
 export const uid = (prefix) => `${prefix}_${foundry.utils.randomID(12)}`;
@@ -38,6 +38,21 @@ export const DEMONS = {
 };
 
 export const FLOOR_KINDS = ["password", "file", "controlnode", "custom"];
+
+/* Interface abilities a floor's DV may be rolled against.
+ *
+ * The GM names this per floor instead of it being implied by the floor kind.
+ * Two reasons. A "custom" floor otherwise has a DV nothing can beat — there is
+ * no ability the game would think to roll. And the runner's programs only pay
+ * out when the roll knows what it is: Worm grants +2 to Backdoor, See Ya +2 to
+ * Pathfinder, and those bonuses attach by ability name.
+ *
+ * Scanner is absent on purpose — it is a MEAT action taken outside the
+ * architecture, so it can never be what a floor asks of you (Corebook p. 200).
+ */
+export const CHECK_ABILITIES = [
+  "backdoor", "cloak", "control", "eyedee", "pathfinder", "slide", "virus", "zap",
+];
 export const THEMES = ["red", "yellow", "blue", "green"];
 
 // Icons — reuse the system's own art (verified to exist).

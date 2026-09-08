@@ -1311,3 +1311,130 @@ body.crns-resizing { cursor: ns-resize !important; -webkit-user-select: none !im
 }
 
 .crns-root button i { margin: 0 !important; }
+
+/* ==================================================================== */
+/*  BRANCHING — the architecture is a tree, not a column                */
+/*                                                                      */
+/*  Upstream stacked floor cards in a flex column, which is only ever    */
+/*  right for a chain. A forked architecture needs two axes: depth down  */
+/*  the page, branches across it.                                        */
+/*                                                                      */
+/*  The grid is laid out in HALF columns. The layout pass gives a parent */
+/*  the average of its children's columns, so a floor above two children */
+/*  sits at 0.5 — a fraction no grid line can hold. Doubling the track   */
+/*  count turns every such value into a whole half-column, and each card */
+/*  spans two of them, landing centred over the gap between its children */
+/*  which is exactly where its connector has to meet it.                 */
+/* ==================================================================== */
+
+.crns-stage.crns-tree {
+  display: grid;
+  grid-template-columns: repeat(calc(var(--cols) * 2), var(--crns-tree-halfcol, 116px));
+  grid-auto-rows: min-content;
+  align-items: start;
+  justify-items: stretch;
+  column-gap: 0;
+  row-gap: var(--crns-tree-gap, 52px);
+}
+
+.crns-stage.crns-tree .crns-floor-wrap {
+  grid-row: calc(var(--row) + 1);
+  grid-column: calc(var(--col) * 2 + 1) / span 2;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  padding: 0 9px;
+  min-width: 0;
+}
+
+/* The connector overlay spans the whole stage and sits under the cards. It is
+   inside the transformed stage, so pan and zoom carry it along for free. */
+.crns-stage.crns-tree .crns-lines {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 0;
+}
+.crns-stage.crns-tree .crns-floor-wrap { position: relative; z-index: 1; }
+
+.crns-edge-path {
+  fill: none;
+  stroke: var(--crns-accent);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.55;
+  stroke-dasharray: 5 7;
+  animation: crns-edge-march 1.6s linear infinite;
+}
+.crns-edge-glow {
+  fill: none;
+  stroke: var(--crns-glow, var(--crns-accent));
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.14;
+  filter: blur(2px);
+}
+@keyframes crns-edge-march { to { stroke-dashoffset: -24; } }
+
+/* A floor that forks is where a decision happens. Say so on the card instead of
+   making the player infer it from the lines. */
+.crns-floor-forks {
+  display: inline-flex; align-items: center; gap: 4px;
+  margin-left: auto;
+  font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--crns-accent); opacity: 0.8; flex: 0 0 auto;
+}
+
+/* Sensed but not known. Deliberately the same footprint as a real card so the
+   layout does not lurch when it resolves: the SHAPE of the architecture is
+   information the runner is allowed to have — its contents are not. */
+.crns-stage.crns-tree .crns-fog-stub {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 6px; min-height: 78px;
+  border-style: dashed;
+  opacity: 0.6;
+}
+.crns-stage.crns-tree .crns-fog-glitch { font-size: 20px; letter-spacing: 0.16em; }
+.crns-stage.crns-tree .crns-fog-hint {
+  font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; text-align: center;
+}
+
+/* ---- editor: where a floor hangs, and what opens it ----------------- */
+
+.crns-floor-tree {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 5px 7px;
+  border: 1px solid var(--crns-border);
+  border-left: 2px solid color-mix(in srgb, var(--crns-accent) 55%, transparent);
+  background: color-mix(in srgb, var(--crns-accent) 5%, transparent);
+}
+.crns-floor-parent { display: flex; align-items: center; gap: 6px; min-width: 0; flex: 1 1 220px; }
+.crns-floor-parent-lbl {
+  font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--crns-dim); flex: 0 0 auto;
+}
+.crns-floor-parent select {
+  flex: 1 1 auto; min-width: 0;
+  background: transparent; border: 1px solid var(--crns-border); color: var(--crns-text);
+  padding: 2px 5px;
+}
+.crns-floor-check select {
+  background: transparent; border: 1px solid var(--crns-border); color: var(--crns-text);
+  padding: 2px 5px; max-width: 150px;
+}
+.crns-floor-gate {
+  display: inline-flex; align-items: center; gap: 5px; flex: 0 0 auto;
+  font-size: 11px; color: var(--crns-dim); cursor: pointer;
+}
+.crns-floor-gate input { accent-color: var(--crns-accent); }
+.crns-floor-gate input:checked ~ i { color: var(--crns-accent); }
+.crns-floor-gate input:disabled { opacity: 0.55; cursor: not-allowed; }
+.crns-floor-depth {
+  display: inline-flex; align-items: center; gap: 4px; flex: 0 0 auto;
+  font-size: 11px; color: var(--crns-dim);
+}

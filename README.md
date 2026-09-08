@@ -1,39 +1,48 @@
-# Cyberpunk RED — Netrunning Suite
+# Cyberpunk RED: Нетраннинг
 
-Immersive NET architecture builder and netrunning interface for the **Cyberpunk RED** system (`cyberpunk-red-core`) on **FoundryVTT v12**.
+Форк [Netrunning Suite](https://github.com/Frost-Jack/cyberpunk-red-netrunning-suite)
+(MIT, автор Lumiel) для Foundry VTT 12 и системы `cyberpunk-red-core` 0.92.x.
 
-![Foundry v12](https://img.shields.io/badge/Foundry-v12-informational)
+Оригинал даёт интерактивный забег: карта архитектуры, туман войны, девять
+способностей интерфейса, чёрный лёд и демоны, броски через настоящие классы
+системы. Здесь к этому добавляется то, чего в нём не было.
 
-## Features
+## Что добавил форк
 
-### For the GM
-- **Architecture file manager** — folders (nested), architecture files: create, rename, duplicate, delete, drag-to-move, JSON export/import. Folder open/closed state is stored per world.
-- **Architecture editor** — chain of floors: floor type (Password / File / Control Node / custom), DV, description, reorder/insert/delete floors. Up to **3 Black ICE** per floor and up to **1 Demon** per floor with a global cap of 1 Demon per 6 floors.
-- **Actor-backed entities** — every Black ICE / Demon placed in an architecture is a real Actor (system types `blackIce` / `demon`) auto-created in the `NET Architectures/<arch>` folder, seeded with rulebook stats and system icon art. Double-click a chip to open its native sheet; current REZ lives on the actor and syncs live for every client.
-- **Tabs** — open several architectures like files in a code editor; connect players (they land on floor 1 and auto-spend 1 NET action for Jack In).
-- **NPC netrunners** — drag any actor with an equipped cyberdeck into the right slide-out panel and run them like a player.
-- **Entity action panel** — select any ICE/Demon: Attack / Defense / Speed / Perception / Damage / Effect rolls through the system's own roll pipeline (dialogs, crits, Dice So Nice), plus REZ management. Demons act with 1d10+Interface and post their static Combat Number.
-- **Auto-roll** (setting) — GM-controlled ICE / Demons / NPC runners automatically roll their defense against player attacks; a HIT/MISS comparison card is posted (ties favor the defender).
+**Ветвление.** В оригинале архитектура — прямая цепочка: «глубже» означало
+«следующий элемент массива». В книге это не так (корбук, с. 210: ветки a–h), и
+раннер выбирает, куда свернуть. Теперь каждый этаж знает, под каким он висит, и
+архитектура растёт деревом: несколько веток из одной точки, у каждой своё дно.
 
-### For players (actor with an equipped cyberdeck)
-- Toolbar chip icon opens the suite; you see the architecture the GM connected you to.
-- **NET actions per turn** from Interface rank (1–3 → 2, 4–6 → 3, 7–9 → 4, 10 → 5), with pips, combat-turn auto-reset, Jack In/Out.
-- All interface abilities (Backdoor, Cloak, Control, Eye-Dee, Pathfinder, Scanner, Slide, Virus, Zap + Speed/Defense) — every roll is the system's native 1d10 + Interface roll.
-- **Programs** — activate/deactivate (1 NET action; deactivation restores REZ), attackers auto-derez after their damage roll, rezzed Black ICE programs appear in the architecture and act like regular ICE under your control.
-- Click to select, hover + **T** (or right-click) to target — targets are visible to everyone.
+Это меняет всё, что раньше считалось арифметикой по индексу:
 
-### Spectators
-Players without a cyberdeck can join as spectators (world setting), watching what runners see; optional free movement between occupied architectures.
+* **Ход** — на этаж выше или на любой из этажей ниже, а не «индекс ± 1».
+* **Следопыт** — обходит каждую ветку отдельно. Запертая дверь в одном коридоре
+  больше не ослепляет соседний.
+* **Вирус** — ставится на дне ветки. Дно теперь не одно.
+* **Туман** — не «до какой глубины видно», а множество известных этажей.
 
-### Presentation
-- Pan/zoom camera (wheel-anchored zoom, drag pan), animated data-flow links between floors, Matrix glyph rain, CRT scanlines.
-- **4 themes**: green (phosphor Matrix), red, amber, blue — client setting.
-- Full **English + Русский** localization.
+**Туман в две ступени.** Стоя на этаже, раннер видит, что тот ветвится и на
+сколько путей, но не видит, что по каждому пути. Развилка отрисована,
+направления подписаны «ЗАШИФРОВАН». Открывается шагом или Следопытом.
 
-## Requirements
-- FoundryVTT v12
-- System: `cyberpunk-red-core` (built against v0.92.x)
+**Своя проверка на этаж.** Раньше тип броска выводился из вида этажа: пароль →
+Бэкдор, файл → Идентификация. У «своего» этажа при этом оставалась СЛ, которую
+нечем было брать. Теперь мастер называет способность прямо. Заодно это чинит
+бонусы: Червь даёт +2 к Бэкдору, и бросок получает эту прибавку только если
+знает, что он — Бэкдор.
 
-## Development
-- `node tools/verify.mjs` — static verification (syntax, i18n parity, template/action cross-refs, CSS balance).
-- Architecture/contracts: see `SPEC.md`.
+**Замок на любом этаже.** Галочка «не пускать ниже, пока не пройдена проверка».
+Пароль запирает по своей природе, всё остальное — когда мастер так решил.
+
+## Проверки
+
+```bash
+node tools/test-tree.mjs   # топология: ветки, туман, разбор кривых данных
+node tools/verify.mjs      # целостность модуля, ключи, шаблоны
+```
+
+## Происхождение
+
+Форк сохраняет историю оригинала; `upstream` настроен на исходный репозиторий,
+чтобы забирать оттуда исправления. Лицензия MIT и авторство Lumiel сохранены.

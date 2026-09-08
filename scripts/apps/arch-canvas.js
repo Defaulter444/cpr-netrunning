@@ -6,6 +6,7 @@
  * CSS `zoom`, so the screen↔local scale divisor is always 1. */
 
 import { MODULE_ID, FLOOR_ICONS, ENTITY_ICONS, loc, abbrFor } from "../constants.js";
+import * as tree from "../rules/tree.js";
 import { getWorld, mutate } from "../data.js";
 import { getDeck, installedPrograms } from "../cpr-bridge.js";
 
@@ -77,7 +78,9 @@ export function getData(app) {
   const session = getWorld("session") || {};
   const parts = session.participants || {};
   const selection = app.state.selection || "";
-  const floors = arch.floors || [];
+  // Normalised on read: a world saved before branching existed is a chain, and
+  // this is what turns it into a spine so the layout below has a tree to draw.
+  const floors = tree.normalizeFloors(arch.floors || []);
   const lastIndex = floors.length - 1;
   const myRunnerPid = me?.kind === "runner" ? me.pid : "";
   const myFloor = me?.kind === "runner" ? (me.floorIndex || 0) : -1;
@@ -87,17 +90,37 @@ export function getData(app) {
   const slid = session.slid || [];
   const progState = session.progState || {};
 
-  // Fog of war (SPEC §14.7): player runners see only visited floors + revealed
-  // range. GM and spectators see all floors. `visibleMax` = deepest visible index
-  // (-1 → all). A "???" stub renders after the last visible floor if more exist.
-  let visibleMax = lastIndex; // GM / spectator: everything.
-  if (role === "runner" && !isGM) {
-    const visited = Number(me?.maxFloor) || 0;
-    const revealed = (session.reveal || {})[myRunnerPid]?.[archId];
-    visibleMax = Math.max(visited, Number.isInteger(revealed) ? revealed : -1);
-    visibleMax = Math.max(visibleMax, myFloor); // never hide the runner's own floor.
-  }
+  // Fog of war, in two grades rather than upstream's single depth cutoff.
+  //
+  //   KNOWN  — floors the runner has stood on or uncovered with Pathfinder.
+  //            Drawn in full: name, contents, who is there.
+  //   SENSED — the floors hanging directly off a known one. Drawn as a locked
+  //            stub. Standing at a fork you can SEE that it forks and how many
+  //            ways it goes; what is down each way stays encrypted until you
+  //            step in or scout it.
+  //
+  // Anything else is not drawn at all. The GM and spectators see everything.
   const fogActive = role === "runner" && !isGM;
+  const known = new Set();
+  const sensed = new Set();
+  if (fogActive) {
+    const byId = new Map(floors.map((f, i) => [f.id, i]));
+    const add = (i) => { if (Number.isInteger(i) && i >= 0) known.add(i); };
+
+    for (const id of Array.isArray(me?.visited) ? me.visited : []) add(byId.get(id));
+    const revealed = (session.reveal || {})[myRunnerPid]?.[archId];
+    for (const id of Array.isArray(revealed) ? revealed : []) add(byId.get(id));
+    add(myFloor);
+    // A runner who has never moved still stands somewhere: without this the
+    // very first frame after jacking in would be an empty screen.
+    if (!known.size) add(tree.rootIndex(floors));
+
+    for (const i of known) {
+      for (const child of tree.childrenOf(floors, i)) {
+        if (!known.has(child)) sensed.add(child);
+      }
+    }
+  }
   const runnersOnArch = isGM ? runnersOnArchList(session, archId) : [];
 
   const progFloors = session.progFloors || {};
@@ -337,8 +360,14 @@ export function getData(app) {
       };
     });
 
+  const layout = tree.layoutTree(floors);
+  const cellOf = new Map(layout.cells.map((c) => [c.index, c]));
+  const entryIndex = tree.rootIndex(floors);
+
   const floorVMs = floors.map((floor, index) => {
-    const isRoot = index === lastIndex;
+    // "Root" here means the bottom of a branch — where a Virus may be left —
+    // not the array's last element, which on a tree is an accident of order.
+    const isRoot = tree.isLeaf(floors, index);
     const entities = [];
     for (const ice of floor.ice || []) entities.push(buildEntity(ice, "ice", floor, false));
     if (floor.demon) entities.push(buildEntity(floor.demon, "demon", floor, true));
@@ -373,13 +402,20 @@ export function getData(app) {
       ? floor.label
       : loc(`CRNS.Floor.${floor.kind}`);
 
-    // A runner may "move here" to an adjacent floor.
-    const showMoveHere = myFloor >= 0 && Math.abs(index - myFloor) === 1;
+    // A runner may step to the floor above or to any floor below. Upstream
+    // asked whether the indices differed by one, which stops being the same
+    // question as soon as an architecture forks.
+    const showMoveHere = myFloor >= 0 && tree.adjacentOf(floors, myFloor).includes(index);
 
     const markers = floorMarkers(floor);
+    const cell = cellOf.get(index) || { row: 0, col: 0 };
     return {
       index,
       number: index + 1,
+      row: cell.row,
+      col: cell.col,
+      depth: cell.row,
+      isEntry: index === entryIndex,
       isRoot,
       rootIcon: isRoot ? FLOOR_ICONS.root : "",
       icon: FLOOR_ICONS[floor.kind] || FLOOR_ICONS.custom,
@@ -406,32 +442,54 @@ export function getData(app) {
     };
   });
 
-  // Fog of war (SPEC §14.7): keep only visible floors; append a "???" stub when
-  // deeper floors exist beyond the last visible one.
+  // Assemble what actually reaches the screen. Known floors keep their full
+  // card; sensed ones are replaced by a stub that admits nothing but its own
+  // existence — no name, no contents, no DV, no idea who is standing there.
   let visibleFloors = floorVMs;
-  let fogStub = false;
-  let fogStubMove = false;
-  let fogStubIndex = -1;
   if (fogActive) {
-    visibleFloors = floorVMs.filter((f) => f.index <= visibleMax);
-    fogStub = visibleMax < lastIndex;
-    // The fog stub is reachable when it directly follows the runner's CURRENT
-    // floor (next deeper index === myFloor + 1). The server-side session.move
-    // gate still enforces the ±1 step + un-breached-password rules (Addendum 3).
-    if (fogStub && myFloor >= 0 && visibleMax === myFloor && myFloor + 1 <= lastIndex) {
-      fogStubMove = true;
-      fogStubIndex = myFloor + 1;
-    }
+    const stepTo = myFloor >= 0 ? tree.adjacentOf(floors, myFloor) : [];
+    visibleFloors = floorVMs
+      .filter((f) => known.has(f.index) || sensed.has(f.index))
+      .map((f) => {
+        if (known.has(f.index)) return f;
+        return {
+          index: f.index,
+          number: f.number,
+          row: f.row,
+          col: f.col,
+          depth: f.depth,
+          floorId: f.floorId,
+          encrypted: true,
+          label: loc("CRNS.Canvas.Encrypted"),
+          icon: FLOOR_ICONS.custom,
+          entities: [],
+          participants: [],
+          markers: { cloaks: [], viruses: [], eyedee: [] },
+          // Reachable in one step: the server still has the last word, this
+          // only decides whether the button is worth drawing.
+          showMoveHere: stepTo.includes(f.index),
+        };
+      });
   }
+
+  // Connectors, drawn only where both ends survived the fog — a line into
+  // nothing would tell the player more than the stub does.
+  const shown = new Set(visibleFloors.map((f) => f.index));
+  const links = tree.linksOf(floors, layout).filter((l) => shown.has(l.from) && shown.has(l.to));
+
+  // Stashed on the app because the drawing pass runs after the template has
+  // been rendered and no longer has the view-model in hand.
+  app._crnsLinks = links;
 
   return {
     canvas: {
       empty: false,
       archId,
       floors: visibleFloors,
-      fogStub,
-      fogStubMove,
-      fogStubIndex,
+      links,
+      rows: layout.rows,
+      cols: layout.cols,
+      branching: layout.cols > 1,
       cloakStrip,
       hasCloaks: cloakStrip.length > 0,
     },
@@ -781,7 +839,12 @@ export function activateListeners(app, html) {
 
   // Deployed Black-ICE target lines + one-time nodePulse listener. Defer the
   // line draw one frame so the stage has laid out (chip rects are known).
-  requestAnimationFrame(() => drawDeployLines(app, html));
+  requestAnimationFrame(() => {
+    // Order matters: the tree edges clear the overlay, the deploy tethers
+    // add themselves on top of it.
+    drawTreeEdges(app, html);
+    drawDeployLines(app, html);
+  });
   ensureNodePulseHook();
 }
 
@@ -796,7 +859,10 @@ function drawDeployLines(app, html) {
   const stage = html.find(".crns-stage")[0];
   const svg = html.find(".crns-lines")[0];
   if (!stage || !svg) return;
-  while (svg.firstChild) svg.removeChild(svg.firstChild);
+  // Only our own tethers: the tree edges were drawn first and must survive.
+  for (const old of Array.from(svg.querySelectorAll(".crns-deploy-glow, .crns-deploy-line, defs"))) {
+    old.remove();
+  }
 
   const cam = app.state.cam?.[resolveDisplay(app).archId] || { z: 1 };
   const z = cam.z || 1;
@@ -851,6 +917,67 @@ function drawDeployLines(app, html) {
     line.setAttribute("class", "crns-deploy-line");
     line.setAttribute("marker-end", "url(#crns-deploy-arrow)");
     svg.appendChild(line);
+  }
+}
+
+/** Draw the parent → child connectors of the floor tree.
+ *
+ *  Measured rather than computed. Floor cards do not have a fixed height — a
+ *  floor with three ICE and two runners standing on it is far taller than an
+ *  empty one — so the only way to land a line on the right edge of the right
+ *  card is to ask the browser where the cards actually ended up. Both endpoints
+ *  live inside the transformed stage, so the overlay needs no recompute on
+ *  pan/zoom; it is redrawn per render like the deploy tethers below.
+ *
+ *  Each connector is an elbow: straight down out of the parent, across at the
+ *  midpoint of the gap, straight down into the child. A direct diagonal would
+ *  cut through the cards standing between them on a wide fork.
+ */
+function drawTreeEdges(app, html) {
+  const stage = html.find(".crns-stage")[0];
+  const svg = html.find(".crns-lines")[0];
+  if (!stage || !svg) return;
+  while (svg.firstChild) svg.removeChild(svg.firstChild);
+
+  const links = app._crnsLinks || [];
+  if (!links.length) return;
+
+  const cam = app.state.cam?.[resolveDisplay(app).archId] || { z: 1 };
+  const z = cam.z || 1;
+  const stageRect = stage.getBoundingClientRect();
+
+  /** Card box in stage-local coordinates. */
+  const boxOf = (index) => {
+    const el = stage.querySelector(`.crns-floor-wrap[data-floor-index="${index}"] .crns-floor`);
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    return {
+      cx: (r.left + r.width / 2 - stageRect.left) / z,
+      top: (r.top - stageRect.top) / z,
+      bottom: (r.bottom - stageRect.top) / z,
+    };
+  };
+
+  const NS = "http://www.w3.org/2000/svg";
+  for (const link of links) {
+    const a = boxOf(link.from);
+    const b = boxOf(link.to);
+    // A fogged endpoint simply has no card; drawing half a line into empty space
+    // would leak the fact that something is there.
+    if (!a || !b) continue;
+
+    const midY = a.bottom + (b.top - a.bottom) / 2;
+    const d = `M ${a.cx} ${a.bottom} V ${midY} H ${b.cx} V ${b.top}`;
+
+    const glow = document.createElementNS(NS, "path");
+    glow.setAttribute("d", d);
+    glow.setAttribute("class", "crns-edge-glow");
+    svg.appendChild(glow);
+
+    const path = document.createElementNS(NS, "path");
+    path.setAttribute("d", d);
+    path.setAttribute("class", "crns-edge-path");
+    svg.appendChild(path);
   }
 }
 

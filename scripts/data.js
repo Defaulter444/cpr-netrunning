@@ -9,8 +9,48 @@
 
 import { MODULE_ID, SOCKET_NAME, uid, loc, BLACK_ICE, DEMONS, FLOOR_KINDS, MAX_ICE_PER_FLOOR, maxDemons } from "./constants.js";
 import * as bridge from "./cpr-bridge.js";
+import * as tree from "./rules/tree.js";
 
 const FLOOR_KINDS_SET = new Set(FLOOR_KINDS);
+
+/* Floors of an architecture, with the tree fixed up.
+ *
+ * Every read goes through here so a world saved before branching existed keeps
+ * working: `normalizeFloors` turns such a chain into a spine on the fly. It
+ * also repairs orphans and cycles, which matters because the traversals below
+ * assume a well-formed tree and would otherwise loop.
+ */
+function floorsOf(archs, archId) {
+  const floors = archs?.[archId]?.floors;
+  if (!Array.isArray(floors)) return [];
+  return tree.normalizeFloors(floors);
+}
+
+/* Floors a runner standing on `from` may legally step to.
+ *
+ * The parent and the children — never a sibling, never a jump. An un-breached
+ * password does not stop you arriving, it stops you leaving downward, which is
+ * exactly how a locked door behaves.
+ */
+function reachableFrom(session, archId, floors, from) {
+  const out = tree.adjacentOf(floors, from);
+  if (!isBlockingPasswordFloor(session, archId, floors[from])) return out;
+  const up = tree.parentOf(floors, from);
+  return up >= 0 ? [up] : [];
+}
+
+/* The floor ids a runner has stood on. Stored as ids, not indices: the GM may
+ * reorder or re-parent floors in the editor, and a remembered index would then
+ * point at somebody else's floor. */
+function visitedIds(part) {
+  return Array.isArray(part?.visited) ? part.visited : [];
+}
+
+function markVisited(part, floorId) {
+  if (!floorId) return;
+  part.visited = visitedIds(part);
+  if (!part.visited.includes(floorId)) part.visited.push(floorId);
+}
 
 /* World-setting defaults. main.js registers each key from this dict. */
 export const WORLD_OBJECTS = {
@@ -350,7 +390,14 @@ async function autoDerezDestroyedProg(session, pid, programId) {
 /** Whether a floor is a password floor un-breached for the given arch (blocks
  *  deeper non-GM movement past it). */
 function isBlockingPasswordFloor(session, archId, floor) {
-  if (!floor || floor.kind !== "password") return false;
+  if (!floor) return false;
+  // Two ways a floor can hold a runner up. A `password` gates by its nature —
+  // that is what the rulebook calls it. `gate` is the GM saying so explicitly
+  // about any floor: a server room nobody walks past until the alarm is dealt
+  // with, a maintenance hatch that needs a Tech roll. Both open the same way,
+  // by beating the floor's own check.
+  const gated = floor.gate === true || floor.kind === "password";
+  if (!gated) return false;
   const fx = (session.floorState || {})[floorKey(archId, floor.id)];
   return !(fx && fx.breached);
 }
@@ -742,7 +789,7 @@ async function disconnectArchParticipants(session, archId) {
     affected.add(pid);
     if (p.kind === "spectator") delete parts[pid];
     else {
-      p.archId = ""; p.floorIndex = 0; p.jackedIn = false; p.maxFloor = 0;
+      p.archId = ""; p.floorIndex = 0; p.jackedIn = false; p.maxFloor = 0; p.visited = [];
       progActorIds.push(...progActorIdsForPid(session, pid));
       clearProgFloors(session, pid);
       clearProgState(session, pid);
@@ -955,6 +1002,11 @@ const OPS = {
     const newArch = foundry.utils.deepClone(arch);
     newArch.id = archId;
     if (!newArch.name) newArch.name = oldArch.name;
+    // Repair the tree before it reaches storage: the editor already refuses to
+    // offer a parent that would close a loop, but an imported file or a hand-
+    // edited world has no such manners, and a cycle is an architecture with no
+    // bottom — nothing to descend to and nowhere to leave a Virus.
+    tree.normalizeFloors(newArch.floors || []);
 
     // If the arch was renamed via the editor, rename the actor folder too.
     if (newArch.name !== oldArch.name) await bridge.renameEntityFolder(oldArch.name, newArch.name);
@@ -1167,6 +1219,9 @@ const OPS = {
       rezzed: prev.rezzed || {},
       // Fog-of-war baseline: deepest floor visited (reset to 0 on a fresh connect).
       maxFloor: connecting ? 0 : (prev.maxFloor || 0),
+      // Jacking in fresh forgets the map: leaving an architecture resets its
+      // defences, so the runner starts blind again (Corebook p. 199).
+      visited: connecting ? [] : (Array.isArray(prev.visited) ? prev.visited : []),
     };
     session.participants[pid] = part;
     // Connecting places the runner on floor 0 — provoke any Black ICE there.
@@ -1224,7 +1279,7 @@ const OPS = {
 
     if (part.kind === "spectator") delete parts[pid];
     else {
-      part.archId = ""; part.floorIndex = 0; part.jackedIn = false; part.maxFloor = 0;
+      part.archId = ""; part.floorIndex = 0; part.jackedIn = false; part.maxFloor = 0; part.visited = [];
       await deleteProgActors(session, pid); // delete backing prog-ICE actors first.
       clearProgFloors(session, pid);
       clearProgState(session, pid);
@@ -1248,31 +1303,28 @@ const OPS = {
     if (!isGM && !ownsParticipant(part, callerId)) return false;
 
     const archs = getWorld("netArchs") || {};
-    const floors = archs[part.archId]?.floors || [];
+    const floors = floorsOf(archs, part.archId);
     if (!floors.length) return false;
 
     const from = Math.max(0, Math.min(floors.length - 1, Number(part.floorIndex) || 0));
-    let dest = Math.max(0, Math.min(floors.length - 1, Number(floorIndex) || 0));
+    const dest = Math.max(0, Math.min(floors.length - 1, Number(floorIndex) || 0));
 
-    // Movement gating for non-GM movers (SPEC §14.7):
-    //  - only ±1 floor steps;
-    //  - cannot move DEEPER past an un-breached password floor (moving ONTO it
-    //    is allowed; going beyond it is not).
-    if (!isGM) {
-      if (Math.abs(dest - from) > 1) return { error: "CRNS.Errors.MoveStep" };
-      if (dest > from) {
-        // Any un-breached password floor strictly BETWEEN from and dest blocks
-        // it. Moving one step (dest = from+1) can only land ONTO such a floor,
-        // which is allowed; but if `from` itself is a blocking password floor
-        // the runner may not step deeper off it.
-        if (isBlockingPasswordFloor(session, part.archId, floors[from]) && dest > from) {
-          return { error: "CRNS.Errors.PasswordBlocked" };
-        }
+    // Movement gating for non-GM movers (SPEC §14.7), rewritten for the tree:
+    // one step along a real edge, and never downward off an un-breached
+    // password. Upstream expressed both as arithmetic on the index, which stops
+    // meaning anything once an architecture forks.
+    if (!isGM && dest !== from) {
+      const reachable = reachableFrom(session, part.archId, floors, from);
+      if (!reachable.includes(dest)) {
+        const blocked = isBlockingPasswordFloor(session, part.archId, floors[from])
+          && tree.childrenOf(floors, from).includes(dest);
+        return { error: blocked ? "CRNS.Errors.PasswordBlocked" : "CRNS.Errors.MoveStep" };
       }
     }
 
     part.floorIndex = dest;
-    // Track the deepest floor the runner has visited (fog-of-war baseline §14.7).
+    // Fog-of-war baseline: which floors this runner has actually stood on.
+    markVisited(part, floors[dest]?.id);
     part.maxFloor = Math.max(Number(part.maxFloor) || 0, dest);
 
     // Attached ICE follow the runner to the new floor (SPEC §14.11). Runtime
@@ -1688,6 +1740,22 @@ const OPS = {
     if (!floor) return { ok: false, applied: false };
 
     const t = Number(total) || 0;
+
+    /* A floor may name the ability that opens it (`floor.check`) instead of
+     * relying on its kind. When the runner rolls THAT ability on THIS floor and
+     * beats the DV, the floor is passed — which is what unlocks a gate.
+     *
+     * Reveal and stealth are deliberately excluded: Pathfinder tells you what is
+     * there and Cloak hides you, neither of them opens anything, so letting them
+     * satisfy a gate would hand the runner a free pass. */
+    const OPENS = !["pathfinder", "cloak"].includes(ability);
+    if (OPENS && floor && floor.check === ability && t > (Number(floor.dv) || 0)) {
+      const fx = getFloorFx(session, part.archId, floor.id);
+      if (!fx.breached) {
+        fx.breached = true;
+        applied = true;
+      }
+    }
     const name = fromUuidSync?.(part.actorUuid)?.name || "";
     let applied = false;
 
@@ -1742,8 +1810,10 @@ const OPS = {
         break;
       }
       case "virus": {
-        // Only on the LAST floor (root).
-        const isLast = (part.floorIndex || 0) === floors.length - 1;
+        // Only at the bottom of a branch. On a tree there are several
+        // bottoms — one per branch — and "last element of the array" stopped
+        // meaning anything the moment architectures could fork.
+        const isLast = tree.isLeaf(floors, part.floorIndex || 0);
         if (isLast) {
           const fx = getFloorFx(session, part.archId, floor.id);
           fx.viruses.push({ id: uid("fx"), pid });
@@ -1754,24 +1824,32 @@ const OPS = {
         break;
       }
       case "pathfinder": {
-        // Reveal walking DEEPER from the current floor: up to `total` floors,
-        // stopping INCLUSIVE at the first un-breached password floor with dv > total.
+        // (handled below — listed here only so the generic pass above cannot
+        //  swallow it: Pathfinder reveals, it never unlocks.)
+        // Walk every branch below the runner, each stopping on its own account:
+        // one locked door does not blind the corridor beside it. The blocking
+        // floor is itself revealed — the runner learns something is in the way,
+        // not what lies past it.
         const start = part.floorIndex || 0;
-        let maxIndex = start;
-        const limit = Math.min(floors.length - 1, start + Math.max(0, t));
-        for (let i = start + 1; i <= limit; i += 1) {
-          const f = floors[i];
-          maxIndex = i;
-          if (f.kind === "password") {
-            const ffx = (session.floorState || {})[floorKey(part.archId, f.id)];
-            const breached = !!(ffx && ffx.breached);
-            if (!breached && (Number(f.dv) || 0) > t) break; // inclusive stop.
-          }
-        }
+        const blocks = (f) => {
+          if (!f || f.kind !== "password") return false;
+          const ffx = (session.floorState || {})[floorKey(part.archId, f.id)];
+          if (ffx && ffx.breached) return false;
+          return (Number(f.dv) || 0) > t;
+        };
+        const found = tree.revealFrom(floors, start, t, blocks)
+          .map((i) => floors[i]?.id)
+          .filter(Boolean);
+
         session.reveal = session.reveal || {};
         session.reveal[pid] = session.reveal[pid] || {};
-        session.reveal[pid][part.archId] = Math.max(session.reveal[pid][part.archId] ?? -1, maxIndex);
-        applied = true;
+        // Stored as ids for the same reason `visited` is: the GM may re-parent
+        // floors between rolls, and a remembered index would drift onto
+        // somebody else's floor.
+        const already = session.reveal[pid][part.archId];
+        const keep = Array.isArray(already) ? already : [];
+        session.reveal[pid][part.archId] = [...new Set([...keep, ...found])];
+        applied = found.length > 0;
         postChatCard(loc("CRNS.Chat.Pathfinder"), loc("CRNS.Chat.PathfinderDone", { name }));
         break;
       }

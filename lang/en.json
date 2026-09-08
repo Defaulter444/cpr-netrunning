@@ -51,7 +51,14 @@
       "Remove": "Remove",
       "PickIce": "Choose Black ICE",
       "PickDemon": "Choose Demon",
-      "DemonBudgetFull": "Demon budget exhausted for this architecture."
+      "DemonBudgetFull": "Demon budget exhausted for this architecture.",
+      "Parent": "Below",
+      "ParentNone": "Entry point",
+      "Check": "Check",
+      "CheckNone": "no check",
+      "Branch": "Branch",
+      "Gate": "Locks",
+      "GateHint": "Nobody descends past this floor until its check is beaten."
     },
     "Floor": {
       "password": "Password",
@@ -88,7 +95,9 @@
       "ClearControl": "Clear control",
       "HideReveal": "Hide revealed floors",
       "Standby": "Standby — escorting its owner, no target assigned",
-      "Chasing": "Chasing: {name}"
+      "Chasing": "Chasing: {name}",
+      "Encrypted": "ENCRYPTED",
+      "Forks": "{n} ways"
     },
     "Runners": {
       "Title": "Netrunners",
@@ -136,7 +145,8 @@
       "PasswordBlocked": "You cannot move deeper past an un-breached password floor.",
       "NoTarget": "Pick a target first.",
       "TrapDerezFloor": "You must stand on the trap's floor to derez it.",
-      "NoControlledNode": "You do not control any node."
+      "NoControlledNode": "You do not control any node.",
+      "BadParent": "A floor cannot hang below itself or its own branch."
     },
     "Hints": {
       "FreeRoll": "Hold Shift to roll without spending a NET action (e.g. defending against an attack)."

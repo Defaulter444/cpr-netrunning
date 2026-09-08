@@ -5,7 +5,8 @@
  * Cancel/close discards. GM only, shown when state.editorArchId is a tab-open
  * arch. */
 
-import { loc, uid, BLACK_ICE, DEMONS, FLOOR_KINDS, FLOOR_ICONS, ENTITY_ICONS, MAX_ICE_PER_FLOOR, maxDemons } from "../constants.js";
+import { loc, uid, BLACK_ICE, DEMONS, FLOOR_KINDS, FLOOR_ICONS, ENTITY_ICONS, MAX_ICE_PER_FLOOR, maxDemons, CHECK_ABILITIES } from "../constants.js";
+import * as tree from "../rules/tree.js";
 import { getWorld, mutate } from "../data.js";
 
 const ICE_TYPES = Object.keys(BLACK_ICE);
@@ -46,6 +47,48 @@ export function getData(app) {
 
   const kinds = FLOOR_KINDS.map((k) => ({ id: k, label: loc(`CRNS.Floor.${k}`) }));
 
+  // Every floor needs a parent before the pickers below can describe the tree.
+  tree.normalizeFloors(draft.floors || []);
+
+  /* What a floor is called in the "hangs below" picker.
+   *
+   * A bare number is useless once an architecture forks — the GM is choosing
+   * between "2. Password" and "2. Server room", not between indices — so the
+   * label carries the floor's own name. */
+  const floorTitle = (f, idx) => {
+    const own = f.kind === "custom" && f.label ? f.label : loc(`CRNS.Floor.${f.kind}`);
+    return `${idx + 1}. ${own}`;
+  };
+
+  /* Which floors may legally sit above this one.
+   *
+   * Everything except itself and its own descendants: hanging a floor under its
+   * own branch would close a loop, and a loop is an architecture with no bottom
+   * — the runner could descend forever and the Virus ability would have nowhere
+   * to land. `normalizeFloors` would cut such a link on the next read anyway;
+   * refusing to offer it is friendlier than silently undoing the GM's choice. */
+  const parentChoices = (idx) => {
+    const banned = new Set([idx, ...tree.descendantsOf(draft.floors, idx)]);
+    const out = [{ id: "", label: loc("CRNS.Editor.ParentNone") }];
+    (draft.floors || []).forEach((other, i) => {
+      if (banned.has(i)) return;
+      out.push({ id: other.id, label: floorTitle(other, i) });
+    });
+    return out;
+  };
+
+  /* The interface abilities a floor's DV can be rolled against.
+   *
+   * Upstream inferred this from the floor kind — password meant Backdoor, file
+   * meant Eye-Dee — which leaves a custom floor with a DV and no way to beat it.
+   * Naming the ability explicitly also makes the runner's bonuses land: a deck
+   * running Worm adds +2 to Backdoor, and the roll only picks that up if it
+   * knows it IS a Backdoor roll. */
+  const checkChoices = [
+    { id: "", label: loc("CRNS.Editor.CheckNone") },
+    ...CHECK_ABILITIES.map((a) => ({ id: a, label: loc(`CPR.global.role.netrunner.interfaceAbility.${a}`) })),
+  ];
+
   const floors = (draft.floors || []).map((f, idx) => {
     const iceSlots = [];
     for (let s = 0; s < MAX_ICE_PER_FLOOR; s++) {
@@ -57,10 +100,22 @@ export function getData(app) {
     const demon = f.demon
       ? { uid: f.demon.id, type: f.demon.type, name: loc(`CRNS.Demon.${f.demon.type}.name`), img: ENTITY_ICONS[f.demon.type] }
       : null;
+    const kids = tree.childrenOf(draft.floors, idx);
     return {
       id: f.id,
       index: idx,
       number: idx + 1,
+      parent: f.parent || "",
+      parentChoices: parentChoices(idx),
+      depth: tree.depthOf(draft.floors, idx),
+      forks: kids.length > 1 ? kids.length : 0,
+      check: f.check || "",
+      checkChoices,
+      // A password gates by its nature; anything else gates only if the GM says
+      // so. Showing the switch as already-on for a password keeps the card
+      // honest instead of implying the floor is open.
+      gate: f.gate === true || f.kind === "password",
+      gateForced: f.kind === "password",
       kind: f.kind,
       kindIcon: FLOOR_ICONS[f.kind] || FLOOR_ICONS.custom,
       isCustom: f.kind === "custom",
@@ -143,6 +198,26 @@ export function activateListeners(app, html) {
   html.find('[data-action="floor-label"]').on("change", (ev) => {
     const f = floorAt(app, ev.currentTarget.closest("[data-floor-id]")?.dataset.floorId);
     if (f) { f.label = ev.currentTarget.value; reRender(app); }
+  });
+  html.find('[data-action="floor-parent"]').on("change", (ev) => {
+    const card = ev.currentTarget.closest("[data-floor-id]");
+    const f = floorAt(app, card?.dataset.floorId);
+    if (!f) return;
+    const wanted = ev.currentTarget.value || "";
+    f.parent = wanted;
+    // Re-normalise straight away: if the pick somehow closed a loop the tree is
+    // repaired here, while the GM is still looking at it, rather than silently
+    // on the next read.
+    tree.normalizeFloors(app.state.draft?.floors || []);
+    reRender(app);
+  });
+  html.find('[data-action="floor-gate"]').on("change", (ev) => {
+    const f = floorAt(app, ev.currentTarget.closest("[data-floor-id]")?.dataset.floorId);
+    if (f) { f.gate = !!ev.currentTarget.checked; reRender(app); }
+  });
+  html.find('[data-action="floor-check"]').on("change", (ev) => {
+    const f = floorAt(app, ev.currentTarget.closest("[data-floor-id]")?.dataset.floorId);
+    if (f) { f.check = ev.currentTarget.value || ""; reRender(app); }
   });
   html.find('[data-action="floor-dv"]').on("change", (ev) => {
     const f = floorAt(app, ev.currentTarget.closest("[data-floor-id]")?.dataset.floorId);

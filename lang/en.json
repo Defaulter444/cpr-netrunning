@@ -106,7 +106,10 @@
       "Forks": "{n} ways",
       "OpenFloor": "Open this floor's settings",
       "OpenedBy": "Opened by this ability",
-      "FileContents": "What you read here"
+      "FileContents": "What you read here",
+      "LockShut": "Breached — click to shut it again",
+      "LockOpen": "Locked — click to open it",
+      "ClearAccess": "Take this runner's access away"
     },
     "Runners": {
       "Title": "Netrunners",

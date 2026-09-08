@@ -114,7 +114,12 @@
         {{!-- floor markers: breach / virus / control / eyedee (cloaks are arch-level) --}}
         <div class="crns-floor-markers">
           {{#if floor.markers.isPassword}}
-          <span class="crns-fm crns-fm-lock{{#if floor.markers.breached}} breached{{/if}}" title="{{floor.markers.lockTitle}}">
+          {{!-- The padlock is the obvious thing to press when you want the floor
+                shut again, so it presses. Until now it was decoration and the
+                only way back was a popover behind a gear. --}}
+          <span class="crns-fm crns-fm-lock{{#if floor.markers.breached}} breached{{/if}}{{#if floor.markers.lockClickable}} clickable{{/if}}"
+                title="{{floor.markers.lockTitle}}"
+                {{#if floor.markers.lockClickable}}data-action="fx-toggle-breach" data-floor-id="{{floor.floorId}}" data-value="{{#if floor.markers.breached}}false{{else}}true{{/if}}"{{/if}}>
             <i class="fas {{#if floor.markers.breached}}fa-lock-open{{else}}fa-lock{{/if}}"></i>
           </span>
           {{/if}}

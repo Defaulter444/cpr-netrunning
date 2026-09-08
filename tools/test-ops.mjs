@@ -479,6 +479,44 @@ console.log("A cracked file can actually be read");
     "the GM notes were shown to the player");
 }
 
+console.log("The GM can undo a crack");
+{
+  freshWorld();
+  seedArch([
+    { id: "u1", parent: "", kind: "file", label: "Досье", dv: 8,
+      contents: "Что-то важное", ice: [], demon: null },
+    { id: "u2", parent: "u1", kind: "password", dv: 6, ice: [], demon: null },
+  ]);
+  game.actors.length = 0;
+  game.actors.push({ ...RUNNER, id: "p6", uuid: "Actor.p6" });
+
+  const pid = "actor:Actor_p6";
+  await D.applyOp("session.connect",
+    { pid, actorUuid: "Actor.p6", userId: "player", archId: "a1" }, "gm");
+
+  // Crack the file.
+  await D.applyOp("run.abilityResult", { pid, ability: "eyedee", total: 12 }, "player");
+  let session = settings.get("session");
+  expect(((session.floorState["a1:u1"] || {}).eyedee || []).includes(pid), "the file was not cracked");
+
+  // Undo it.
+  const undone = await D.applyOp("fx.clear",
+    { archId: "a1", floorId: "u1", kind: "eyedee", pid }, "gm");
+  expect(undone !== false, `undoing the crack returned ${JSON.stringify(undone)}`);
+  session = settings.get("session");
+  eq((session.floorState["a1:u1"] || {}).eyedee, [], "the crack survived");
+
+  // Same for a breached password.
+  await D.applyOp("session.move", { pid, floorIndex: 1 }, "player");
+  await D.applyOp("run.abilityResult", { pid, ability: "backdoor", total: 12 }, "player");
+  session = settings.get("session");
+  expect((session.floorState["a1:u2"] || {}).breached === true, "the password was not breached");
+
+  await D.applyOp("fx.clear", { archId: "a1", floorId: "u2", kind: "breach", value: false }, "gm");
+  session = settings.get("session");
+  expect(!(session.floorState["a1:u2"] || {}).breached, "the breach survived");
+}
+
 console.log("An architecture can be shaped from the map");
 {
   freshWorld();

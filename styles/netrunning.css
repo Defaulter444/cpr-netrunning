@@ -1582,3 +1582,11 @@ body.crns-resizing { cursor: ns-resize !important; -webkit-user-select: none !im
   background: transparent; color: var(--crns-text); border: 1px solid var(--crns-border);
   padding: 3px 5px; font: inherit;
 }
+
+/* Anything the GM can press should look pressable and have room to be hit. The
+   ✕ used to be an 8px glyph hanging off the corner of a 16px avatar — visible,
+   but a genuinely difficult target. */
+.crns-fm[data-action] { padding: 2px 3px; border-radius: 3px; }
+.crns-fm[data-action]:hover { background: color-mix(in srgb, var(--crns-accent) 18%, transparent); }
+.crns-fm-lock.clickable:hover i { filter: drop-shadow(0 0 6px currentColor); }
+.crns-fm-x { padding: 1px; }

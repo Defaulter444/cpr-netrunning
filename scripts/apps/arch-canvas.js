@@ -334,14 +334,20 @@ export function getData(app) {
       const rActor = rp?.actorUuid ? (fromUuidSync?.(rp.actorUuid) ?? null) : null;
       const name = rActor?.name || loc("CRNS.Runners.NPC");
       return { pid: epid, name, img: rActor?.img || "icons/svg/mystery-man.svg",
-        title: loc("CRNS.Canvas.AccessedBy", { name }), gm: isGM };
+        title: isGM ? loc("CRNS.Canvas.ClearAccess") : loc("CRNS.Canvas.AccessedBy", { name }),
+        gm: isGM };
     });
 
     return {
       isPassword,
       isFile,
       breached,
-      lockTitle: breached ? loc("CRNS.Canvas.Breached") : loc("CRNS.Canvas.Locked"),
+      // The tooltip says what the click will DO, not just what the state is.
+      // "Взломан" told the GM nothing about how to change it.
+      lockTitle: isGM
+        ? loc(breached ? "CRNS.Canvas.LockShut" : "CRNS.Canvas.LockOpen")
+        : loc(breached ? "CRNS.Canvas.Breached" : "CRNS.Canvas.Locked"),
+      lockClickable: isGM,
       viruses, control,
       eyedeeAccessed: isFile && eyedee.length > 0,
       eyedee,

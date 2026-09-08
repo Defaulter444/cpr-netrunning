@@ -56,6 +56,15 @@ export function normalizeFloors(floors) {
       floor.parent = "";
     }
     if (floor.parent === floor.id) floor.parent = "";
+
+    // Extra entrances: drop the ones that point nowhere, at the floor itself,
+    // or duplicate the primary parent.
+    if (Array.isArray(floor.alsoFrom)) {
+      floor.alsoFrom = [...new Set(floor.alsoFrom)]
+        .filter((id) => id && id !== floor.id && id !== floor.parent && ids.has(id));
+    } else if (floor.alsoFrom !== undefined) {
+      floor.alsoFrom = [];
+    }
   });
 
   breakCycles(floors);
@@ -141,6 +150,9 @@ export function childrenOf(floors, index) {
 /**
  * Index of the floor directly above, or -1 at the entry.
  *
+ * This is the PRIMARY parent — the one the layout hangs the card from. A floor
+ * may have more ways in (see `alsoFrom`); those are edges, not position.
+ *
  * @param {Array<Object>} floors - normalised floors
  * @param {Number} index - floor to look above
  * @returns {Number}
@@ -150,6 +162,52 @@ export function parentOf(floors, index) {
   if (!parent) return -1;
   const at = floors.findIndex((f) => f?.id === parent);
   return at;
+}
+
+/**
+ * Every floor that leads into this one — the primary parent and any extras.
+ *
+ * Two branches that fork apart and meet again is a shape the strict tree could
+ * not express: one `parent` meant one way in, so the second branch had nowhere
+ * to attach and the GM could not build a loop back to a shared floor. Extra
+ * entrances live in `alsoFrom`, a list of floor ids.
+ *
+ * Only the primary parent decides where the card is drawn. The extras are drawn
+ * as additional connectors, which is honest — the shape on screen then shows
+ * exactly what the architecture is: two ways down into one place.
+ *
+ * @param {Array<Object>} floors - normalised floors
+ * @param {Number} index - floor to look above
+ * @returns {Array<Number>} - primary first
+ */
+export function entrancesOf(floors, index) {
+  const out = [];
+  const primary = parentOf(floors, index);
+  if (primary >= 0) out.push(primary);
+  for (const id of floors?.[index]?.alsoFrom || []) {
+    const at = floors.findIndex((f) => f?.id === id);
+    if (at >= 0 && !out.includes(at)) out.push(at);
+  }
+  return out;
+}
+
+/**
+ * Floors directly below this one by any route: children plus the floors that
+ * name this one as an extra entrance.
+ *
+ * @param {Array<Object>} floors - normalised floors
+ * @param {Number} index - floor to look under
+ * @returns {Array<Number>}
+ */
+export function exitsOf(floors, index) {
+  const id = floors?.[index]?.id;
+  const out = childrenOf(floors, index);
+  if (!id) return out;
+  floors.forEach((f, i) => {
+    if (!f || out.includes(i)) return;
+    if ((f.alsoFrom || []).includes(id)) out.push(i);
+  });
+  return out;
 }
 
 /**
@@ -183,10 +241,10 @@ export function depthOf(floors, index) {
  * @returns {Array<Number>}
  */
 export function adjacentOf(floors, index) {
-  const out = [];
-  const up = parentOf(floors, index);
-  if (up >= 0) out.push(up);
-  out.push(...childrenOf(floors, index));
+  const out = [...entrancesOf(floors, index)];
+  for (const at of exitsOf(floors, index)) {
+    if (!out.includes(at)) out.push(at);
+  }
   return out;
 }
 
@@ -202,7 +260,7 @@ export function adjacentOf(floors, index) {
  * @returns {Boolean}
  */
 export function isLeaf(floors, index) {
-  return childrenOf(floors, index).length === 0;
+  return exitsOf(floors, index).length === 0;
 }
 
 /**
@@ -273,7 +331,7 @@ export function revealFrom(floors, from, total, blocks) {
 
   const out = [];
   const seen = new Set([from]);
-  let frontier = childrenOf(floors, from);
+  let frontier = exitsOf(floors, from);
 
   for (let step = 1; step <= depth && frontier.length; step += 1) {
     const next = [];
@@ -283,7 +341,7 @@ export function revealFrom(floors, from, total, blocks) {
       out.push(at);
       // Revealed, but the sweep does not continue past it.
       if (blocks?.(floors[at])) continue;
-      next.push(...childrenOf(floors, at));
+      next.push(...exitsOf(floors, at));
     }
     frontier = next;
   }
@@ -384,14 +442,27 @@ export function layoutTree(floors) {
 export function linksOf(floors, layout) {
   const at = new Map(layout.cells.map((c) => [c.index, c]));
   const out = [];
-  floors.forEach((floor, i) => {
-    if (!floor?.parent) return;
-    const up = parentOf(floors, i);
-    if (up < 0) return;
+  const push = (up, i, extra) => {
     const a = at.get(up);
     const b = at.get(i);
     if (!a || !b) return;
-    out.push({ from: up, to: i, fromRow: a.row, fromCol: a.col, toRow: b.row, toCol: b.col });
+    out.push({
+      from: up, to: i,
+      fromRow: a.row, fromCol: a.col, toRow: b.row, toCol: b.col,
+      // An extra entrance is a real way down, but not the one the card hangs
+      // from. Drawn differently so a convergence reads as a convergence rather
+      // than as two floors that happen to be near each other.
+      extra: !!extra,
+    });
+  };
+  floors.forEach((floor, i) => {
+    if (!floor) return;
+    const up = parentOf(floors, i);
+    if (up >= 0) push(up, i, false);
+    for (const id of floor.alsoFrom || []) {
+      const other = floors.findIndex((f) => f?.id === id);
+      if (other >= 0) push(other, i, true);
+    }
   });
   return out;
 }

@@ -118,6 +118,58 @@ console.log("Deleting a middle floor does not orphan its branch");
   eq(T.depthOf(floors, 1), 1, "a surviving floor kept the deleted floor's depth");
 }
 
+console.log("Two branches can converge into one floor");
+{
+  //      f1
+  //     /    //   f2    f3
+  //     \  /
+  //      f4        f4 hangs from f2 and is ALSO entered from f3
+  const floors = build([
+    ["f1", ""], ["f2", "f1"], ["f3", "f1"],
+    ["f4", "f2", { alsoFrom: ["f3"] }],
+  ]);
+  T.normalizeFloors(floors);
+
+  eq(T.entrancesOf(floors, 3).sort(), [1, 2], "the converging floor has one way in");
+  eq(T.exitsOf(floors, 2), [3], "the second branch does not lead down");
+  eq(T.adjacentOf(floors, 2).sort(), [0, 3], "neighbours of the second branch");
+  expect(!T.isLeaf(floors, 2), "a branch that leads somewhere counted as a dead end");
+  expect(T.isLeaf(floors, 3), "the converging floor is the bottom");
+
+  // Both routes are drawn; the extra one is marked so it can look different.
+  const layout = T.layoutTree(floors);
+  const links = T.linksOf(floors, layout);
+  const into = links.filter((l) => l.to === 3);
+  eq(into.length, 2, "only one connector into the convergence");
+  eq(into.filter((l) => l.extra).length, 1, "the extra entrance was not marked");
+
+  // Scouting from the top reaches it down either side.
+  const seen = T.revealFrom(floors, 0, 5, () => false).sort();
+  eq(seen, [1, 2, 3], "reveal missed the converging floor");
+
+  // Position still comes from the PRIMARY parent only, so the layout stays a
+  // tree and the cards cannot land on top of each other.
+  const at = new Map(layout.cells.map((c) => [c.index, c]));
+  eq(at.get(3).row, 2, "the converging floor sits at the wrong depth");
+}
+
+console.log("Convergence cannot close a loop");
+{
+  // An extra entrance from a floor BELOW would make the architecture circular.
+  // Normalisation keeps such data walkable rather than letting a traversal spin.
+  const floors = build([
+    ["f1", ""], ["f2", "f1"], ["f3", "f2", { alsoFrom: ["f1"] }],
+  ]);
+  T.normalizeFloors(floors);
+  eq(T.depthOf(floors, 2) <= floors.length, true, "depth walk did not terminate");
+
+  // Junk in the list is dropped: a missing floor, itself, a duplicate of the
+  // primary parent.
+  const messy = build([["a", ""], ["b", "a", { alsoFrom: ["ghost", "b", "a"] }]]);
+  T.normalizeFloors(messy);
+  eq(messy[1].alsoFrom, [], "junk entrances survived");
+}
+
 console.log("Broken data degrades instead of hanging");
 {
   // A parent that does not exist: the floor must not vanish from the canvas.

@@ -1496,3 +1496,21 @@ body.crns-resizing { cursor: ns-resize !important; -webkit-user-select: none !im
 .crns-runner-restore { padding: 4px 8px 6px; }
 .crns-runner-restore button { width: 100%; font-size: 11px; opacity: 0.8; }
 .crns-runner-restore button:hover { opacity: 1; }
+
+/* The card head is one flex row, and every badge added to it steals width from
+   the title, which is the only element that shrinks. With the lock badge in
+   there a floor called "Серверная" rendered as two letters and an ellipsis, so
+   the badge moved to its own line and the title got a floor of its own. */
+.crns-stage.crns-tree .crns-floor-title {
+  flex: 1 1 auto;
+  min-width: 7ch;
+}
+.crns-floor-gateline { display: flex; }
+
+/* A second way down into the same floor. Dashed so a convergence reads as one
+   rather than as two floors that happen to sit near each other. */
+.crns-edge-extra { stroke-dasharray: 5 5; opacity: 0.75; }
+
+.crns-floor-merge { display: flex; align-items: flex-start; gap: 6px; }
+.crns-floor-merge select { min-width: 150px; background: transparent; color: var(--crns-text);
+                           border: 1px solid var(--crns-border); }

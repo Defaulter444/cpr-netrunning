@@ -77,6 +77,28 @@ export function getData(app) {
     return out;
   };
 
+  /* Floors that may ALSO lead into this one.
+   *
+   * Same exclusions as the primary parent — itself and everything below it,
+   * which would close a loop — plus the primary parent, which is already a way
+   * in and would only draw a second line on top of the first.
+   *
+   * This is what makes a diamond possible: one floor forks into two, and both
+   * of those name the same floor below. The strict tree had one `parent` per
+   * floor, so the second branch had nowhere to attach and simply could not be
+   * drawn. */
+  const mergeChoices = (idx) => {
+    const floor = draft.floors[idx];
+    const banned = new Set([idx, ...archTree.descendantsOf(draft.floors, idx)]);
+    const also = new Set(floor.alsoFrom || []);
+    const out = [];
+    (draft.floors || []).forEach((other, i) => {
+      if (banned.has(i) || other.id === floor.parent) return;
+      out.push({ id: other.id, label: floorTitle(other, i), on: also.has(other.id) });
+    });
+    return out;
+  };
+
   /* The interface abilities a floor's DV can be rolled against.
    *
    * Upstream inferred this from the floor kind — password meant Backdoor, file
@@ -108,6 +130,9 @@ export function getData(app) {
       number: idx + 1,
       parent: f.parent || "",
       parentChoices: parentChoices(idx),
+      mergeChoices: mergeChoices(idx),
+      alsoFrom: f.alsoFrom || [],
+      mergeCount: (f.alsoFrom || []).length,
       depth: archTree.depthOf(draft.floors, idx),
       forks: kids.length > 1 ? kids.length : 0,
       check: f.check || "",
@@ -209,6 +234,14 @@ export function activateListeners(app, html) {
     const f = floorAt(app, ev.currentTarget.closest("[data-floor-id]")?.dataset.floorId);
     if (f) { f.label = ev.currentTarget.value; reRender(app); }
   });
+  html.find('[data-action="floor-merge"]').on("change", (ev) => {
+    const f = floorAt(app, ev.currentTarget.closest("[data-floor-id]")?.dataset.floorId);
+    if (!f) return;
+    const picked = Array.from(ev.currentTarget.selectedOptions).map((o) => o.value);
+    f.alsoFrom = picked.filter(Boolean);
+    reRender(app);
+  });
+
   html.find('[data-action="floor-parent"]').on("change", (ev) => {
     const card = ev.currentTarget.closest("[data-floor-id]");
     const f = floorAt(app, card?.dataset.floorId);

@@ -59,7 +59,9 @@
       "Branch": "Branch",
       "Gate": "Locks",
       "GateHint": "Nobody descends past this floor until its check is beaten.",
-      "AddBelow": "Add a floor below this one (press twice to fork)"
+      "AddBelow": "Add a floor below this one (press twice to fork)",
+      "Merge": "Also from",
+      "MergeHint": "Other floors that also lead into this one — how two branches converge. Hold Ctrl to pick several."
     },
     "Floor": {
       "password": "Password",

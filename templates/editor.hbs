@@ -60,6 +60,16 @@
             {{/each}}
           </select>
         </label>
+        {{#if floor.mergeChoices}}
+        <label class="crns-floor-merge" title="{{localize "CRNS.Editor.MergeHint"}}">
+          <span class="crns-floor-parent-lbl">{{localize "CRNS.Editor.Merge"}}</span>
+          <select data-action="floor-merge" multiple size="3">
+            {{#each floor.mergeChoices as |mc|}}
+            <option value="{{mc.id}}"{{#if mc.on}} selected{{/if}}>{{mc.label}}</option>
+            {{/each}}
+          </select>
+        </label>
+        {{/if}}
         <label class="crns-floor-gate" title="{{localize "CRNS.Editor.GateHint"}}">
           <input type="checkbox" data-action="floor-gate"{{#if floor.gate}} checked{{/if}}{{#if floor.gateForced}} disabled{{/if}} />
           <i class="fas fa-lock"></i> {{localize "CRNS.Editor.Gate"}}

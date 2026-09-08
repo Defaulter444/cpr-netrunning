@@ -116,7 +116,9 @@ export function getData(app) {
     if (!known.size) add(archTree.rootIndex(floors));
 
     for (const i of known) {
-      for (const child of archTree.childrenOf(floors, i)) {
+      // Exits, not just children: a floor two branches converge into is below
+      // both of them, and standing on either you can tell it is there.
+      for (const child of archTree.exitsOf(floors, i)) {
         if (!known.has(child)) sensed.add(child);
       }
     }
@@ -877,7 +879,6 @@ export function activateListeners(app, html) {
      * chip or a button so it does not steal targeting or the move gesture. */
     const openFloor = (ev) => {
       if (!game.user.isGM) return;
-      if (ev.target.closest("button, a, select, input, .crns-ent, .crns-prog-mini, .crns-runner-chip")) return;
       const card = ev.currentTarget.closest("[data-floor-id]") || ev.currentTarget;
       const floorId = card?.dataset?.floorId;
       if (!floorId) return;
@@ -888,7 +889,17 @@ export function activateListeners(app, html) {
       app.state.focusFloorId = floorId;
       app.render(false);
     };
-    html.find(".crns-floor").on("dblclick", openFloor);
+
+    // Double-click anywhere on the card — but not on something that already
+    // means something. A chip is a target, a button is a button.
+    html.find(".crns-floor").on("dblclick", (ev) => {
+      if (ev.target.closest("button, a, select, input, .crns-ent, .crns-prog-mini, .crns-runner-chip")) return;
+      openFloor(ev);
+    });
+
+    // The pencil. This guard used to live inside `openFloor`, which both
+    // gestures shared — so clicking the button hit "the click landed on a
+    // button, ignore it" and the pencil did nothing at all.
     html.find('[data-action="floor-open"]').on("click", (ev) => {
       ev.preventDefault();
       ev.stopPropagation();
@@ -1041,7 +1052,7 @@ function drawTreeEdges(app, html) {
 
     const path = document.createElementNS(NS, "path");
     path.setAttribute("d", d);
-    path.setAttribute("class", "crns-edge-path");
+    path.setAttribute("class", `crns-edge-path${link.extra ? " crns-edge-extra" : ""}`);
     svg.appendChild(path);
   }
 }

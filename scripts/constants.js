@@ -50,6 +50,25 @@ export const FLOOR_KINDS = ["password", "file", "controlnode", "custom"];
  * Scanner is absent on purpose — it is a MEAT action taken outside the
  * architecture, so it can never be what a floor asks of you (Corebook p. 200).
  */
+/**
+ * Whether a floor holds something a runner could read — the condition behind
+ * Eye-Dee.
+ *
+ * It lives here because it has to hold in TWO places at once: the chip in the
+ * runner's strip that offers the ability, and the code that applies the roll.
+ * Written out separately, the two drifted — the chip said "file floors only"
+ * while the GM had put his file on a custom floor, so the ability sat dim and
+ * would have done nothing had it been pressed.
+ *
+ * @param {Object} floor
+ * @returns {boolean}
+ */
+export function floorHoldsFile(floor) {
+  if (!floor) return false;
+  if (floor.kind === "file") return true;
+  return !!String(floor.contents || "").trim() || !!String(floor.contentsImage || "").trim();
+}
+
 export const CHECK_ABILITIES = [
   "backdoor", "cloak", "control", "eyedee", "pathfinder", "slide", "virus", "zap",
 ];

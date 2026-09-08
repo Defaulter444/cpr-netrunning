@@ -454,6 +454,11 @@ export function getData(app) {
       contents: (isGM || (floorState[`${archId}:${floor.id}`]?.eyedee || []).includes(myRunnerPid))
         ? (floor.contents || "")
         : "",
+      // A file can hold a picture as easily as a line of text — a photograph, a
+      // floor plan, a scan of a document. Same audience rule as the text.
+      contentsImage: (isGM || (floorState[`${archId}:${floor.id}`]?.eyedee || []).includes(myRunnerPid))
+        ? (floor.contentsImage || "")
+        : "",
       floorId: floor.id,
       entities,
       participants,
@@ -738,6 +743,17 @@ export function stopRain(app) {
 /* ------------------------------------------------------------------ */
 
 export function activateListeners(app, html) {
+  // A picture on a floor card is thumbnail-sized by necessity; anyone allowed to
+  // see it can open it properly. ImagePopout is the core viewer, so it behaves
+  // like every other image in Foundry — and, for the GM, can be shown to the
+  // table from its own header.
+  html.find('[data-action="floor-image-view"]').on("click", (ev) => {
+    ev.preventDefault();
+    ev.stopPropagation();
+    const src = ev.currentTarget.dataset.src;
+    if (src) new ImagePopout(src, { editable: false, shareable: game.user.isGM }).render(true);
+  });
+
   // Ask to be jacked in. Lives outside the GM block: this is the one control on
   // the canvas that only a player ever presses.
   html.find('[data-action="runner-ask"]').on("click", async () => {

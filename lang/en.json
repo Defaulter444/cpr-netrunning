@@ -64,7 +64,11 @@
       "MergeHint": "Other floors that also lead into this one — how two branches converge. Hold Ctrl to pick several.",
       "Contents": "Contents",
       "ContentsHint": "What the runner reads once he beats this floor's check. Unlike the GM notes above, this is shown to him.",
-      "ContentsPlaceholder": "Shift rosters, a name, a set of coordinates…"
+      "ContentsPlaceholder": "Shift rosters, a name, a set of coordinates…",
+      "Image": "Picture",
+      "ImageHint": "An image the file holds — a photo, a floor plan, a scan. Shown with the text once the runner has cracked it.",
+      "ImagePlaceholder": "path/to/picture.webp",
+      "ImagePick": "Choose a picture"
     },
     "Floor": {
       "password": "Password",
@@ -109,7 +113,8 @@
       "FileContents": "What you read here",
       "LockShut": "Breached — click to shut it again",
       "LockOpen": "Locked — click to open it",
-      "ClearAccess": "Take this runner's access away"
+      "ClearAccess": "Take this runner's access away",
+      "ViewImage": "Click to open full size"
     },
     "Runners": {
       "Title": "Netrunners",

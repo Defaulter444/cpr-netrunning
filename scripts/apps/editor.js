@@ -137,6 +137,7 @@ export function getData(app) {
       forks: kids.length > 1 ? kids.length : 0,
       check: f.check || "",
       contents: f.contents || "",
+      contentsImage: f.contentsImage || "",
       checkChoices,
       // A password gates by its nature; anything else gates only if the GM says
       // so. Showing the switch as already-on for a password keeps the card
@@ -259,6 +260,33 @@ export function activateListeners(app, html) {
     const f = floorAt(app, ev.currentTarget.closest("[data-floor-id]")?.dataset.floorId);
     if (f) { f.gate = !!ev.currentTarget.checked; reRender(app); }
   });
+  html.find('[data-action="floor-image"]').on("change", (ev) => {
+    const f = floorAt(app, ev.currentTarget.closest("[data-floor-id]")?.dataset.floorId);
+    if (f) f.contentsImage = ev.currentTarget.value.trim();
+  });
+
+  html.find('[data-action="floor-image-pick"]').on("click", (ev) => {
+    ev.preventDefault();
+    const row = ev.currentTarget.closest("[data-floor-id]");
+    const field = row?.querySelector('[data-action="floor-image"]');
+    const f = floorAt(app, row?.dataset.floorId);
+    if (!f || !field) return;
+    // `FilePicker` is a BARE global in v12: it is declared with `class` in a
+    // classic script, which creates a lexical binding rather than a property of
+    // globalThis. `globalThis.FilePicker` finds nothing.
+    new FilePicker({
+      type: "image",
+      current: f.contentsImage || "",
+      callback: (chosen) => {
+        f.contentsImage = chosen;
+        // Write the field directly as well: the draft is only re-rendered on
+        // demand, and the GM should see what he just picked.
+        field.value = chosen;
+        reRender(app);
+      },
+    }).render(true);
+  });
+
   html.find('[data-action="floor-contents"]').on("change", (ev) => {
     const f = floorAt(app, ev.currentTarget.closest("[data-floor-id]")?.dataset.floorId);
     if (f) f.contents = ev.currentTarget.value;
@@ -303,7 +331,8 @@ export function activateListeners(app, html) {
     // floor and it now has two children.
     const nf = {
       id: uid("f"), parent: id || "", kind: "password", label: "", dv: 6,
-      check: "backdoor", gate: false, description: "", contents: "", ice: [], demon: null,
+      check: "backdoor", gate: false, description: "", contents: "", contentsImage: "",
+      ice: [], demon: null,
     };
     app.state.draft.floors.splice(i + 1, 0, nf);
     reRender(app);

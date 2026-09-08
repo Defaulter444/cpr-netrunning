@@ -61,6 +61,13 @@
           </select>
         </label>
         {{#if floor.mergeChoices}}
+        <label class="crns-floor-image-edit" title="{{localize "CRNS.Editor.ImageHint"}}">
+          <span class="crns-floor-parent-lbl">{{localize "CRNS.Editor.Image"}}</span>
+          <input type="text" data-action="floor-image" value="{{floor.contentsImage}}"
+                 placeholder="{{localize "CRNS.Editor.ImagePlaceholder"}}" />
+          <button type="button" class="crns-icon-btn" data-action="floor-image-pick"
+                  title="{{localize "CRNS.Editor.ImagePick"}}"><i class="fas fa-image"></i></button>
+        </label>
         <label class="crns-floor-contents-edit" title="{{localize "CRNS.Editor.ContentsHint"}}">
           <span class="crns-floor-parent-lbl">{{localize "CRNS.Editor.Contents"}}</span>
           <textarea data-action="floor-contents" rows="2"

@@ -13,7 +13,7 @@
  * All state mutations go through mutate(); all rolls go through the bridge. The
  * last damage total this client rolled is stashed on app._lastDamage. */
 
-import { MODULE_ID, loc, esc, BLACK_ICE, DEMONS, ENTITY_ICONS, abbrFor, blackIceTypeForName } from "../constants.js";
+import { MODULE_ID, loc, esc, BLACK_ICE, DEMONS, ENTITY_ICONS, abbrFor, blackIceTypeForName, floorHoldsFile } from "../constants.js";
 import * as archTree from "../rules/tree.js";
 import { getWorld, mutate, notifyClients, canDerezTrap } from "../data.js";
 import * as bridge from "../cpr-bridge.js";
@@ -259,6 +259,7 @@ function abilityAvailability(part, session, archs) {
   const floor = floors[idx] || null;
   const kind = floor?.kind || "";
   const floorCheck = floor?.check || "";
+  const holdsFile = floorHoldsFile(floor);
   const fx = floor ? (session.floorState || {})[`${part.archId}:${floor.id}`] : null;
   const myPid = part.pid;
   const breached = !!(fx && fx.breached);
@@ -271,14 +272,16 @@ function abilityAvailability(part, session, archs) {
     backdoor: kind === "password" && !breached,
     cloak: true,
     control: kind === "controlnode" && (fx?.control?.pid ?? null) !== myPid,
-    eyedee: kind === "file" && !((fx?.eyedee) || []).includes(myPid),
+    // Lit wherever there is something to read (see floorHoldsFile). Keyed on the
+    // KIND alone, the ability stayed dark on a custom floor built to hold a file
+    // — the one case where the GM had gone to the trouble of filling it in.
+    eyedee: holdsFile && !((fx?.eyedee) || []).includes(myPid),
     pathfinder: true,
     virus: isLast,
     // Slide vs an arch ICE, or a player-placed Black ICE (prog: ref that resolves
     // to a blackice program) — Addendum 2. Demons are not slideable.
     slide: tKind === "ice" || (tKind === "prog" && progRefIsBlackIce(session, targetRef)),
     zap: true,
-    scanner: true,
   };
 
   // A floor may name the ability that opens it, and that naming WINS.
@@ -288,7 +291,12 @@ function abilityAvailability(part, session, archs) {
   // `backdoor: kind === "password"` — false — and the chip sat dimmed over a DV
   // nothing could be rolled against. The GM could set the check; the player had
   // no way to use it.
-  if (floorCheck) availability[floorCheck] = !breached;
+  //
+  // It may only ever LIGHT a chip, never put one out. Written as a plain
+  // assignment it did both: a file floor whose check is Eye-Dee went dark the
+  // moment it was breached, so the runner who had just opened the file could no
+  // longer read it.
+  if (floorCheck) availability[floorCheck] = !breached || availability[floorCheck] === true;
   return availability;
 }
 
@@ -334,7 +342,14 @@ function buildRunnerVM(app, sel, session) {
   for (let i = 0; i < maxVal; i++) pips.push({ filled: i < (actions.value || 0) });
 
   const avail = abilityAvailability(part, session, archs);
-  const abilities = bridge.interfaceAbilities().map((ab) => {
+  const abilities = bridge.interfaceAbilities()
+    // Scanner is a MEAT action: it hunts for an architecture's access points from
+    // the room you are standing in, and inside one there is nothing for it to do
+    // (Corebook p. 200). It sat in the strip only to be misclicked, spending a
+    // NET action on nothing. `CHECK_ABILITIES` has excluded it all along; this
+    // brings the runner's own strip in line with that.
+    .filter((ab) => ab.key !== "scanner")
+    .map((ab) => {
     const dim = (ab.key in avail) ? !avail[ab.key] : false;
     // What the ability does, plus — when it is dimmed — why it is not lit here.
     // Ten identical chips with one-word names told the player nothing about

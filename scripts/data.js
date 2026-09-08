@@ -7,7 +7,7 @@
  * on all clients — no manual refresh fan-out is needed for data changes.
  */
 
-import { MODULE_ID, SOCKET_NAME, uid, loc, BLACK_ICE, DEMONS, FLOOR_KINDS, MAX_ICE_PER_FLOOR, maxDemons } from "./constants.js";
+import { MODULE_ID, SOCKET_NAME, uid, loc, BLACK_ICE, DEMONS, FLOOR_KINDS, MAX_ICE_PER_FLOOR, maxDemons, floorHoldsFile } from "./constants.js";
 import * as bridge from "./cpr-bridge.js";
 import * as archTree from "./rules/tree.js";
 
@@ -504,11 +504,17 @@ export async function moveToTopOfQueue(actorId) {
 }
 
 /** Post a localized chat card. `whisperGM` sends it only to GM users. */
-function postChatCard(title, body, { whisperGM = false, whisperTo = null } = {}) {
+function postChatCard(title, body, { whisperGM = false, whisperTo = null, image = "" } = {}) {
+  // An image is a path, not markup: only the quotes need escaping, and nothing
+  // in it can become a tag of its own.
+  const pic = image
+    ? `<img class="crns-chat-image" src="${String(image).replace(/"/g, "&quot;")}" alt="" />`
+    : "";
+  const body_ = body ? `<div class="crns-chat-body">${escHtml(body)}</div>` : "";
   const content =
     `<div class="crns-chat-card"><div class="crns-chat-title">` +
     `<i class="fas fa-shield-halved"></i> ${escHtml(title)}</div>` +
-    `<div class="crns-chat-body">${escHtml(body)}</div></div>`;
+    `${pic}${body_}</div>`;
   const msg = { user: game.user.id, content };
   if (whisperGM) msg.whisper = game.users.filter((u) => u.isGM).map((u) => u.id);
   // A named audience: what a runner reads out of a file is for him and the GM,
@@ -1044,7 +1050,8 @@ const OPS = {
 
     const floor = {
       id: uid("f"), parent, alsoFrom: [], kind: "password", label: "", dv: 6,
-      check: "backdoor", gate: false, description: "", contents: "", ice: [], demon: null,
+      check: "backdoor", gate: false, description: "", contents: "", contentsImage: "",
+      ice: [], demon: null,
     };
     const next = foundry.utils.deepClone(arch);
     next.floors = [...floors, floor];
@@ -2017,7 +2024,10 @@ const OPS = {
       }
       case "eyedee": {
         const fx = getFloorFx(session, part.archId, floor.id);
-        if (floor.kind === "file" && !fx.eyedee.includes(pid) && t > (Number(floor.dv) || 0)) {
+        // The same predicate as the chip that offers it — shared, because the
+        // two spellings had drifted apart and left the ability both dark and
+        // inert on a custom floor holding a file.
+        if (floorHoldsFile(floor) && !fx.eyedee.includes(pid) && t > (Number(floor.dv) || 0)) {
           fx.eyedee.push(pid);
           applied = true;
         }
@@ -2028,14 +2038,15 @@ const OPS = {
         // contents he could not see anywhere.
         if (applied) {
           const text = String(floor.contents || "").trim();
+          const pic = String(floor.contentsImage || "").trim();
           const audience = [
             ...game.users.filter((u) => u.isGM).map((u) => u.id),
             ...(part.userId ? [part.userId] : []),
           ];
           postChatCard(
             floor.label || loc("CRNS.Floor.file"),
-            text || loc("CRNS.Chat.FileEmpty"),
-            { whisperTo: audience }
+            text || (pic ? "" : loc("CRNS.Chat.FileEmpty")),
+            { whisperTo: audience, image: pic }
           );
         }
         break;

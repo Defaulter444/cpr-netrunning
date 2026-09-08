@@ -105,6 +105,11 @@
         </div>
         {{/if}}
 
+        {{#if floor.contentsImage}}
+        <img class="crns-floor-image" src="{{floor.contentsImage}}" alt=""
+             data-action="floor-image-view" data-src="{{floor.contentsImage}}"
+             title="{{localize "CRNS.Canvas.ViewImage"}}" />
+        {{/if}}
         {{#if floor.contents}}
         <div class="crns-floor-contents" title="{{localize "CRNS.Canvas.FileContents"}}">
           <i class="fas fa-file-lines"></i><span>{{floor.contents}}</span>

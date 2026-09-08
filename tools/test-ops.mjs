@@ -138,6 +138,7 @@ console.log("World operations\n");
 installStubs();
 const scripts = prepareScripts();
 const D = await import(pathToFileURL(path.join(scripts, "data.js")).href);
+const C = await import(pathToFileURL(path.join(scripts, "constants.js")).href);
 
 /** Reset the world to empty defaults before each scenario. */
 function freshWorld() {
@@ -477,6 +478,63 @@ console.log("A cracked file can actually be read");
   // The GM's own notes stay the GM's.
   expect(!chat.some((m) => String(m.content).includes("Заметки мастера")),
     "the GM notes were shown to the player");
+}
+
+console.log("A file lives on any floor the GM put one on, picture included");
+{
+  freshWorld();
+  seedArch([
+    // Not kind "file": a custom floor the GM named himself and filled in. This
+    // is how it is actually built at the table, and it is exactly the case
+    // where Eye-Dee used to be dim and inert.
+    { id: "c1", parent: "", kind: "custom", label: "Терминал охраны", dv: 8,
+      contents: "Пропуск R-12 действителен до полуночи.",
+      contentsImage: "worlds/test/files/badge.webp",
+      ice: [], demon: null },
+    // Nothing to read here at all — the ability must stay inert.
+    { id: "c2", parent: "c1", kind: "custom", dv: 6, ice: [], demon: null },
+  ]);
+  game.actors.length = 0;
+  game.actors.push({ ...RUNNER, id: "p7", uuid: "Actor.p7" });
+
+  const pid = "actor:Actor_p7";
+  await D.applyOp("session.connect",
+    { pid, actorUuid: "Actor.p7", userId: "player", archId: "a1" }, "gm");
+
+  // The shared predicate, asserted directly: both the chip and the roll read it.
+  expect(C.floorHoldsFile({ kind: "file" }) === true, "a file floor does not hold a file");
+  expect(C.floorHoldsFile({ kind: "custom", contents: "x" }) === true,
+    "written contents do not count as a file");
+  expect(C.floorHoldsFile({ kind: "custom", contentsImage: "a.webp" }) === true,
+    "a picture does not count as a file");
+  expect(C.floorHoldsFile({ kind: "custom", contents: "   " }) === false,
+    "whitespace counted as contents");
+  expect(C.floorHoldsFile({ kind: "custom" }) === false, "an empty floor holds a file");
+  expect(C.floorHoldsFile(null) === false, "a missing floor holds a file");
+
+  const res = await D.applyOp("run.abilityResult", { pid, ability: "eyedee", total: 12 }, "player");
+  expect(res && res.applied, `reading a custom floor returned ${JSON.stringify(res)}`);
+  let session = settings.get("session");
+  expect(((session.floorState["a1:c1"] || {}).eyedee || []).includes(pid),
+    "the custom floor did not grant access");
+
+  // The picture goes out with the text, as an <img>, to the same two people.
+  const posted = chat.filter((m) => String(m.content).includes("badge.webp"));
+  expect(posted.length === 1, `the picture was posted ${posted.length} times`);
+  expect(/<img[^>]+src="worlds\/test\/files\/badge\.webp"/.test(String(posted[0]?.content)),
+    "the picture was not rendered as an image");
+  expect(String(posted[0]?.content).includes("Пропуск R-12"), "the text did not come with it");
+  const audience = posted[0]?.whisper || [];
+  expect(audience.includes("player") && audience.includes("gm") && audience.length === 2,
+    `the file went to ${JSON.stringify(audience)}`);
+
+  // An empty floor stays inert even on a good roll.
+  await D.applyOp("session.move", { pid, floorIndex: 1 }, "player");
+  const empty = await D.applyOp("run.abilityResult", { pid, ability: "eyedee", total: 20 }, "player");
+  expect(!(empty && empty.applied), "Eye-Dee applied on a floor with nothing in it");
+  session = settings.get("session");
+  expect(!((session.floorState["a1:c2"] || {}).eyedee || []).includes(pid),
+    "access was granted to an empty floor");
 }
 
 console.log("The GM can undo a crack");

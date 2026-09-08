@@ -1590,3 +1590,35 @@ body.crns-resizing { cursor: ns-resize !important; -webkit-user-select: none !im
 .crns-fm[data-action]:hover { background: color-mix(in srgb, var(--crns-accent) 18%, transparent); }
 .crns-fm-lock.clickable:hover i { filter: drop-shadow(0 0 6px currentColor); }
 .crns-fm-x { padding: 1px; }
+
+/* A file's picture: a thumbnail on the floor card, full size on click, and
+   whatever the chat card gives it in the log. */
+.crns-root .crns-floor-image {
+  display: block;
+  width: 100%;
+  max-height: 92px;
+  object-fit: cover;
+  margin: 4px 0 0;
+  border: 1px solid var(--crns-line);
+  border-radius: 3px;
+  cursor: zoom-in;
+}
+.crns-root .crns-floor-image:hover { border-color: var(--crns-accent); }
+
+.crns-chat-card .crns-chat-image {
+  display: block;
+  width: 100%;
+  margin: 4px 0;
+  border: 1px solid #555;
+  border-radius: 3px;
+}
+
+/* Path field + picker button, laid out like the other editor rows. */
+.crns-root .crns-floor-image-edit {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+}
+.crns-root .crns-floor-image-edit input { flex: 1 1 auto; min-width: 0; }
+.crns-root .crns-floor-image-edit .crns-icon-btn { flex: 0 0 auto; }

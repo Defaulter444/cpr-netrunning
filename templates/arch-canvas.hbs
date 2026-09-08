@@ -4,6 +4,14 @@
   <div class="crns-canvas-empty">
     <i class="fas fa-network-wired"></i>
     <div class="crns-canvas-empty-hint">{{localize canvas.emptyHint}}</div>
+    {{#if canvas.canAsk}}
+    <button type="button" class="crns-icon-btn crns-ask-btn" data-action="runner-ask">
+      <i class="fas fa-hand"></i> {{localize "CRNS.Runners.Ask"}}
+    </button>
+    {{/if}}
+    {{#if canvas.asked}}
+    <div class="crns-ask-sent">{{localize "CRNS.Runners.Asked"}}</div>
+    {{/if}}
   </div>
   {{else}}
   <canvas class="crns-rain"></canvas>

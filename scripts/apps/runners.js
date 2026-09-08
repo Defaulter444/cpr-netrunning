@@ -72,6 +72,7 @@ export function getData(app) {
   // (b) Auto-listed eligible actors not already in session.
   const actors = game.actors?.filter((a) => eligibleNetrunner(a)
     && a.hasPlayerOwner) || [];
+  const asking = new Set((Array.isArray(session.requests) ? session.requests : []).map((r) => r.pid));
   const dismissed = new Set(Array.isArray(session.dismissed) ? session.dismissed : []);
   for (const actor of actors) {
     if (seenUuids.has(actor.uuid)) continue;
@@ -115,7 +116,10 @@ export function getData(app) {
   // its row from one group to the other, which is visible, and the meaning of
   // the button becomes "take out of the session" rather than "delete", which is
   // all it ever did.
-  rows.sort((a, b) => Number(b.inSession) - Number(a.inSession));
+  // A runner who has asked to be let in goes to the top and says so: the
+  // request is worthless if the GM has to notice it.
+  for (const row of rows) row.asking = asking.has(row.pid);
+  rows.sort((a, b) => Number(b.asking) - Number(a.asking) || Number(b.inSession) - Number(a.inSession));
   let seenAvailable = false;
   for (const row of rows) {
     row.groupHead = false;

@@ -38,6 +38,11 @@
         <div class="crns-runner-line">
           <span class="crns-runner-dot" style="background:{{row.color}}"></span>
           <span class="crns-runner-name">{{row.name}}</span>
+          {{#if row.asking}}
+          <span class="crns-runner-asking" title="{{localize "CRNS.Runners.Asking"}}">
+            <i class="fas fa-hand"></i>
+          </span>
+          {{/if}}
         </div>
         <div class="crns-runner-meta">
           <span title="{{row.owner}}">{{row.owner}}</span>

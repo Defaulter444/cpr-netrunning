@@ -72,7 +72,16 @@ export function getData(app) {
       try { allowSpec = !!game.settings.get(MODULE_ID, "allowSpectators"); } catch (e) { /* noop */ }
       hint = allowSpec ? "CRNS.Canvas.EmptySpectator" : "CRNS.Canvas.EmptyNone";
     }
-    return { canvas: { empty: true, emptyHint: hint } };
+    // A player with a deck and nowhere to be can ask to be let in. Without
+    // this there was no way to ask at all — the GM connected people, and a
+    // player who wanted in had to say so out loud and hope it was heard.
+    const me2 = app.myParticipant();
+    const myActor = me2?.actorUuid ? (fromUuidSync?.(me2.actorUuid) ?? null) : null;
+    const session0 = getWorld("session") || {};
+    const asked = (session0.requests || []).some((r) => r.pid === me2?.pid);
+    const canAsk = !game.user.isGM && !!me2?.pid && !!myActor && !me2.archId && !asked;
+    return { canvas: { empty: true, emptyHint: hint, canAsk, asked, askPid: me2?.pid || "",
+      askUuid: me2?.actorUuid || "" } };
   }
 
   const session = getWorld("session") || {};
@@ -298,7 +307,11 @@ export function getData(app) {
    *  eyedee. DV is GM-only (hidden everywhere for non-GM). */
   const floorMarkers = (floor) => {
     const fx = floorState[`${archId}:${floor.id}`] || null;
-    const isPassword = floor.kind === "password";
+    // The padlock belongs on anything that actually holds a runner up, not only
+    // on a floor whose KIND is "password". The GM can gate any floor, and until
+    // now that gate was invisible: the card looked ordinary and the runner only
+    // found out by trying to walk through it.
+    const isPassword = floor.kind === "password" || floor.gate === true;
     const isFile = floor.kind === "file";
     const breached = !!(fx && fx.breached);
 
@@ -460,7 +473,10 @@ export function getData(app) {
       // Every floor is editable, gear or not: the pencil is how the GM gets
       // from "I can see the problem" to "I am fixing it" without leaving the map.
       gmEdit: isGM,
-      isPassword: floor.kind === "password",
+      // A padlock belongs on anything that holds the runner up, not only on
+      // a floor whose KIND is "password": the GM can gate any floor, and
+      // without the marker that gate was invisible until you walked into it.
+      isPassword: floor.kind === "password" || floor.gate === true,
       isControlNode: floor.kind === "controlnode",
       controlPid: markers.control?.pid || "",
       controlColor: markers.control?.color || "",
@@ -705,6 +721,16 @@ export function stopRain(app) {
 /* ------------------------------------------------------------------ */
 
 export function activateListeners(app, html) {
+  // Ask to be jacked in. Lives outside the GM block: this is the one control on
+  // the canvas that only a player ever presses.
+  html.find('[data-action="runner-ask"]').on("click", async () => {
+    const me = app.myParticipant();
+    if (!me?.pid) return;
+    await mutate("runner.request", { pid: me.pid, actorUuid: me.actorUuid || "", userId: game.user.id });
+    ui.notifications.info(loc("CRNS.Runners.Asked"));
+    app.render(false);
+  });
+
   // A fresh render replaces the canvas element — always tear the old loop down.
   stopRain(app);
 

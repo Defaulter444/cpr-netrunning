@@ -285,6 +285,73 @@ console.log("An un-breached password blocks the way down");
   expect(gmMove === true, `the GM was blocked by a password: ${JSON.stringify(gmMove)}`);
 }
 
+console.log("Beating a floor's check opens it");
+{
+  freshWorld();
+  seedArch([
+    { id: "f1", parent: "", kind: "password", dv: 6, ice: [], demon: null },
+    { id: "f2", parent: "f1", kind: "custom", dv: 0, ice: [], demon: null },
+  ]);
+  game.actors.length = 0;
+  game.actors.push({ ...RUNNER, id: "p1", uuid: "Actor.p1" });
+
+  const pid = "actor:Actor_p1";
+  await D.applyOp("session.connect",
+    { pid, actorUuid: "Actor.p1", userId: "player", archId: "a1" }, "gm");
+
+  // The player rolls Backdoor on the password floor and beats DV 6.
+  const res = await D.applyOp("run.abilityResult",
+    { pid, ability: "backdoor", total: 12 }, "player");
+  expect(res && res.ok, `abilityResult returned ${JSON.stringify(res)}`);
+  expect(res && res.applied, "a beaten password was not marked as breached");
+
+  let session = settings.get("session");
+  const fx = (session.floorState || {})["a1:f1"];
+  expect(fx && fx.breached === true, `floor state after the roll: ${JSON.stringify(fx)}`);
+
+  // And now the way down is open.
+  const moved = await D.applyOp("session.move", { pid, floorIndex: 1 }, "player");
+  expect(moved === true, `moving past a breached password returned ${JSON.stringify(moved)}`);
+}
+
+console.log("A GM-named check opens a gated floor of any kind");
+{
+  freshWorld();
+  // Not a password: an ordinary floor the GM decided nobody walks past until
+  // they have talked their way through it.
+  seedArch([
+    { id: "g1", parent: "", kind: "custom", label: "Шлюз", dv: 8,
+      check: "control", gate: true, ice: [], demon: null },
+    { id: "g2", parent: "g1", kind: "custom", dv: 0, ice: [], demon: null },
+  ]);
+  game.actors.length = 0;
+  game.actors.push({ ...RUNNER, id: "p2", uuid: "Actor.p2" });
+
+  const pid = "actor:Actor_p2";
+  await D.applyOp("session.connect",
+    { pid, actorUuid: "Actor.p2", userId: "player", archId: "a1" }, "gm");
+
+  // The gate holds before the check is beaten.
+  const held = await D.applyOp("session.move", { pid, floorIndex: 1 }, "player");
+  expect(held && held.error === "CRNS.Errors.PasswordBlocked",
+    `a gated floor let the runner through: ${JSON.stringify(held)}`);
+
+  // The WRONG ability does not open it, however well it rolls.
+  await D.applyOp("run.abilityResult", { pid, ability: "backdoor", total: 20 }, "player");
+  let session = settings.get("session");
+  expect(!((session.floorState || {})["a1:g1"] || {}).breached,
+    "the wrong ability opened the floor");
+
+  // The named one does.
+  const res = await D.applyOp("run.abilityResult", { pid, ability: "control", total: 9 }, "player");
+  expect(res && res.applied, `the named check did not open the floor: ${JSON.stringify(res)}`);
+  session = settings.get("session");
+  expect(((session.floorState || {})["a1:g1"] || {}).breached === true, "the gate stayed shut");
+
+  const moved = await D.applyOp("session.move", { pid, floorIndex: 1 }, "player");
+  expect(moved === true, `the opened gate still blocked: ${JSON.stringify(moved)}`);
+}
+
 console.log("An architecture can be shaped from the map");
 {
   freshWorld();

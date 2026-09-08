@@ -324,6 +324,12 @@ Hooks.on("combatRound", (combat) => resetRunnerForCombatant(combat));
 /* ------------------------------------------------------------------ */
 
 Hooks.on(`${MODULE_ID}.notify`, (data) => {
+  // A player asking to be let in. Notifications are the only thing that will
+  // reach a GM who is looking at the map, the sheet or the chat instead of the
+  // runner column.
+  if (data?.kind === "connectRequest" && game.user.isGM) {
+    ui.notifications.info(loc("CRNS.Runners.AskedBy", { name: data.name || "" }));
+  }
   // Player-side defence prompt (SPEC Addendum 2): the OWNING player client shows
   // a defence prompt in the action bar; evaluated on every client (not GM-gated).
   if (data?.kind === "defenseRequest") {

@@ -76,6 +76,10 @@ export const WORLD_OBJECTS = {
     // eligible actor in the world, so without remembering the removal the same
     // row came straight back and the delete button looked dead.
     dismissed: [],
+    // Players asking to be let into a network. There was no way to ask at all:
+    // the GM connected people, and a player who wanted in had to say so out
+    // loud and hope it was heard.
+    requests: [],       // [{pid, actorUuid, userId, ts}]
     progFloors: {}, pendingTests: [],
     // Round-2 (SPEC §14):
     floorState: {},    // "<archId>:<floorId>" -> FloorFx (breach/virus/control/eyedee)
@@ -1364,6 +1368,10 @@ const OPS = {
       visited: connecting ? entryVisited(archId) : (Array.isArray(prev.visited) ? prev.visited : []),
     };
     session.participants[pid] = part;
+    // Connecting answers a pending request, if there was one.
+    if (Array.isArray(session.requests)) {
+      session.requests = session.requests.filter((r) => r.pid !== pid);
+    }
     // Connecting a runner un-dismisses it: the GM is plainly asking for it back.
     if (Array.isArray(session.dismissed) && session.dismissed.includes(pid)) {
       session.dismissed = session.dismissed.filter((x) => x !== pid);
@@ -1662,6 +1670,40 @@ const OPS = {
     return true;
   },
 
+  /** A player asks to be jacked in. Owner of the actor, or the GM on their
+   *  behalf. Idempotent: asking twice does not queue two requests. */
+  async "runner.request"({ pid, actorUuid = "", userId = "" } = {}, callerId) {
+    const session = getWorld("session") || {};
+    const caller = game.users?.get(callerId);
+    // Either the GM, or the user who owns the actor being offered.
+    if (!caller?.isGM) {
+      const actor = actorUuid ? (fromUuidSync?.(actorUuid) ?? null) : null;
+      if (!actor?.testUserPermission?.(caller, "OWNER")) return false;
+    }
+    session.requests = Array.isArray(session.requests) ? session.requests : [];
+    if (!session.requests.some((r) => r.pid === pid)) {
+      session.requests.push({ pid, actorUuid, userId: userId || callerId, ts: Date.now() });
+    }
+    // A stored request survives a re-render; the notify is what makes the GM
+    // look up from whatever else is on screen.
+    const actor = actorUuid ? (fromUuidSync?.(actorUuid) ?? null) : null;
+    notifyClients({ kind: "connectRequest", pid, name: actor?.name || "" });
+    await setWorld("session", session);
+    return true;
+  },
+
+  /** Clear a pending request (GM, or the asker changing their mind). */
+  async "runner.unrequest"({ pid } = {}, callerId) {
+    const session = getWorld("session") || {};
+    const list = Array.isArray(session.requests) ? session.requests : [];
+    const entry = list.find((r) => r.pid === pid);
+    if (!entry) return true;
+    if (!requesterIsGM(callerId) && entry.userId !== callerId) return false;
+    session.requests = list.filter((r) => r.pid !== pid);
+    await setWorld("session", session);
+    return true;
+  },
+
   /** Bring dismissed runners back into the roster (GM). */
   async "runner.restore"({ pid = "" } = {}, callerId) {
     if (!requesterIsGM(callerId)) return false;
@@ -1903,23 +1945,30 @@ const OPS = {
 
     const t = Number(total) || 0;
 
+    const name = fromUuidSync?.(part.actorUuid)?.name || "";
+    let applied = false;
+
     /* A floor may name the ability that opens it (`floor.check`) instead of
      * relying on its kind. When the runner rolls THAT ability on THIS floor and
      * beats the DV, the floor is passed — which is what unlocks a gate.
      *
      * Reveal and stealth are deliberately excluded: Pathfinder tells you what is
      * there and Cloak hides you, neither of them opens anything, so letting them
-     * satisfy a gate would hand the runner a free pass. */
+     * satisfy a gate would hand the runner a free pass.
+     *
+     * This block used to sit ABOVE `let applied`, so it read the variable inside
+     * its own temporal dead zone and threw. Because every floor the editor
+     * creates carries a `check`, the condition was reached on essentially every
+     * roll — and a throw here kills the whole operation, so nothing opened at
+     * all, not even an ordinary password. */
     const OPENS = !["pathfinder", "cloak"].includes(ability);
-    if (OPENS && floor && floor.check === ability && t > (Number(floor.dv) || 0)) {
+    if (OPENS && floor.check === ability && t > (Number(floor.dv) || 0)) {
       const fx = getFloorFx(session, part.archId, floor.id);
       if (!fx.breached) {
         fx.breached = true;
         applied = true;
       }
     }
-    const name = fromUuidSync?.(part.actorUuid)?.name || "";
-    let applied = false;
 
     switch (ability) {
       case "backdoor": {

@@ -117,7 +117,11 @@
       "NotEligible": "That actor has no equipped cyberdeck — it cannot netrun.",
       "GroupInSession": "In the session",
       "GroupAvailable": "Available",
-      "RestoreAll": "Bring removed runners back"
+      "RestoreAll": "Bring removed runners back",
+      "Ask": "Ask to jack in",
+      "Asked": "The GM has been asked.",
+      "AskedBy": "{name} is asking to jack in.",
+      "Asking": "Asking to jack in"
     },
     "Settings": {
       "AllowSpectators": "Allow spectators",

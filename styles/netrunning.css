@@ -1520,9 +1520,13 @@ body.crns-resizing { cursor: ns-resize !important; -webkit-user-select: none !im
 /* The list editor is fine for what is ON a floor and hopeless for the shape of
    the network — a column of rows cannot show that two branches meet. These
    controls appear on the cards themselves, where the shape is visible. */
+/* Bottom-LEFT, not top-left: the cloak strip already lives at top 8 / left 8,
+   and two overlays in one corner drew straight through each other — which is
+   the mess that showed up the moment anyone rolled Cloak. Zoom controls hold
+   the bottom-right, so this corner is the free one. */
 .crns-shape-overlay {
-  position: absolute; top: 8px; left: 8px; z-index: 4;
-  display: flex; align-items: center; gap: 8px;
+  position: absolute; bottom: 10px; left: 10px; z-index: 4;
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap; max-width: 60%;
 }
 .crns-shape-overlay .on { border-color: var(--crns-accent); color: var(--crns-accent); }
 .crns-shape-hint {
@@ -1554,3 +1558,9 @@ body.crns-resizing { cursor: ns-resize !important; -webkit-user-select: none !im
 .crns-shape-btns { display: flex; gap: 4px; }
 .crns-shape-btns .accent { border-color: var(--crns-accent); color: var(--crns-accent); }
 .crns-shape-btns .danger:hover { color: #ff6b6b; border-color: #ff6b6b; }
+
+/* Asking to be jacked in. */
+.crns-ask-btn { margin-top: 10px; border-color: var(--crns-accent); color: var(--crns-accent); }
+.crns-ask-sent { margin-top: 8px; font-size: 11px; color: var(--crns-accent); opacity: 0.85; }
+.crns-runner-asking { color: var(--crns-accent); margin-left: 4px; animation: crns-blink 1.4s steps(1) infinite; }
+.crns-runner-row:has(.crns-runner-asking) { border-color: var(--crns-accent); }

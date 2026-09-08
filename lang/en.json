@@ -111,7 +111,9 @@
       "NPC": "NPC",
       "Position": "{arch} · floor {floor}",
       "NoActiveTab": "Activate an architecture tab first.",
-      "NotEligible": "That actor has no equipped cyberdeck — it cannot netrun."
+      "NotEligible": "That actor has no equipped cyberdeck — it cannot netrun.",
+      "GroupInSession": "In the session",
+      "GroupAvailable": "Available"
     },
     "Settings": {
       "AllowSpectators": "Allow spectators",

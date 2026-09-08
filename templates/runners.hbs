@@ -17,7 +17,13 @@
 
   <div class="crns-runners-list">
     {{#each runners.rows as |row|}}
-    <div class="crns-runner-row{{#if row.selected}} selected{{/if}}" data-pid="{{row.pid}}"
+    {{#if row.sessionHead}}
+    <div class="crns-runner-group">{{localize "CRNS.Runners.GroupInSession"}}</div>
+    {{/if}}
+    {{#if row.groupHead}}
+    <div class="crns-runner-group">{{localize "CRNS.Runners.GroupAvailable"}}</div>
+    {{/if}}
+    <div class="crns-runner-row{{#if row.selected}} selected{{/if}}" data-pid="{{row.pid}}"{{#unless row.inSession}} data-available="1"{{/unless}}
          data-actor-uuid="{{row.actorUuid}}" data-user-id="{{row.userId}}">
       <img class="crns-runner-avatar" src="{{row.img}}" alt="{{row.name}}" />
       <div class="crns-runner-info">

@@ -1462,3 +1462,20 @@ body.crns-resizing { cursor: ns-resize !important; -webkit-user-select: none !im
 }
 .crns-floor-open { opacity: 0.75; }
 .crns-floor-open:hover { opacity: 1; }
+
+/* ---- runners column: session vs merely available -------------------- */
+
+/* The delete button looked broken because both states rendered identically:
+   removing a participant re-listed the same actor from the auto-list a frame
+   later. Separating and labelling them makes the removal visible — the row
+   moves from one group to the other. */
+.crns-runner-group {
+  padding: 6px 8px 2px;
+  font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--crns-dim); opacity: 0.8;
+  border-top: 1px solid var(--crns-border);
+  margin-top: 4px;
+}
+.crns-runner-group:first-child { border-top: 0; margin-top: 0; }
+.crns-runner-row[data-available] { opacity: 0.62; }
+.crns-runner-row[data-available]:hover { opacity: 0.95; }

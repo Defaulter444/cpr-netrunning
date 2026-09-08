@@ -100,8 +100,32 @@ export function getData(app) {
 
   rows.sort((a, b) => a.name.localeCompare(b.name));
 
+  // Two sources feed this column: participants of the live session, and every
+  // eligible actor in the world that could join one. They used to be poured
+  // into a single flat list, which made the delete button look broken — the GM
+  // removed a participant and the very same actor reappeared a frame later from
+  // the auto-list, same name, same portrait. The removal HAD worked; nothing on
+  // screen said so.
+  //
+  // So the two states are now separated and labelled. Deleting a runner moves
+  // its row from one group to the other, which is visible, and the meaning of
+  // the button becomes "take out of the session" rather than "delete", which is
+  // all it ever did.
+  rows.sort((a, b) => Number(b.inSession) - Number(a.inSession));
+  let seenAvailable = false;
+  for (const row of rows) {
+    row.groupHead = false;
+    if (!row.inSession && !seenAvailable) {
+      seenAvailable = true;
+      row.groupHead = true;
+    }
+  }
+  const anyInSession = rows.some((r) => r.inSession);
+  if (rows.length && rows[0].inSession) rows[0].sessionHead = true;
+
   return {
     runners: {
+      anyInSession,
       collapsed: !!app.state.collapsedRight,
       rows,
     },

@@ -35,7 +35,7 @@
         <label class="crns-floor-check" title="{{localize "CRNS.Editor.Check"}}">
           <select data-action="floor-check">
             {{#each floor.checkChoices as |c|}}
-            <option value="{{c.id}}"{{#if (crnsEq c.id ../floor.check)}} selected{{/if}}>{{c.label}}</option>
+            <option value="{{c.id}}"{{#if (crnsEq c.id floor.check)}} selected{{/if}}>{{c.label}}</option>
             {{/each}}
           </select>
         </label>
@@ -56,7 +56,7 @@
           <span class="crns-floor-parent-lbl">{{localize "CRNS.Editor.Parent"}}</span>
           <select data-action="floor-parent">
             {{#each floor.parentChoices as |pc|}}
-            <option value="{{pc.id}}"{{#if (crnsEq pc.id ../floor.parent)}} selected{{/if}}>{{pc.label}}</option>
+            <option value="{{pc.id}}"{{#if (crnsEq pc.id floor.parent)}} selected{{/if}}>{{pc.label}}</option>
             {{/each}}
           </select>
         </label>

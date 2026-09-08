@@ -124,7 +124,7 @@
           </span>
           {{/if}}
           {{#each floor.markers.viruses as |vr|}}
-          <span class="crns-fm crns-fm-virus" title="{{vr.title}}"{{#if vr.gm}} data-action="fx-clear-marker" data-floor-id="{{../floor.floorId}}" data-kind="virus" data-id="{{vr.id}}"{{/if}}>
+          <span class="crns-fm crns-fm-virus" title="{{vr.title}}"{{#if vr.gm}} data-action="fx-clear-marker" data-floor-id="{{floor.floorId}}" data-kind="virus" data-id="{{vr.id}}"{{/if}}>
             <i class="fas fa-virus"></i>{{#if vr.gm}}<i class="fas fa-xmark crns-fm-x"></i>{{/if}}
           </span>
           {{/each}}
@@ -137,7 +137,7 @@
           <span class="crns-fm crns-fm-eyedee" title="{{localize "CRNS.Canvas.Accessed"}}"><i class="fas fa-folder-open"></i></span>
           {{/if}}
           {{#each floor.markers.eyedee as |ed|}}
-          <span class="crns-fm crns-fm-accessor" title="{{ed.title}}"{{#if ed.gm}} data-action="fx-clear-eyedee" data-floor-id="{{../floor.floorId}}" data-pid="{{ed.pid}}"{{/if}}>
+          <span class="crns-fm crns-fm-accessor" title="{{ed.title}}"{{#if ed.gm}} data-action="fx-clear-eyedee" data-floor-id="{{floor.floorId}}" data-pid="{{ed.pid}}"{{/if}}>
             <img src="{{ed.img}}" alt="{{ed.name}}" />{{#if ed.gm}}<i class="fas fa-xmark crns-fm-x"></i>{{/if}}
           </span>
           {{/each}}

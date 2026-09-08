@@ -49,6 +49,9 @@
           {{#if floor.gmGear}}
           <button type="button" class="crns-icon-btn crns-floor-gear" data-action="floor-gear" title="{{localize "CRNS.Canvas.GmFloor"}}"><i class="fas fa-gear"></i></button>
           {{/if}}
+          {{#if floor.gmEdit}}
+          <button type="button" class="crns-icon-btn crns-floor-open" data-action="floor-open" title="{{localize "CRNS.Canvas.OpenFloor"}}"><i class="fas fa-pen-to-square"></i></button>
+          {{/if}}
         </div>
 
         {{!-- floor markers: breach / virus / control / eyedee (cloaks are arch-level) --}}

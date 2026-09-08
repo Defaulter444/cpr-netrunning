@@ -1438,3 +1438,12 @@ body.crns-resizing { cursor: ns-resize !important; -webkit-user-select: none !im
   display: inline-flex; align-items: center; gap: 4px; flex: 0 0 auto;
   font-size: 11px; color: var(--crns-dim);
 }
+
+/* The floor the GM just drilled into from the map. Without a marker he lands in
+   a long flat list with no idea which card he asked for. */
+.crns-floor-card.focused {
+  border-color: var(--crns-accent);
+  box-shadow: 0 0 0 1px var(--crns-accent), 0 0 18px -4px var(--crns-glow);
+}
+.crns-floor-open { opacity: 0.75; }
+.crns-floor-open:hover { opacity: 1; }

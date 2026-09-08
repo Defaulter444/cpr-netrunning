@@ -69,6 +69,55 @@ console.log("A declared tree is left alone");
   eq(T.adjacentOf(floors, 1), [0, 3, 4], "neighbours are the parent and the children");
 }
 
+console.log("A branch can be grown from its end");
+{
+  // The bug this guards. The editor's "+" created a floor with no parent. On a
+  // tree where everybody else HAS one, a parentless floor is treated as a
+  // second entry point and re-hung under the root — so every attempt to extend
+  // a branch flung the new floor back to the top, and a branch could never grow
+  // past its first floor.
+  const floors = build([["a", ""], ["b", "a"], ["c", "a"]]);
+  T.normalizeFloors(floors);
+
+  // What the fix does: name the parent explicitly.
+  floors.push({ id: "d", parent: "c", kind: "custom", dv: 0 });
+  T.normalizeFloors(floors);
+  eq(floors.find((f) => f.id === "d").parent, "c", "a floor added under a leaf did not stay there");
+  eq(T.childrenOf(floors, 2), [3], "the leaf did not become a parent");
+  eq(T.depthOf(floors, 3), 2, "the grown floor sits at the wrong depth");
+  expect(!T.isLeaf(floors, 2), "the old leaf still counts as a branch bottom");
+
+  // Pressing "+" twice on the same floor is how a fork is made.
+  floors.push({ id: "e", parent: "c", kind: "custom", dv: 0 });
+  T.normalizeFloors(floors);
+  eq(T.childrenOf(floors, 2), [3, 4], "a second child did not create a fork");
+
+  // And the old behaviour, kept as a statement of what goes wrong without a
+  // parent: the floor is treated as a stray entry and re-rooted.
+  floors.push({ id: "f", parent: "", kind: "custom", dv: 0 });
+  T.normalizeFloors(floors);
+  eq(floors.find((x) => x.id === "f").parent, "a", "a parentless addition was not re-rooted");
+}
+
+console.log("Deleting a middle floor does not orphan its branch");
+{
+  //   a → b → c   with d hanging off b as well
+  const floors = build([["a", ""], ["b", "a"], ["c", "b"], ["d", "b"]]);
+  T.normalizeFloors(floors);
+
+  // The editor splices `b` out of the TREE, not just out of the array: its
+  // children move up to its parent. Dropping it without that would leave c and
+  // d parentless, and normalisation would fling both to the entry.
+  const gone = floors[1];
+  for (const f of floors) if (f.parent === gone.id) f.parent = gone.parent;
+  floors.splice(1, 1);
+  T.normalizeFloors(floors);
+
+  eq(floors.map((f) => f.id), ["a", "c", "d"], "wrong floors survived");
+  eq(T.childrenOf(floors, 0).sort(), [1, 2], "the branch did not move up to the parent");
+  eq(T.depthOf(floors, 1), 1, "a surviving floor kept the deleted floor's depth");
+}
+
 console.log("Broken data degrades instead of hanging");
 {
   // A parent that does not exist: the floor must not vanish from the canvas.

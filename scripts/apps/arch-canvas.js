@@ -433,6 +433,9 @@ export function getData(app) {
       // by floor kind: breach only means something on password floors, control
       // only on control nodes — hide the irrelevant widgets elsewhere.
       gmGear: isGM && (floor.kind === "password" || floor.kind === "controlnode"),
+      // Every floor is editable, gear or not: the pencil is how the GM gets
+      // from "I can see the problem" to "I am fixing it" without leaving the map.
+      gmEdit: isGM,
       isPassword: floor.kind === "password",
       isControlNode: floor.kind === "controlnode",
       controlPid: markers.control?.pid || "",
@@ -830,6 +833,35 @@ export function activateListeners(app, html) {
       mutate("fx.clear", { archId, floorId: el.dataset.floorId, kind: "control", pid: el.value });
     });
     // Toggle the per-floor gear popover open/closed (local UI only).
+    /* Click a floor card to drop into its settings.
+     *
+     * The map is where the GM actually thinks about the architecture — it is
+     * the only view that shows the shape — so the floor he wants to change is
+     * the one he is looking at. Until now the card was inert and he had to
+     * open the editor and hunt for the same floor in a flat list.
+     *
+     * Bound on the card, not the wrap, and ignored when the click landed on a
+     * chip or a button so it does not steal targeting or the move gesture. */
+    const openFloor = (ev) => {
+      if (!game.user.isGM) return;
+      if (ev.target.closest("button, a, select, input, .crns-ent, .crns-prog-mini, .crns-runner-chip")) return;
+      const card = ev.currentTarget.closest("[data-floor-id]") || ev.currentTarget;
+      const floorId = card?.dataset?.floorId;
+      if (!floorId) return;
+      const { archId } = resolveDisplay(app);
+      if (!archId) return;
+      app.state.editorArchId = archId;
+      app.state.draft = foundry.utils.deepClone((getWorld("netArchs") || {})[archId] || {});
+      app.state.focusFloorId = floorId;
+      app.render(false);
+    };
+    html.find(".crns-floor").on("dblclick", openFloor);
+    html.find('[data-action="floor-open"]').on("click", (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      openFloor(ev);
+    });
+
     html.find('[data-action="floor-gear"]').on("click", (ev) => {
       ev.stopPropagation();
       const pop = ev.currentTarget.closest(".crns-floor")?.querySelector(".crns-floor-gearpop");

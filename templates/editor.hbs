@@ -18,7 +18,7 @@
 
   <div class="crns-floor-chain">
     {{#each editor.floors as |floor|}}
-    <div class="crns-floor-card" data-floor-id="{{floor.id}}">
+    <div class="crns-floor-card{{#if floor.focused}} focused{{/if}}" data-floor-id="{{floor.id}}">
 
       <div class="crns-floor-top">
         <span class="crns-floor-num">{{floor.number}}</span>
@@ -42,7 +42,7 @@
         <span class="crns-floor-ctrls">
           <button type="button" class="crns-icon-btn" data-action="floor-up" title="{{localize "CRNS.Editor.MoveUp"}}"{{#if floor.isFirst}} disabled{{/if}}><i class="fas fa-arrow-up"></i></button>
           <button type="button" class="crns-icon-btn" data-action="floor-down" title="{{localize "CRNS.Editor.MoveDown"}}"{{#if floor.isLast}} disabled{{/if}}><i class="fas fa-arrow-down"></i></button>
-          <button type="button" class="crns-icon-btn" data-action="floor-insert" title="{{localize "CRNS.Editor.InsertAfter"}}"><i class="fas fa-plus"></i></button>
+          <button type="button" class="crns-icon-btn" data-action="floor-insert" title="{{localize "CRNS.Editor.AddBelow"}}"><i class="fas fa-plus"></i></button>
           <button type="button" class="crns-icon-btn" data-action="floor-delete" title="{{localize "CRNS.Editor.DeleteFloor"}}"{{#unless floor.canDelete}} disabled{{/unless}}><i class="fas fa-trash"></i></button>
         </span>
       </div>

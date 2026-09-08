@@ -58,7 +58,8 @@
       "CheckNone": "no check",
       "Branch": "Branch",
       "Gate": "Locks",
-      "GateHint": "Nobody descends past this floor until its check is beaten."
+      "GateHint": "Nobody descends past this floor until its check is beaten.",
+      "AddBelow": "Add a floor below this one (press twice to fork)"
     },
     "Floor": {
       "password": "Password",
@@ -97,7 +98,8 @@
       "Standby": "Standby — escorting its owner, no target assigned",
       "Chasing": "Chasing: {name}",
       "Encrypted": "ENCRYPTED",
-      "Forks": "{n} ways"
+      "Forks": "{n} ways",
+      "OpenFloor": "Open this floor's settings"
     },
     "Runners": {
       "Title": "Netrunners",

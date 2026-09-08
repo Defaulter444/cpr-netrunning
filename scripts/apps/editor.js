@@ -102,6 +102,7 @@ export function getData(app) {
       : null;
     const kids = archTree.childrenOf(draft.floors, idx);
     return {
+      focused: app.state.focusFloorId === f.id,
       id: f.id,
       index: idx,
       number: idx + 1,
@@ -163,6 +164,15 @@ function floorAt(app, floorId) {
 function reRender(app) { app.render(false); }
 
 export function activateListeners(app, html) {
+  // Drilled in from the map: bring that card into view once, then forget it, so
+  // the next ordinary render does not keep yanking the list back.
+  const focusId = app.state.focusFloorId;
+  if (focusId) {
+    app.state.focusFloorId = "";
+    const card = html.find(`.crns-floor-card[data-floor-id="${focusId}"]`)[0];
+    if (card) requestAnimationFrame(() => card.scrollIntoView({ block: "center", behavior: "smooth" }));
+  }
+
   if (!game.user.isGM) return;
   const root = html.find(".crns-editor-body")[0];
   if (!root) return;
@@ -245,7 +255,17 @@ export function activateListeners(app, html) {
   html.find('[data-action="floor-insert"]').on("click", (ev) => {
     const id = ev.currentTarget.closest("[data-floor-id]")?.dataset.floorId;
     const i = floorIndex(id);
-    const nf = { id: uid("f"), kind: "password", label: "", dv: 6, description: "", ice: [], demon: null };
+    // The new floor hangs UNDER the one whose "+" was pressed. Without an
+    // explicit parent it would be parentless, and normalisation would hang it
+    // off the entry instead — which is why a branch could not be grown: every
+    // floor added at the end of a branch jumped back to the top.
+    //
+    // This also makes forking a single gesture: press "+" twice on the same
+    // floor and it now has two children.
+    const nf = {
+      id: uid("f"), parent: id || "", kind: "password", label: "", dv: 6,
+      check: "backdoor", gate: false, description: "", ice: [], demon: null,
+    };
     app.state.draft.floors.splice(i + 1, 0, nf);
     reRender(app);
   });
@@ -254,7 +274,16 @@ export function activateListeners(app, html) {
     const floors = app.state.draft.floors;
     if (floors.length <= 1) return;
     const i = floorIndex(id);
-    if (i >= 0) floors.splice(i, 1);
+    if (i < 0) return;
+    // Splice the floor out of the tree, not just out of the array: its children
+    // move up to its parent. Leaving them parentless would fling a whole branch
+    // back to the entry, which is never what deleting a middle floor means.
+    const gone = floors[i];
+    for (const child of floors) {
+      if (child.parent === gone.id) child.parent = gone.parent || "";
+    }
+    floors.splice(i, 1);
+    archTree.normalizeFloors(floors);
     reRender(app);
   });
 

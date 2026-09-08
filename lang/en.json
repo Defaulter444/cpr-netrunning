@@ -99,7 +99,8 @@
       "Chasing": "Chasing: {name}",
       "Encrypted": "ENCRYPTED",
       "Forks": "{n} ways",
-      "OpenFloor": "Open this floor's settings"
+      "OpenFloor": "Open this floor's settings",
+      "OpenedBy": "Opened by this ability"
     },
     "Runners": {
       "Title": "Netrunners",

@@ -1479,3 +1479,16 @@ body.crns-resizing { cursor: ns-resize !important; -webkit-user-select: none !im
 .crns-runner-group:first-child { border-top: 0; margin-top: 0; }
 .crns-runner-row[data-available] { opacity: 0.62; }
 .crns-runner-row[data-available]:hover { opacity: 0.95; }
+
+/* Which ability opens a locked floor. The player is allowed to know he is
+   looking at a lock and what kind — that is what a password prompt IS — while
+   the DV stays the GM's. Without it he saw a padlock and had to guess which of
+   ten chips to press. */
+.crns-floor-gate {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--crns-accent); opacity: 0.9;
+  border: 1px solid color-mix(in srgb, var(--crns-accent) 40%, transparent);
+  border-radius: 3px; padding: 1px 6px;
+}
+.crns-floor-gate i { font-size: 9px; }

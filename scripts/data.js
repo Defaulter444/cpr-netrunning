@@ -46,6 +46,13 @@ function visitedIds(part) {
   return Array.isArray(part?.visited) ? part.visited : [];
 }
 
+/* The entry floor of an architecture, as a one-element visited list. */
+function entryVisited(archs, archId) {
+  const floors = floorsOf(archs, archId);
+  const id = floors[archTree.rootIndex(floors)]?.id;
+  return id ? [id] : [];
+}
+
 function markVisited(part, floorId) {
   if (!floorId) return;
   part.visited = visitedIds(part);
@@ -1220,8 +1227,11 @@ const OPS = {
       // Fog-of-war baseline: deepest floor visited (reset to 0 on a fresh connect).
       maxFloor: connecting ? 0 : (prev.maxFloor || 0),
       // Jacking in fresh forgets the map: leaving an architecture resets its
-      // defences, so the runner starts blind again (Corebook p. 199).
-      visited: connecting ? [] : (Array.isArray(prev.visited) ? prev.visited : []),
+      // defences, so the runner starts blind again (Corebook p. 199). The floor
+      // he lands ON is immediately visited, though — otherwise the entry is
+      // never recorded anywhere, and the first step deeper erased it from his
+      // screen along with everything he had walked through.
+      visited: connecting ? entryVisited(archs, archId) : (Array.isArray(prev.visited) ? prev.visited : []),
     };
     session.participants[pid] = part;
     // Connecting places the runner on floor 0 — provoke any Black ICE there.
@@ -1323,7 +1333,10 @@ const OPS = {
     }
 
     part.floorIndex = dest;
-    // Fog-of-war baseline: which floors this runner has actually stood on.
+    // Fog-of-war baseline: which floors this runner has actually stood on. The
+    // origin is marked too — a GM may drop a runner anywhere, and a participant
+    // created before this existed has an empty list.
+    markVisited(part, floors[from]?.id);
     markVisited(part, floors[dest]?.id);
     part.maxFloor = Math.max(Number(part.maxFloor) || 0, dest);
 

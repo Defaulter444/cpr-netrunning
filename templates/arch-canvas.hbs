@@ -46,6 +46,11 @@
           {{#if floor.isRoot}}<img class="crns-floor-root" src="{{floor.rootIcon}}" alt="" />{{/if}}
           <span class="crns-floor-title">{{floor.label}}</span>
           {{#if floor.showDv}}<span class="crns-floor-dv">{{localize "CRNS.Editor.DV"}} {{floor.dv}}</span>{{/if}}
+          {{#if floor.checkLabel}}
+          <span class="crns-floor-gate" title="{{localize "CRNS.Canvas.OpenedBy"}}">
+            <i class="fas fa-lock"></i>{{floor.checkLabel}}
+          </span>
+          {{/if}}
           {{#if floor.gmGear}}
           <button type="button" class="crns-icon-btn crns-floor-gear" data-action="floor-gear" title="{{localize "CRNS.Canvas.GmFloor"}}"><i class="fas fa-gear"></i></button>
           {{/if}}

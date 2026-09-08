@@ -267,10 +267,7 @@ function abilityAvailability(part, session, archs) {
   const targetRef = (session.targets || {})[game.user.id] || "";
   const [tKind] = targetRef.split(":");
 
-  return {
-    // A floor that names its own check lights THAT ability, whatever its kind.
-    // Without this a custom floor carries a DV nothing can be rolled against.
-    ...(floorCheck ? { [floorCheck]: !breached } : {}),
+  const availability = {
     backdoor: kind === "password" && !breached,
     cloak: true,
     control: kind === "controlnode" && (fx?.control?.pid ?? null) !== myPid,
@@ -283,6 +280,16 @@ function abilityAvailability(part, session, archs) {
     zap: true,
     scanner: true,
   };
+
+  // A floor may name the ability that opens it, and that naming WINS.
+  //
+  // This used to be spread in FIRST, before the rules above, so every explicit
+  // key overwrote it: a custom floor asking for Backdoor got
+  // `backdoor: kind === "password"` — false — and the chip sat dimmed over a DV
+  // nothing could be rolled against. The GM could set the check; the player had
+  // no way to use it.
+  if (floorCheck) availability[floorCheck] = !breached;
+  return availability;
 }
 
 /** Whether a prog: target ref points at a blackice program (slideable). Reads the

@@ -432,6 +432,11 @@ export function getData(app) {
       // GM gear popover (breach toggle / control set-clear). Controls are gated
       // by floor kind: breach only means something on password floors, control
       // only on control nodes — hide the irrelevant widgets elsewhere.
+      // Which ability opens this floor, in words. The runner is allowed to
+      // know he is looking at a lock and what kind — that is what a password
+      // prompt IS. The DV stays hidden. Without this the player saw a padlock
+      // and had to guess which of ten chips to press.
+      checkLabel: gateLabel(floor),
       gmGear: isGM && (floor.kind === "password" || floor.kind === "controlnode"),
       // Every floor is editable, gear or not: the pencil is how the GM gets
       // from "I can see the problem" to "I am fixing it" without leaving the map.
@@ -503,6 +508,29 @@ export function getData(app) {
     },
   };
 }
+
+/** Name of the ability that opens a floor, or "" when nothing gates it. */
+function gateLabel(floor) {
+  const ability = floor?.check || (floor?.kind === "password" ? "backdoor" : "");
+  if (!ability) return "";
+  const key = CPR_ABILITY_KEYS[ability];
+  return key ? loc(key) : "";
+}
+
+/* Ability → localisation key, borrowed from the system's own config so the
+ * wording on the floor card matches the wording on the chip the player has to
+ * press. */
+const CPR_ABILITY_KEYS = {
+  backdoor: "CPR.global.role.netrunner.interfaceAbility.backdoor",
+  cloak: "CPR.global.role.netrunner.interfaceAbility.cloak",
+  control: "CPR.global.role.netrunner.interfaceAbility.control",
+  eyedee: "CPR.global.role.netrunner.interfaceAbility.eyedee",
+  pathfinder: "CPR.global.role.netrunner.interfaceAbility.pathfinder",
+  scanner: "CPR.global.role.netrunner.interfaceAbility.scanner",
+  slide: "CPR.global.role.netrunner.interfaceAbility.slide",
+  virus: "CPR.global.role.netrunner.interfaceAbility.virus",
+  zap: "CPR.global.role.netrunner.interfaceAbility.zap",
+};
 
 /** Runner participants on an arch (for the GM control-set select). Built once. */
 function runnersOnArchList(session, archId) {

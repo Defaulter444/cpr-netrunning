@@ -46,9 +46,14 @@ function visitedIds(part) {
   return Array.isArray(part?.visited) ? part.visited : [];
 }
 
-/* The entry floor of an architecture, as a one-element visited list. */
-function entryVisited(archs, archId) {
-  const floors = floorsOf(archs, archId);
+/* The entry floor of an architecture, as a one-element visited list.
+ *
+ * Reads the world itself rather than taking the architectures as an argument.
+ * It used to take them, and the one caller — `session.connect` — has no such
+ * variable in scope: the call threw a ReferenceError and took the whole connect
+ * with it, so a runner could not be attached to an architecture at all. */
+function entryVisited(archId) {
+  const floors = floorsOf(getWorld("netArchs") || {}, archId);
   const id = floors[archTree.rootIndex(floors)]?.id;
   return id ? [id] : [];
 }
@@ -67,6 +72,10 @@ export const WORLD_OBJECTS = {
   // Current entity REZ lives on the backing blackIce/demon Actor, not here.
   session: {
     tabs: [], activeTab: "", participants: {}, targets: {}, demonPrograms: {},
+    // Runners the GM has taken out of the column. The roster auto-lists every
+    // eligible actor in the world, so without remembering the removal the same
+    // row came straight back and the delete button looked dead.
+    dismissed: [],
     progFloors: {}, pendingTests: [],
     // Round-2 (SPEC §14):
     floorState: {},    // "<archId>:<floorId>" -> FloorFx (breach/virus/control/eyedee)
@@ -1231,9 +1240,13 @@ const OPS = {
       // he lands ON is immediately visited, though — otherwise the entry is
       // never recorded anywhere, and the first step deeper erased it from his
       // screen along with everything he had walked through.
-      visited: connecting ? entryVisited(archs, archId) : (Array.isArray(prev.visited) ? prev.visited : []),
+      visited: connecting ? entryVisited(archId) : (Array.isArray(prev.visited) ? prev.visited : []),
     };
     session.participants[pid] = part;
+    // Connecting a runner un-dismisses it: the GM is plainly asking for it back.
+    if (Array.isArray(session.dismissed) && session.dismissed.includes(pid)) {
+      session.dismissed = session.dismissed.filter((x) => x !== pid);
+    }
     // Connecting places the runner on floor 0 — provoke any Black ICE there.
     if (connecting) await triggerFloorIce(session, archId, pid);
     await setWorld("session", session);
@@ -1519,6 +1532,21 @@ const OPS = {
     pruneAttachments(session, (a) => a.pid === pid);
     prunePendingTests(session, (t) => t.pid === pid);
     delete parts[pid];
+    // Remember the removal. The roster auto-lists every eligible actor, so
+    // dropping the participant alone put the same row straight back — which is
+    // why the button appeared to do nothing at all.
+    session.dismissed = Array.isArray(session.dismissed) ? session.dismissed : [];
+    if (!session.dismissed.includes(pid)) session.dismissed.push(pid);
+    await setWorld("session", session);
+    return true;
+  },
+
+  /** Bring dismissed runners back into the roster (GM). */
+  async "runner.restore"({ pid = "" } = {}, callerId) {
+    if (!requesterIsGM(callerId)) return false;
+    const session = getWorld("session") || {};
+    const list = Array.isArray(session.dismissed) ? session.dismissed : [];
+    session.dismissed = pid ? list.filter((x) => x !== pid) : [];
     await setWorld("session", session);
     return true;
   },

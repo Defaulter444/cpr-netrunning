@@ -1492,3 +1492,7 @@ body.crns-resizing { cursor: ns-resize !important; -webkit-user-select: none !im
   border-radius: 3px; padding: 1px 6px;
 }
 .crns-floor-gate i { font-size: 9px; }
+
+.crns-runner-restore { padding: 4px 8px 6px; }
+.crns-runner-restore button { width: 100%; font-size: 11px; opacity: 0.8; }
+.crns-runner-restore button:hover { opacity: 1; }

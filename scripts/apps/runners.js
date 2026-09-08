@@ -72,10 +72,14 @@ export function getData(app) {
   // (b) Auto-listed eligible actors not already in session.
   const actors = game.actors?.filter((a) => eligibleNetrunner(a)
     && a.hasPlayerOwner) || [];
+  const dismissed = new Set(Array.isArray(session.dismissed) ? session.dismissed : []);
   for (const actor of actors) {
     if (seenUuids.has(actor.uuid)) continue;
     const pid = runnerPid(actor.uuid);
     if (parts[pid]) continue;
+    // Taken out of the column by the GM. Without this the auto-list undid every
+    // removal a frame later.
+    if (dismissed.has(pid)) continue;
     const chrome = ownerChrome(actor);
     const rank = getInterfaceRank(actor);
     rows.push({
@@ -121,11 +125,13 @@ export function getData(app) {
     }
   }
   const anyInSession = rows.some((r) => r.inSession);
+  const anyDismissed = (Array.isArray(session.dismissed) ? session.dismissed : []).length > 0;
   if (rows.length && rows[0].inSession) rows[0].sessionHead = true;
 
   return {
     runners: {
       anyInSession,
+      anyDismissed,
       collapsed: !!app.state.collapsedRight,
       rows,
     },
@@ -159,6 +165,10 @@ export function activateListeners(app, html) {
     const pid = rowPid(ev);
     if (!(await confirmDisconnect(pid))) return;
     mutate("session.disconnect", { pid });
+  });
+
+  html.find('[data-action="runner-restore-all"]').on("click", () => {
+    mutate("runner.restore", {});
   });
 
   html.find('[data-action="runner-remove"]').on("click", (ev) => {

@@ -114,7 +114,8 @@
       "NoActiveTab": "Сначала активируйте вкладку архитектуры.",
       "NotEligible": "У этого актора нет установленной кибердеки — он не может взламывать сеть.",
       "GroupInSession": "В сессии",
-      "GroupAvailable": "Доступны"
+      "GroupAvailable": "Доступны",
+      "RestoreAll": "Вернуть убранных"
     },
     "Settings": {
       "AllowSpectators": "Разрешить зрителей",

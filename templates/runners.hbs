@@ -16,6 +16,14 @@
   </div>
 
   <div class="crns-runners-list">
+    {{#if runners.anyDismissed}}
+    <div class="crns-runner-restore">
+      <button type="button" class="crns-icon-btn" data-action="runner-restore-all"
+              title="{{localize "CRNS.Runners.RestoreAll"}}">
+        <i class="fas fa-rotate-left"></i> {{localize "CRNS.Runners.RestoreAll"}}
+      </button>
+    </div>
+    {{/if}}
     {{#each runners.rows as |row|}}
     {{#if row.sessionHead}}
     <div class="crns-runner-group">{{localize "CRNS.Runners.GroupInSession"}}</div>

@@ -114,7 +114,8 @@
       "NoActiveTab": "Activate an architecture tab first.",
       "NotEligible": "That actor has no equipped cyberdeck — it cannot netrun.",
       "GroupInSession": "In the session",
-      "GroupAvailable": "Available"
+      "GroupAvailable": "Available",
+      "RestoreAll": "Bring removed runners back"
     },
     "Settings": {
       "AllowSpectators": "Allow spectators",

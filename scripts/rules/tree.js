@@ -356,8 +356,22 @@ export function layoutTree(floors) {
     cells.push({ index: i, row: row[i], col: col[i] });
   });
 
+  // Columns come out fractional: a parent over two children sits at 0.5, and a
+  // grandparent over 0.5 and 2 sits at 1.25. CSS grid lines are integers, so a
+  // fractional placement silently collapses and the cards land on top of each
+  // other. Scale everything up until the values ARE integers, and let a card
+  // span `unit` tracks instead of one.
+  let unit = 1;
+  const offGrid = (m) => cells.some((c) => Math.abs(c.col * m - Math.round(c.col * m)) > 1e-6);
+  while (unit < 64 && offGrid(unit)) unit *= 2;
+
   const rows = cells.reduce((m, c) => Math.max(m, c.row), 0) + 1;
-  return { cells, rows, cols: Math.max(1, nextLeaf) };
+  for (const cell of cells) cell.col = Math.round(cell.col * unit);
+  const widest = cells.reduce((m, c) => Math.max(m, c.col), 0);
+
+  // `tracks` counts the scaled columns the grid needs: the rightmost card
+  // starts at `widest` and is `unit` wide.
+  return { cells, rows, unit, tracks: widest + unit, cols: Math.max(1, nextLeaf) };
 }
 
 /**

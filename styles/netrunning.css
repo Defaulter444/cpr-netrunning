@@ -1329,23 +1329,38 @@ body.crns-resizing { cursor: ns-resize !important; -webkit-user-select: none !im
 
 .crns-stage.crns-tree {
   display: grid;
-  grid-template-columns: repeat(calc(var(--cols) * 2), var(--crns-tree-halfcol, 116px));
+  /* One track per scaled column. A card is `--unit` tracks wide, so a track is
+     the card's width divided by that scale — which is what lets a parent sit
+     exactly over the gap between two children. */
+  --crns-card: 340px;
+  --crns-gutter: 28px;
+  grid-template-columns:
+    repeat(var(--tracks), calc((var(--crns-card) + var(--crns-gutter)) / var(--unit)));
   grid-auto-rows: min-content;
   align-items: start;
   justify-items: stretch;
   column-gap: 0;
-  row-gap: var(--crns-tree-gap, 52px);
+  row-gap: 52px;
 }
 
 .crns-stage.crns-tree .crns-floor-wrap {
   grid-row: calc(var(--row) + 1);
-  grid-column: calc(var(--col) * 2 + 1) / span 2;
+  grid-column: calc(var(--col) + 1) / span var(--unit);
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  padding: 0 9px;
+  padding: 0 calc(var(--crns-gutter) / 2);
   min-width: 0;
 }
+
+/* The card was a hard 340px while its grid area was narrower, so it spilled
+   over its neighbours — the overlap on screen. Inside the tree it fills the
+   area it was given instead. */
+.crns-stage.crns-tree .crns-floor {
+  width: 100%;
+  min-width: 0;
+}
+
 
 /* The connector overlay spans the whole stage and sits under the cards. It is
    inside the transformed stage, so pan and zoom carry it along for free. */

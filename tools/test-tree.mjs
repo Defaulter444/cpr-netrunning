@@ -216,6 +216,59 @@ console.log("Layout puts parents over their children");
   expect(links.every((l) => l.toRow === l.fromRow + 1), "a connector skipped a row");
 }
 
+console.log("Layout columns land on whole grid lines");
+{
+  // The overlap bug. Centring a parent over its children produces fractions —
+  // one child on each side gives 0.5, and a grandparent over 0.5 and 2 gives
+  // 1.25. CSS grid lines are integers: a fractional placement collapses and the
+  // cards are drawn on top of each other, which is exactly what happened on
+  // screen. The layout therefore scales every column until they are whole.
+  const deep = build([
+    ["a", ""],
+    ["b", "a"], ["c", "a"],
+    ["d", "b"], ["e", "b"],
+    ["f", "c"], ["g", "c"],
+    ["h", "d"], ["i", "d"],
+  ]);
+  T.normalizeFloors(deep);
+  const layout = T.layoutTree(deep);
+
+  for (const cell of layout.cells) {
+    expect(Number.isInteger(cell.col), `column ${cell.col} is not a whole grid line`);
+    expect(Number.isInteger(cell.row), `row ${cell.row} is not whole`);
+  }
+  expect(layout.unit >= 1, "scale factor missing");
+  expect(Number.isInteger(layout.unit), "scale factor is not whole");
+  expect(layout.tracks > 0, "no grid tracks");
+
+  // Cards must not share tracks with a sibling: a card starts at `col` and is
+  // `unit` wide, so two cards on one row have to be `unit` apart at least.
+  const byRow = new Map();
+  for (const cell of layout.cells) {
+    if (!byRow.has(cell.row)) byRow.set(cell.row, []);
+    byRow.get(cell.row).push(cell.col);
+  }
+  for (const [row, cols] of byRow) {
+    const sorted = [...cols].sort((x, y) => x - y);
+    for (let i = 1; i < sorted.length; i += 1) {
+      expect(
+        sorted[i] - sorted[i - 1] >= layout.unit,
+        `row ${row}: cards at ${sorted[i - 1]} and ${sorted[i]} overlap (width ${layout.unit})`
+      );
+    }
+  }
+
+  // The rightmost card must still fit inside the declared track count.
+  const widest = layout.cells.reduce((m, c) => Math.max(m, c.col), 0);
+  expect(widest + layout.unit <= layout.tracks, "the last card runs past the grid");
+
+  // And centring must survive the scaling.
+  const at = new Map(layout.cells.map((c) => [c.index, c]));
+  const mid = (x, y) => (at.get(x).col + at.get(y).col) / 2;
+  eq(at.get(1).col, mid(3, 4), "a parent lost its centring after scaling");
+  eq(at.get(0).col, mid(1, 2), "the entry lost its centring after scaling");
+}
+
 console.log("A single floor is a valid architecture");
 {
   const one = build([["a", ""]]);

@@ -52,6 +52,7 @@ Hooks.once("init", () => {
 /* ------------------------------------------------------------------ */
 
 Hooks.once("ready", async () => {
+  watchInteraction();
   initSocket();
   globalThis.CRNS = { ui: new NetrunningSuiteApp() };
 
@@ -150,10 +151,94 @@ Hooks.on("getSceneControlButtons", (controls) => {
 /* Live re-render                                                      */
 /* ------------------------------------------------------------------ */
 
+/* Re-render gate.
+ *
+ * Five hook families feed the debounced re-render: world settings, actors, and
+ * three item hooks. During play they fire constantly — every REZ tick, every
+ * chat roll that touches an actor — and a re-render replaces the whole window's
+ * DOM.
+ *
+ * That is why buttons "needed several clicks". A click is only delivered if the
+ * element that received the mousedown is still in the document at mouseup; when
+ * a re-render lands in between, the node the user pressed is gone and the click
+ * is never dispatched. Same for a drag: the drop target is replaced mid-flight.
+ * Same for typing: the field is rebuilt and the keystrokes vanish.
+ *
+ * So the render waits. While a pointer is down inside the window, while a drag
+ * is in progress, or while focus sits in one of its fields, the pending render
+ * is remembered and run the moment the user lets go. Data is never lost — only
+ * the repaint is deferred, by as long as the interaction lasts. */
+let _interacting = false;
+let _dragging = false;
+let _renderPending = false;
+
+/** The window's root element, if it is open. */
+function suiteRoot() {
+  return globalThis.CRNS?.ui?.element?.[0] ?? null;
+}
+
+/** Is the user in the middle of something we must not interrupt? */
+function suiteBusy() {
+  const root = suiteRoot();
+  if (!root) return false;
+  if (_interacting || _dragging) return true;
+  const active = document.activeElement;
+  return !!active
+    && root.contains(active)
+    && active.matches("input, textarea, select, [contenteditable=\"true\"]");
+}
+
 const _rerenderDebounced = foundry.utils.debounce(() => {
   const app = globalThis.CRNS?.ui;
-  if (app?.rendered) app.render(false);
+  if (!app?.rendered) { _renderPending = false; return; }
+  if (suiteBusy()) { _renderPending = true; return; }
+  _renderPending = false;
+  app.render(false);
 }, 100);
+
+/** Called when an interaction ends: run whatever we held back. */
+function flushPendingRender() {
+  if (!_renderPending) return;
+  _rerenderDebounced();
+}
+
+/** Bind the interaction watchers once. Listeners sit on the document so a
+ *  pointer released outside the window still clears the flag — otherwise a
+ *  drag that ends on the desktop would freeze the window forever. */
+function watchInteraction() {
+  document.addEventListener("pointerdown", (ev) => {
+    const root = suiteRoot();
+    _interacting = !!root && root.contains(ev.target);
+  }, true);
+  const release = () => {
+    if (!_interacting) return;
+    _interacting = false;
+    flushPendingRender();
+  };
+  document.addEventListener("pointerup", release, true);
+  document.addEventListener("pointercancel", release, true);
+
+  document.addEventListener("dragstart", (ev) => {
+    const root = suiteRoot();
+    _dragging = !!root && root.contains(ev.target);
+  }, true);
+  document.addEventListener("dragend", () => {
+    if (!_dragging) return;
+    _dragging = false;
+    flushPendingRender();
+  }, true);
+  // A drop outside the window fires no dragend on some paths.
+  document.addEventListener("drop", () => {
+    if (!_dragging) return;
+    _dragging = false;
+    flushPendingRender();
+  }, true);
+
+  document.addEventListener("focusout", () => {
+    // Focus moving out of a field is the other end of "the user is typing".
+    if (_renderPending && !suiteBusy()) flushPendingRender();
+  }, true);
+}
 
 function rerenderNow() { _rerenderDebounced(); }
 

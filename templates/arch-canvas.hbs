@@ -12,7 +12,7 @@
         every column is split in half and each card spans two half-columns —
         that puts a parent exactly over the gap between its children, which is
         where the connector wants it. --}}
-  <div class="crns-stage crns-tree" style="--rows:{{canvas.rows}}; --cols:{{canvas.cols}}">
+  <div class="crns-stage crns-tree" style="--rows:{{canvas.rows}}; --tracks:{{canvas.tracks}}; --unit:{{canvas.unit}}">
     <svg class="crns-lines" preserveAspectRatio="none"></svg>
 
     {{#each canvas.floors as |floor|}}

@@ -492,6 +492,11 @@ export function getData(app) {
       links,
       rows: layout.rows,
       cols: layout.cols,
+      // Grid geometry. Columns are scaled to integers (see layoutTree) because
+      // a card centred over two children lands on a half column, and CSS grid
+      // has no half lines — the placement collapses and the cards overlap.
+      unit: layout.unit,
+      tracks: layout.tracks,
       branching: layout.cols > 1,
       cloakStrip,
       hasCloaks: cloakStrip.length > 0,

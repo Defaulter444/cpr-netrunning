@@ -1,5 +1,17 @@
 # Cyberpunk RED — Netrunning Suite: Architecture Specification
 
+> **Примечание форка.** Это спецификация ОРИГИНАЛА
+> (`cyberpunk-red-netrunning-suite`, автор Lumiel, MIT). Она сохранена целиком,
+> потому что описывает механизмы, на которых форк стоит: слой данных, сокет,
+> мост к системе, порядок хода, чёрный лёд.
+>
+> Форк `cpr-netrunning` от неё отступает. Главное расхождение: здесь
+> архитектура описана как ПРЯМАЯ ЦЕПОЧКА (`floors` — упорядоченный список,
+> «глубже» = больший индекс). В форке она дерево: у этажа есть поле `parent`,
+> ход идёт по родителю и детям, Следопыт обходит каждую ветку отдельно, а дно
+> у каждой ветки своё. Что именно разошлось — в README и в истории коммитов.
+
+
 FoundryVTT **v12** module for system `cyberpunk-red-core` (v0.92.x). Module id: `cyberpunk-red-netrunning-suite`.
 This document is the single source of truth for all implementation phases. Do not deviate from the contracts here without recording the deviation at the bottom ("Deviations" section).
 

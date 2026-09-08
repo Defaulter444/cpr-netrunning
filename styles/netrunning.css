@@ -1617,12 +1617,31 @@ body.crns-resizing { cursor: ns-resize !important; -webkit-user-select: none !im
   border-radius: 3px;
 }
 
-/* Path field + picker button, laid out like the other editor rows. */
-.crns-root .crns-floor-image-edit {
+/* What the floor holds — text on the left, picture on the right, side by side
+   and full width, so neither is squeezed into the topology row. */
+.crns-root .crns-floor-file {
   display: flex;
-  align-items: center;
-  gap: 6px;
+  align-items: flex-start;
+  gap: 8px;
   margin-top: 4px;
 }
-.crns-root .crns-floor-image-edit input { flex: 1 1 auto; min-width: 0; }
-.crns-root .crns-floor-image-edit .crns-icon-btn { flex: 0 0 auto; }
+.crns-root .crns-floor-contents-edit,
+.crns-root .crns-floor-image-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1 1 50%;
+  min-width: 0;
+}
+.crns-root .crns-floor-contents-edit textarea { width: 100%; resize: vertical; }
+.crns-root .crns-floor-image-pick { display: flex; align-items: center; gap: 6px; }
+.crns-root .crns-floor-image-pick input { flex: 1 1 auto; min-width: 0; }
+.crns-root .crns-floor-image-pick .crns-icon-btn { flex: 0 0 auto; }
+/* Proof that the path resolves: a broken one simply shows nothing. */
+.crns-root .crns-floor-image-thumb {
+  width: 100%;
+  max-height: 64px;
+  object-fit: cover;
+  border: 1px solid var(--crns-border);
+  border-radius: 3px;
+}

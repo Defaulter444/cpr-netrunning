@@ -64,18 +64,6 @@
           </select>
         </label>
         {{#if floor.mergeChoices}}
-        <label class="crns-floor-image-edit" title="{{localize "CRNS.Editor.ImageHint"}}">
-          <span class="crns-floor-parent-lbl">{{localize "CRNS.Editor.Image"}}</span>
-          <input type="text" data-action="floor-image" value="{{floor.contentsImage}}"
-                 placeholder="{{localize "CRNS.Editor.ImagePlaceholder"}}" />
-          <button type="button" class="crns-icon-btn" data-action="floor-image-pick"
-                  title="{{localize "CRNS.Editor.ImagePick"}}"><i class="fas fa-image"></i></button>
-        </label>
-        <label class="crns-floor-contents-edit" title="{{localize "CRNS.Editor.ContentsHint"}}">
-          <span class="crns-floor-parent-lbl">{{localize "CRNS.Editor.Contents"}}</span>
-          <textarea data-action="floor-contents" rows="2"
-                    placeholder="{{localize "CRNS.Editor.ContentsPlaceholder"}}">{{floor.contents}}</textarea>
-        </label>
         <label class="crns-floor-merge" title="{{localize "CRNS.Editor.MergeHint"}}">
           <span class="crns-floor-parent-lbl">{{localize "CRNS.Editor.Merge"}}</span>
           <select data-action="floor-merge" multiple size="3">
@@ -97,6 +85,31 @@
         {{/if}}
       </div>
 
+      {{!-- What the floor HOLDS: shown to the runner once he beats its check.
+            This lived inside the "also entered from" branch above, so on any
+            floor with nowhere to merge from — which is most of them — there was
+            simply nowhere to type a file. --}}
+      <div class="crns-floor-file">
+        <label class="crns-floor-contents-edit" title="{{localize "CRNS.Editor.ContentsHint"}}">
+          <span class="crns-floor-parent-lbl">{{localize "CRNS.Editor.Contents"}}</span>
+          <textarea data-action="floor-contents" rows="2"
+                    placeholder="{{localize "CRNS.Editor.ContentsPlaceholder"}}">{{floor.contents}}</textarea>
+        </label>
+        <label class="crns-floor-image-edit" title="{{localize "CRNS.Editor.ImageHint"}}">
+          <span class="crns-floor-parent-lbl">{{localize "CRNS.Editor.Image"}}</span>
+          <span class="crns-floor-image-pick">
+            <input type="text" data-action="floor-image" value="{{floor.contentsImage}}"
+                   placeholder="{{localize "CRNS.Editor.ImagePlaceholder"}}" />
+            <button type="button" class="crns-icon-btn" data-action="floor-image-pick"
+                    title="{{localize "CRNS.Editor.ImagePick"}}"><i class="fas fa-image"></i></button>
+          </span>
+          {{#if floor.contentsImage}}
+          <img class="crns-floor-image-thumb" src="{{floor.contentsImage}}" alt="" />
+          {{/if}}
+        </label>
+      </div>
+
+      {{!-- The GM's own notes. These are never shown to anybody. --}}
       <textarea class="crns-floor-desc" data-action="floor-desc" rows="2" placeholder="{{localize "CRNS.Editor.DescPlaceholder"}}">{{floor.description}}</textarea>
 
       <div class="crns-floor-entities">

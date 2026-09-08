@@ -117,5 +117,57 @@ console.log("\nNo template reaches a block parameter through `../`");
   console.log(`  templates: ${files.length}, offending references: ${offenders}`);
 }
 
+/* Rendering an ordinary floor, for real.
+ *
+ * The scope check above cannot see a control that renders only under some
+ * condition — and that is how the file fields went missing. "Contents" and
+ * "Picture" had been dropped inside `{{#if floor.mergeChoices}}`, the branch
+ * that offers extra ways INTO a floor. A floor with nothing to merge from —
+ * which is most of them — showed no field at all, and the GM had nowhere to
+ * type what the file holds. Everything compiled, nothing was out of scope; the
+ * panel was simply missing half of itself.
+ *
+ * So: render the editor for the plainest floor there is and look for the
+ * controls that must always be on it.
+ */
+console.log("\nThe editor shows every always-on control for an ordinary floor");
+{
+  const src = fs.readFileSync(path.join(ROOT, "templates", "editor.hbs"), "utf-8");
+  Handlebars.registerHelper("localize", (k) => String(k));
+  Handlebars.registerHelper("crnsEq", (a, b) => a === b);
+  const tpl = Handlebars.compile(src);
+
+  // No branches, no merges, no ICE — the common case.
+  const html = tpl({
+    editor: {
+      kinds: [{ id: "file", label: "Файл" }],
+      floors: [{
+        id: "f1", index: 0, number: 1, kind: "file", label: "", dv: 6,
+        check: "eyedee", checkChoices: [{ id: "eyedee", label: "Дешифровка" }],
+        parent: "", parentChoices: [{ id: "", label: "—" }],
+        mergeChoices: null, contents: "", contentsImage: "", description: "",
+        depth: 1, forks: 0, iceSlots: [], demon: null, canDelete: true,
+      }],
+    },
+  });
+
+  const must = [
+    ["floor-label", "a floor cannot be named"],
+    ["floor-kind", "the kind cannot be changed"],
+    ["floor-dv", "the DV cannot be set"],
+    ["floor-check", "the check cannot be chosen"],
+    ["floor-parent", "the floor cannot be re-hung"],
+    ["floor-gate", "the floor cannot be locked"],
+    ["floor-contents", "there is nowhere to type what the file holds"],
+    ["floor-image", "there is nowhere to give the file a picture"],
+    ["floor-image-pick", "the picture cannot be chosen from disk"],
+    ["floor-desc", "there is nowhere for the GM's notes"],
+    ["floor-delete", "the floor cannot be deleted"],
+  ];
+  for (const [action, why] of must) {
+    expect(html.includes(`data-action="${action}"`), `${why} (data-action="${action}" not rendered)`);
+  }
+}
+
 console.log(`\nChecks: ${checks}, failures: ${failures}`);
 process.exit(failures ? 1 : 0);

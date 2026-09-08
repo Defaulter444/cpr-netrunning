@@ -694,13 +694,19 @@ export function activateListeners(app, html) {
     const shift = !!ev.shiftKey;
     const spend = !free && !shift; // Defence/Speed are free; Shift skips the spend.
 
-    if (spend) {
-      const part = participantById(pid);
-      if ((part?.actions?.value ?? 0) < 1) { ui.notifications.warn(loc("CRNS.Errors.NoActions")); return; }
-      await mutate("run.spend", { pid, n: 1 });
+    if (ability === "virus") {
+      const work = await mutate("run.virusWork", { pid });
+      if (work?.error) { ui.notifications.warn(loc(work.error)); return; }
+      if (!work?.ready) {
+        ui.notifications.info(loc("CRNS.Actions.VirusProgress", { progress: work?.progress, required: work?.required }));
+        return;
+      }
+    } else if (spend && (participantById(pid)?.actions?.value ?? 0) < 1) {
+      ui.notifications.warn(loc("CRNS.Errors.NoActions")); return;
     }
     const roll = await bridge.rollInterface(actor, ability, ev.originalEvent || ev);
     if (!roll) return;
+    if (spend && ability !== "virus") await mutate("run.spend", { pid, n: 1 });
 
     // Slide is an opposed roll vs the targeted ICE — arch ICE (ice:) or a
     // player-placed Black ICE (prog:, Addendum 2) → emit the slideTest notify.

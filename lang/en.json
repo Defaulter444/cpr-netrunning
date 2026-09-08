@@ -68,7 +68,10 @@
       "Image": "Picture",
       "ImageHint": "An image the file holds — a photo, a floor plan, a scan. Shown with the text once the runner has cracked it.",
       "ImagePlaceholder": "path/to/picture.webp",
-      "ImagePick": "Choose a picture"
+      "ImagePick": "Choose a picture",
+      "VirusPlan": "Virus plan (GM adjudication)",
+      "VirusActions": "NET action cost",
+      "VirusEffect": "Virus effect"
     },
     "Floor": {
       "password": "Password",
@@ -172,7 +175,8 @@
       "NoControlledNode": "You do not control any node.",
       "BadParent": "A floor cannot hang below itself or its own branch.",
       "BadLink": "Those two floors cannot be linked.",
-      "NodeReleaseFailed": "Nobody is holding that node."
+      "NodeReleaseFailed": "Nobody is holding that node.",
+      "VirusPlan": "GM must set a virus DV and action cost on a bottom floor."
     },
     "Hints": {
       "FreeRoll": "Hold Shift to roll without spending a NET action (e.g. defending against an attack).",
@@ -279,7 +283,8 @@
       "AutoDerezHint": "Attacker programs deactivate automatically after a damage roll.",
       "PipToggle": "Click: spend a filled pip / restore an empty one",
       "ControlRelease": "Let go",
-      "ControlReleasePick": "Let go of which node?"
+      "ControlReleasePick": "Let go of which node?",
+      "VirusProgress": "Virus: {progress} of {required} NET actions spent."
     },
     "ProgramClass": {
       "booster": "Booster",

@@ -1248,9 +1248,13 @@ const OPS = {
     const newName = `${src.name} ${loc("CRNS.Tree.CopySuffix")}`;
     const copy = { id: newId, name: newName, floors: [] };
 
+    const floorIds = new Map((src.floors || []).map(f => [f.id, uid("f")]));
     for (const floor of src.floors || []) {
       const nf = {
-        id: uid("f"), kind: floor.kind, label: floor.label || "",
+        ...foundry.utils.deepClone(floor),
+        id: floorIds.get(floor.id), parent: floorIds.get(floor.parent) || "",
+        alsoFrom: (floor.alsoFrom || []).map(id => floorIds.get(id)).filter(Boolean),
+        kind: floor.kind, label: floor.label || "",
         dv: floor.dv, description: floor.description || "", ice: [], demon: null,
       };
       for (const i of floor.ice || []) {
@@ -1279,10 +1283,18 @@ const OPS = {
     const newName = (typeof arch.name === "string" && arch.name.trim()) || loc("CRNS.Tree.Untitled");
     const clean = { id: newId, name: newName, floors: [] };
 
+    const floorIds = new Map(arch.floors.map(f => [f.id, uid("f")]));
     for (const floor of arch.floors) {
       const kind = FLOOR_KINDS_SET.has(floor?.kind) ? floor.kind : "custom";
       const nf = {
-        id: uid("f"), kind, label: typeof floor?.label === "string" ? floor.label : "",
+        id: floorIds.get(floor.id), parent: floorIds.get(floor.parent) || "",
+        alsoFrom: (Array.isArray(floor.alsoFrom) ? floor.alsoFrom : []).map(id => floorIds.get(id)).filter(Boolean),
+        gate: floor.gate === true,
+        check: typeof floor.check === "string" ? floor.check : "",
+        contents: typeof floor.contents === "string" ? floor.contents : "",
+        contentsImage: typeof floor.contentsImage === "string" ? floor.contentsImage : "",
+        virusPlan: floor.virusPlan ? foundry.utils.deepClone(floor.virusPlan) : null,
+        kind, label: typeof floor?.label === "string" ? floor.label : "",
         dv: Number.isFinite(Number(floor?.dv)) ? Number(floor.dv) : 0,
         description: typeof floor?.description === "string" ? floor.description : "",
         ice: [], demon: null,
@@ -1945,6 +1957,28 @@ const OPS = {
   /** Resolve an interface-ability roll's effect on the floor state. The DV is
    *  never revealed in the (public) chat card — only a neutral verdict.
    *  owner-or-GM for the acting pid. Returns { ok, applied }. */
+  async "run.virusWork"({ pid } = {}, callerId) {
+    const session = getWorld("session") || {};
+    const acting = resolveActingRunner(session, pid, callerId);
+    if (!acting) return { error: "CRNS.Errors.VirusPlan" };
+    const { part } = acting;
+    const floors = (getWorld("netArchs") || {})[part.archId]?.floors || [];
+    const floor = floors[part.floorIndex || 0];
+    const plan = floor?.virusPlan;
+    if (!archTree.isLeaf(floors, part.floorIndex || 0) || !plan ||
+        !Number.isFinite(plan.dv) || !Number.isInteger(plan.actions) || plan.actions < 1)
+      return { error: "CRNS.Errors.VirusPlan" };
+    const fx = getFloorFx(session, part.archId, floor.id);
+    fx.virusWork ||= {};
+    const progress = fx.virusWork[pid] || 0;
+    if (progress >= plan.actions) return { ready: true };
+    if ((part.actions?.value || 0) < 1) return { error: "CRNS.Errors.NoActions" };
+    part.actions.value -= 1;
+    fx.virusWork[pid] = progress + 1;
+    await setWorld("session", session);
+    return { ready: progress + 1 >= plan.actions, progress: progress + 1, required: plan.actions };
+  },
+
   async "run.abilityResult"({ pid, ability, total, extra } = {}, callerId) {
     const session = getWorld("session") || {};
     const acting = resolveActingRunner(session, pid, callerId);
@@ -1974,7 +2008,7 @@ const OPS = {
      * creates carries a `check`, the condition was reached on essentially every
      * roll — and a throw here kills the whole operation, so nothing opened at
      * all, not even an ordinary password. */
-    const OPENS = !["pathfinder", "cloak"].includes(ability);
+    const OPENS = ["backdoor", "eyedee"].includes(ability);
     if (OPENS && floor.check === ability && t > (Number(floor.dv) || 0)) {
       const fx = getFloorFx(session, part.archId, floor.id);
       if (!fx.breached) {
@@ -2015,8 +2049,9 @@ const OPS = {
       case "control": {
         const fx = getFloorFx(session, part.archId, floor.id);
         const contestDv = fx.control?.dv ?? (Number(floor.dv) || 0);
-        if (floor.kind === "controlnode" && fx.control?.pid !== pid && t > contestDv) {
+        if ((floor.kind === "controlnode" || floor.check === "control") && fx.control?.pid !== pid && t > contestDv) {
           fx.control = { pid, dv: t };
+          if (floor.check === "control") fx.breached = true;
           applied = true;
         }
         postChatCard(loc("CRNS.Chat.Control"),
@@ -2057,10 +2092,16 @@ const OPS = {
         // bottoms — one per branch — and "last element of the array" stopped
         // meaning anything the moment architectures could fork.
         const isLast = archTree.isLeaf(floors, part.floorIndex || 0);
-        if (isLast) {
-          const fx = getFloorFx(session, part.archId, floor.id);
-          fx.viruses.push({ id: uid("fx"), pid });
+        const fx = getFloorFx(session, part.archId, floor.id);
+        const plan = floor.virusPlan;
+        if (!plan || !Number.isFinite(plan.dv) || !Number.isInteger(plan.actions) || plan.actions < 1)
+          return { ok: false, applied: false, error: "CRNS.Errors.VirusPlan" };
+        if (isLast && (fx.virusWork?.[pid] || 0) >= plan.actions) {
+          delete fx.virusWork[pid];
+          if (t > plan.dv) {
+          fx.viruses.push({ id: uid("fx"), pid, dv: t, effect: plan.effect || "" });
           applied = true;
+        }
         }
         postChatCard(loc("CRNS.Chat.Virus"),
           loc(applied ? "CRNS.Chat.VirusPlanted" : "CRNS.Chat.VirusFailed", { name }));

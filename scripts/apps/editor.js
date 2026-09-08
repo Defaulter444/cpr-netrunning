@@ -135,6 +135,7 @@ export function getData(app) {
       mergeCount: (f.alsoFrom || []).length,
       depth: archTree.depthOf(draft.floors, idx),
       forks: kids.length > 1 ? kids.length : 0,
+      virusPlan: f.virusPlan || {},
       check: f.check || "",
       contents: f.contents || "",
       contentsImage: f.contentsImage || "",
@@ -295,6 +296,17 @@ export function activateListeners(app, html) {
     const f = floorAt(app, ev.currentTarget.closest("[data-floor-id]")?.dataset.floorId);
     if (f) { f.check = ev.currentTarget.value || ""; reRender(app); }
   });
+  const changeVirusPlan = (field) => (ev) => {
+      const f = floorAt(app, ev.currentTarget.closest("[data-floor-id]")?.dataset.floorId);
+      if (!f) return;
+      f.virusPlan ||= {};
+      f.virusPlan[field] = field === "effect" ? ev.currentTarget.value :
+        (ev.currentTarget.value.trim() === "" ? null : Number(ev.currentTarget.value));
+      reRender(app);
+  };
+  html.find('[data-action="virus-dv"]').on("change", changeVirusPlan("dv"));
+  html.find('[data-action="virus-actions"]').on("change", changeVirusPlan("actions"));
+  html.find('[data-action="virus-effect"]').on("change", changeVirusPlan("effect"));
   html.find('[data-action="floor-dv"]').on("change", (ev) => {
     const f = floorAt(app, ev.currentTarget.closest("[data-floor-id]")?.dataset.floorId);
     if (f) { f.dv = Math.max(0, Number(ev.currentTarget.value) || 0); reRender(app); }

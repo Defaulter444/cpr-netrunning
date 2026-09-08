@@ -98,7 +98,8 @@ for (const { f, t } of tplText) {
     // Resolve relative to the Data root (two levels up from module root).
     const dataRoot = join(ROOT, "..", "..");
     const full = join(dataRoot, p);
-    if (!existsSync(full) && !existsSync(abs)) fail(`[4] ${rel(f)}: partial not found: ${p}`);
+    const local = p.startsWith("modules/cpr-netrunning/") ? join(ROOT, p.slice("modules/cpr-netrunning/".length)) : full;
+    if (!existsSync(full) && !existsSync(abs) && !existsSync(local)) fail(`[4] ${rel(f)}: partial not found: ${p}`);
   }
 }
 

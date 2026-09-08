@@ -352,6 +352,51 @@ console.log("A GM-named check opens a gated floor of any kind");
   expect(moved === true, `the opened gate still blocked: ${JSON.stringify(moved)}`);
 }
 
+console.log("A floor the GM opened can be shut again");
+{
+  freshWorld();
+  // Not a password — an ordinary floor the GM decided to gate. Since the lock
+  // appears on any gated floor, it has to be closable on any gated floor too.
+  seedArch([
+    { id: "d1", parent: "", kind: "custom", label: "Дно", dv: 6,
+      check: "backdoor", gate: true, ice: [], demon: null },
+    { id: "d2", parent: "d1", kind: "custom", dv: 0, ice: [], demon: null },
+  ]);
+  game.actors.length = 0;
+  game.actors.push({ ...RUNNER, id: "p3", uuid: "Actor.p3" });
+
+  const pid = "actor:Actor_p3";
+  await D.applyOp("session.connect",
+    { pid, actorUuid: "Actor.p3", userId: "player", archId: "a1" }, "gm");
+
+  // Opened by beating the check.
+  await D.applyOp("run.abilityResult", { pid, ability: "backdoor", total: 12 }, "player");
+  let session = settings.get("session");
+  expect((session.floorState["a1:d1"] || {}).breached === true, "the floor did not open");
+  expect(await D.applyOp("session.move", { pid, floorIndex: 1 }, "player") === true,
+    "an opened floor still blocked");
+
+  // And shut again by the GM. This is what was impossible: the padlock showed
+  // on a gated custom floor but the gear that carries the toggle did not, so
+  // the GM could open a floor and never close it.
+  await D.applyOp("session.move", { pid, floorIndex: 0 }, "player");
+  const shut = await D.applyOp("fx.clear",
+    { archId: "a1", floorId: "d1", kind: "breach", value: false }, "gm");
+  expect(shut !== false, `re-locking returned ${JSON.stringify(shut)}`);
+
+  session = settings.get("session");
+  expect(!(session.floorState["a1:d1"] || {}).breached, "the floor stayed open");
+
+  const blocked = await D.applyOp("session.move", { pid, floorIndex: 1 }, "player");
+  expect(blocked && blocked.error === "CRNS.Errors.PasswordBlocked",
+    `a re-locked floor let the runner through: ${JSON.stringify(blocked)}`);
+
+  // A player cannot re-lock anything.
+  const denied = await D.applyOp("fx.clear",
+    { archId: "a1", floorId: "d1", kind: "breach", value: true }, "player");
+  expect(denied === false, `a player toggled a lock: ${JSON.stringify(denied)}`);
+}
+
 console.log("An architecture can be shaped from the map");
 {
   freshWorld();

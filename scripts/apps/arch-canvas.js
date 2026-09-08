@@ -469,7 +469,12 @@ export function getData(app) {
       // prompt IS. The DV stays hidden. Without this the player saw a padlock
       // and had to guess which of ten chips to press.
       checkLabel: gateLabel(floor),
-      gmGear: isGM && (floor.kind === "password" || floor.kind === "controlnode"),
+      // The gear carries the breach toggle, so it has to appear wherever a
+      // breach is possible — which is any GATED floor, not only one whose kind
+      // is "password". Since v1.3.1 a custom floor can be gated and shows a
+      // padlock; without the gear that padlock was one-way, and a GM who had
+      // opened it had no way to shut it again.
+      gmGear: isGM && (floor.kind === "password" || floor.gate === true || floor.kind === "controlnode"),
       // Every floor is editable, gear or not: the pencil is how the GM gets
       // from "I can see the problem" to "I am fixing it" without leaving the map.
       gmEdit: isGM,

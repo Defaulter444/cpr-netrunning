@@ -56,7 +56,7 @@ export function getData(app) {
    * between "2. Password" and "2. Server room", not between indices — so the
    * label carries the floor's own name. */
   const floorTitle = (f, idx) => {
-    const own = f.kind === "custom" && f.label ? f.label : loc(`CRNS.Floor.${f.kind}`);
+    const own = f.label || loc(`CRNS.Floor.${f.kind}`);
     return `${idx + 1}. ${own}`;
   };
 
@@ -146,7 +146,6 @@ export function getData(app) {
       gateForced: f.kind === "password",
       kind: f.kind,
       kindIcon: FLOOR_ICONS[f.kind] || FLOOR_ICONS.custom,
-      isCustom: f.kind === "custom",
       label: f.label || "",
       dv: f.dv ?? 0,
       description: f.description || "",

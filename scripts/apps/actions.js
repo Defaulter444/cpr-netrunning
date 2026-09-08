@@ -13,8 +13,9 @@
  * All state mutations go through mutate(); all rolls go through the bridge. The
  * last damage total this client rolled is stashed on app._lastDamage. */
 
-import { MODULE_ID, loc, esc, BLACK_ICE, DEMONS, ENTITY_ICONS, abbrFor, blackIceTypeForName, floorHoldsFile } from "../constants.js";
+import { MODULE_ID, loc, esc, BLACK_ICE, DEMONS, ENTITY_ICONS, abbrFor, blackIceTypeForName } from "../constants.js";
 import * as archTree from "../rules/tree.js";
+import * as archAbilities from "../rules/abilities.js";
 import { getWorld, mutate, notifyClients, canDerezTrap } from "../data.js";
 import * as bridge from "../cpr-bridge.js";
 
@@ -257,47 +258,20 @@ function abilityAvailability(part, session, archs) {
   const floors = arch?.floors || [];
   const idx = part.floorIndex || 0;
   const floor = floors[idx] || null;
-  const kind = floor?.kind || "";
-  const floorCheck = floor?.check || "";
-  const holdsFile = floorHoldsFile(floor);
   const fx = floor ? (session.floorState || {})[`${part.archId}:${floor.id}`] : null;
-  const myPid = part.pid;
-  const breached = !!(fx && fx.breached);
-  const isLast = archTree.isLeaf(floors, idx);
 
   const targetRef = (session.targets || {})[game.user.id] || "";
-  const [tKind] = targetRef.split(":");
+  const [targetKind] = targetRef.split(":");
 
-  const availability = {
-    backdoor: kind === "password" && !breached,
-    cloak: true,
-    control: kind === "controlnode" && (fx?.control?.pid ?? null) !== myPid,
-    // Lit wherever there is something to read (see floorHoldsFile). Keyed on the
-    // KIND alone, the ability stayed dark on a custom floor built to hold a file
-    // — the one case where the GM had gone to the trouble of filling it in.
-    eyedee: holdsFile && !((fx?.eyedee) || []).includes(myPid),
-    pathfinder: true,
-    virus: isLast,
-    // Slide vs an arch ICE, or a player-placed Black ICE (prog: ref that resolves
-    // to a blackice program) — Addendum 2. Demons are not slideable.
-    slide: tKind === "ice" || (tKind === "prog" && progRefIsBlackIce(session, targetRef)),
-    zap: true,
-  };
-
-  // A floor may name the ability that opens it, and that naming WINS.
-  //
-  // This used to be spread in FIRST, before the rules above, so every explicit
-  // key overwrote it: a custom floor asking for Backdoor got
-  // `backdoor: kind === "password"` — false — and the chip sat dimmed over a DV
-  // nothing could be rolled against. The GM could set the check; the player had
-  // no way to use it.
-  //
-  // It may only ever LIGHT a chip, never put one out. Written as a plain
-  // assignment it did both: a file floor whose check is Eye-Dee went dark the
-  // moment it was breached, so the runner who had just opened the file could no
-  // longer read it.
-  if (floorCheck) availability[floorCheck] = !breached || availability[floorCheck] === true;
-  return availability;
+  // The rules themselves are in rules/abilities.js — pure, and tested there.
+  return archAbilities.availabilityFor({
+    floor,
+    fx,
+    pid: part.pid,
+    isLeaf: archTree.isLeaf(floors, idx),
+    targetKind,
+    targetIsBlackIce: targetKind === "prog" && progRefIsBlackIce(session, targetRef),
+  });
 }
 
 /** Whether a prog: target ref points at a blackice program (slideable). Reads the
@@ -323,7 +297,7 @@ function controlledNodes(part, session, archs) {
         floorId: f.id,
         index: i,
         number: i + 1,
-        label: f.kind === "custom" && f.label ? f.label : loc(`CRNS.Floor.${f.kind}`),
+        label: f.label || loc(`CRNS.Floor.${f.kind}`),
       });
     }
   }
@@ -765,6 +739,17 @@ export function activateListeners(app, html) {
     if (res && res.error) ui.notifications.warn(loc(res.error));
   });
 
+  // Let go of a node. Free — no action is spent.
+  html.find('[data-action="control-release"]').on("click", async (ev) => {
+    const el = ev.currentTarget;
+    const archId = el.dataset.archId;
+    const floorId = await pickControlledNode(html, el,
+      loc("CRNS.Actions.ControlReleasePick"), { confirmSingle: true });
+    if (!floorId) return;
+    const res = await mutate("run.nodeRelease", { archId, floorId });
+    if (res === false) ui.notifications.warn(loc("CRNS.Errors.NodeReleaseFailed"));
+  });
+
   // Program: activate / deactivate.
   html.find('[data-action="program-activate"]').on("click", async (ev) => {
     const el = ev.currentTarget;
@@ -1089,11 +1074,13 @@ async function activateBlackIce(app, part, pid, actor, programId) {
 
 /** Small popover listing a runner's controlled nodes; resolves to a floorId or
  *  null. Reads the choices from the clicked chip's data-nodes JSON. */
-function pickControlledNode(html, anchorEl) {
+function pickControlledNode(html, anchorEl, title = "", { confirmSingle = false } = {}) {
   let nodes = [];
   try { nodes = JSON.parse(anchorEl.dataset.nodes || "[]"); } catch (e) { nodes = []; }
   if (!nodes.length) { ui.notifications.warn(loc("CRNS.Errors.NoControlledNode")); return Promise.resolve(null); }
-  if (nodes.length === 1) return Promise.resolve(nodes[0].floorId);
+  // One node and nothing to choose between — except when the choice is whether
+  // to do it at all, which is the case for letting go.
+  if (nodes.length === 1 && !confirmSingle) return Promise.resolve(nodes[0].floorId);
 
   return new Promise((resolve) => {
     const buttons = {};
@@ -1101,7 +1088,7 @@ function pickControlledNode(html, anchorEl) {
       buttons[n.floorId] = { label: `${n.number}. ${esc(n.label)}`, callback: () => resolve(n.floorId) };
     }
     new Dialog({
-      title: loc("CRNS.Actions.ControlNodePick"),
+      title: title || loc("CRNS.Actions.ControlNodePick"),
       content: "",
       buttons,
       close: () => resolve(null),

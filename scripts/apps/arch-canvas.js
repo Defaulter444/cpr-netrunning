@@ -422,9 +422,9 @@ export function getData(app) {
     // ICE (select → runner's own program panel).
     for (const chip of progChipsByFloor[index] || []) entities.push(chip);
 
-    const kindLabel = floor.kind === "custom" && floor.label
-      ? floor.label
-      : loc(`CRNS.Floor.${floor.kind}`);
+    // Whatever the GM named it, whatever its kind. A control node called
+    // "камеры" reads as itself on the map; unnamed floors keep the kind's name.
+    const kindLabel = floor.label || loc(`CRNS.Floor.${floor.kind}`);
 
     // A runner may step to the floor above or to any floor below. Upstream
     // asked whether the indices differed by one, which stops being the same

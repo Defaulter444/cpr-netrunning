@@ -479,6 +479,10 @@ body.crns-resizing { cursor: ns-resize !important; -webkit-user-select: none !im
 .crns-chip-btn.dim { opacity: 0.38; filter: grayscale(1); }
 .crns-chip-btn.dim:hover { opacity: 0.6; }
 .crns-ctrl-node { border-color: var(--crns-accent); color: var(--crns-accent); }
+/* Letting go is the quiet half of the pair: same shape, muted, so the eye lands
+   on the node you press to USE and not on the one that drops it. */
+.crns-ctrl-release { border-color: var(--crns-border); color: var(--crns-dim); }
+.crns-ctrl-release:hover { border-color: var(--crns-accent); color: var(--crns-accent); }
 
 /* ---- vertical program list (Task B / SPEC §14.3): full-width rows ---- */
 /* The list fills the remaining center-zone height under the abilities strip and
@@ -1599,7 +1603,7 @@ body.crns-resizing { cursor: ns-resize !important; -webkit-user-select: none !im
   max-height: 92px;
   object-fit: cover;
   margin: 4px 0 0;
-  border: 1px solid var(--crns-line);
+  border: 1px solid var(--crns-border);
   border-radius: 3px;
   cursor: zoom-in;
 }

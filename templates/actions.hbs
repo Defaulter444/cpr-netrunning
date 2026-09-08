@@ -115,8 +115,17 @@
       {{#if actions.hasControl}}
       <button type="button" class="crns-chip-btn crns-ctrl-node" data-action="control-node"
               data-pid="{{actions.pid}}" data-arch-id="{{actions.archId}}"
-              data-nodes="{{actions.controlNodesJson}}">
+              data-nodes="{{actions.controlNodesJson}}"
+              title="{{localize "CRNS.Hints.ControlNode"}}">
         <i class="fas fa-tower-cell"></i> {{localize "CRNS.Actions.ControlNode"}}
+      </button>
+      {{!-- Letting go. Free: taking a node costs an action, dropping it is only
+            ceasing to do something. --}}
+      <button type="button" class="crns-chip-btn free crns-ctrl-release" data-action="control-release"
+              data-pid="{{actions.pid}}" data-arch-id="{{actions.archId}}"
+              data-nodes="{{actions.controlNodesJson}}"
+              title="{{localize "CRNS.Hints.ControlRelease"}}">
+        <i class="fas fa-link-slash"></i> {{localize "CRNS.Actions.ControlRelease"}}
       </button>
       {{/if}}
     </div>

@@ -28,9 +28,12 @@
           <option value="{{k.id}}"{{#if (crnsEq k.id floor.kind)}} selected{{/if}}>{{k.label}}</option>
           {{/each}}
         </select>
-        {{#if floor.isCustom}}
-        <input type="text" class="crns-floor-label" data-action="floor-label" placeholder="{{localize "CRNS.Editor.LabelPlaceholder"}}" value="{{floor.label}}" />
-        {{/if}}
+        {{!-- Any floor may be named, not only a "custom" one. A control node is
+              a thing in the fiction — "лифты", "камеры", "шлюз" — and the runner
+              holding three of them needs to know which is which. Empty falls
+              back to the kind's own name. --}}
+        <input type="text" class="crns-floor-label" data-action="floor-label"
+               placeholder="{{localize "CRNS.Editor.LabelPlaceholder"}}" value="{{floor.label}}" />
         <label class="crns-floor-dv">{{localize "CRNS.Editor.DV"}} <input type="number" min="0" data-action="floor-dv" value="{{floor.dv}}" /></label>
         <label class="crns-floor-check" title="{{localize "CRNS.Editor.Check"}}">
           <select data-action="floor-check">

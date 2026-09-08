@@ -7,9 +7,10 @@
  * on all clients — no manual refresh fan-out is needed for data changes.
  */
 
-import { MODULE_ID, SOCKET_NAME, uid, loc, BLACK_ICE, DEMONS, FLOOR_KINDS, MAX_ICE_PER_FLOOR, maxDemons, floorHoldsFile } from "./constants.js";
+import { MODULE_ID, SOCKET_NAME, uid, loc, BLACK_ICE, DEMONS, FLOOR_KINDS, MAX_ICE_PER_FLOOR, maxDemons } from "./constants.js";
 import * as bridge from "./cpr-bridge.js";
 import * as archTree from "./rules/tree.js";
+import { floorHoldsFile } from "./rules/abilities.js";
 
 const FLOOR_KINDS_SET = new Set(FLOOR_KINDS);
 
@@ -2121,6 +2122,36 @@ const OPS = {
     const label = floor ? (floor.label || loc(`CRNS.Floor.${floor.kind}`)) : "";
     notifyClients({ kind: "nodePulse", archId, floorId });
     postChatCard(loc("CRNS.Chat.NodePulse"), loc("CRNS.Chat.NodePulseBody", { floor: label }));
+    return true;
+  },
+
+  /** Let go of a node you hold (SPEC §14.7). Owner of the controlling pid, or
+   *  the GM. Costs nothing: taking a node is an action, dropping it is just
+   *  ceasing to do something — and there was no way to do it at all, so a runner
+   *  who had taken a node held it for the rest of the run whether he wanted to
+   *  or not. */
+  async "run.nodeRelease"({ archId, floorId } = {}, callerId) {
+    const session = getWorld("session") || {};
+    const fx = (session.floorState || {})[floorKey(archId, floorId)];
+    const controllerPid = fx?.control?.pid || "";
+    if (!controllerPid) return false;
+    if (!requesterIsGM(callerId)) {
+      const part = (session.participants || {})[controllerPid];
+      if (!ownsParticipant(part, callerId)) return false;
+    }
+
+    const arch = (getWorld("netArchs") || {})[archId];
+    const floor = (arch?.floors || []).find((f) => f.id === floorId);
+    const label = floor ? (floor.label || loc(`CRNS.Floor.${floor.kind}`)) : "";
+    const part = (session.participants || {})[controllerPid];
+    const actor = part?.actorUuid ? (fromUuidSync?.(part.actorUuid) ?? null) : null;
+
+    // Clear the hold outright — dv included. Leaving the old total behind would
+    // make the next runner (or the same one) contest a node nobody holds.
+    fx.control = null;
+    await setWorld("session", session);
+    postChatCard(loc("CRNS.Chat.NodeRelease"),
+      loc("CRNS.Chat.NodeReleaseBody", { name: actor?.name || loc("CRNS.Runners.NPC"), floor: label }));
     return true;
   },
 

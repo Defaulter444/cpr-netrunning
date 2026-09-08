@@ -122,7 +122,16 @@ function installStubs() {
     }),
     actors: Object.assign([], { get(id) { return this.find((a) => a.id === id); } }),
     combat: null,
-    i18n: { localize: (k) => k, format: (k) => k },
+    // Broadcasts to the other clients. Nothing here listens, but the ops that
+    // highlight something on everyone's map do emit.
+    socket: { emit() {}, on() {} },
+    // `format` substitutes the values into the localised string. The stub has
+    // no strings, so it appends them — enough to assert that what the code
+    // passed in (a floor's name, a runner's name) actually reaches the card.
+    i18n: {
+      localize: (k) => k,
+      format: (k, data = {}) => [k, ...Object.values(data)].join(" "),
+    },
     settings: {
       get: (_scope, key) => settings.get(key),
       set: async (_scope, key, value) => { settings.set(key, value); return value; },
@@ -138,7 +147,7 @@ console.log("World operations\n");
 installStubs();
 const scripts = prepareScripts();
 const D = await import(pathToFileURL(path.join(scripts, "data.js")).href);
-const C = await import(pathToFileURL(path.join(scripts, "constants.js")).href);
+const C = await import(pathToFileURL(path.join(scripts, "rules", "abilities.js")).href);
 
 /** Reset the world to empty defaults before each scenario. */
 function freshWorld() {
@@ -573,6 +582,67 @@ console.log("The GM can undo a crack");
   await D.applyOp("fx.clear", { archId: "a1", floorId: "u2", kind: "breach", value: false }, "gm");
   session = settings.get("session");
   expect(!(session.floorState["a1:u2"] || {}).breached, "the breach survived");
+}
+
+console.log("A runner can let go of a node he holds");
+{
+  freshWorld();
+  seedArch([
+    { id: "n1", parent: "", kind: "controlnode", label: "Камеры", dv: 6, ice: [], demon: null },
+  ]);
+  game.actors.length = 0;
+  game.actors.push({ ...RUNNER, id: "p8", uuid: "Actor.p8" });
+
+  const pid = "actor:Actor_p8";
+  await D.applyOp("session.connect",
+    { pid, actorUuid: "Actor.p8", userId: "player", archId: "a1" }, "gm");
+
+  await D.applyOp("run.abilityResult", { pid, ability: "control", total: 14 }, "player");
+  let session = settings.get("session");
+  expect((session.floorState["a1:n1"] || {}).control?.pid === pid, "the node was not taken");
+
+  // Somebody else's user cannot drop a hold that is not theirs.
+  const stranger = await D.applyOp("run.nodeRelease", { archId: "a1", floorId: "n1" }, "other");
+  expect(stranger === false, "a stranger dropped somebody else's node");
+  session = settings.get("session");
+  expect((session.floorState["a1:n1"] || {}).control?.pid === pid, "the hold was lost to a stranger");
+
+  // The runner holding it can.
+  const released = await D.applyOp("run.nodeRelease", { archId: "a1", floorId: "n1" }, "player");
+  expect(released === true, `letting go returned ${JSON.stringify(released)}`);
+  session = settings.get("session");
+  expect((session.floorState["a1:n1"] || {}).control === null, "the hold survived");
+
+  // And the node is contested at its own DV again, not at the total that took
+  // it: leaving the old dv behind would make a free node harder than the GM set.
+  const retake = await D.applyOp("run.abilityResult", { pid, ability: "control", total: 7 }, "player");
+  expect(retake && retake.applied, `retaking at DV 6 returned ${JSON.stringify(retake)}`);
+
+  // Nothing to release on a node nobody holds.
+  await D.applyOp("fx.clear", { archId: "a1", floorId: "n1", kind: "control", pid: null }, "gm");
+  const empty = await D.applyOp("run.nodeRelease", { archId: "a1", floorId: "n1" }, "player");
+  expect(empty === false, "letting go of an unheld node reported success");
+}
+
+console.log("Any floor can be named, not only a custom one");
+{
+  freshWorld();
+  seedArch([
+    { id: "n1", parent: "", kind: "controlnode", label: "Лифты", dv: 6, ice: [], demon: null },
+  ]);
+  game.actors.length = 0;
+  game.actors.push({ ...RUNNER, id: "p9", uuid: "Actor.p9" });
+  const pid = "actor:Actor_p9";
+  await D.applyOp("session.connect",
+    { pid, actorUuid: "Actor.p9", userId: "player", archId: "a1" }, "gm");
+  await D.applyOp("run.abilityResult", { pid, ability: "control", total: 14 }, "player");
+
+  const before = chat.length;
+  await D.applyOp("run.nodePulse", { archId: "a1", floorId: "n1" }, "player");
+  // The GM's own name for the node reaches the chat, rather than the generic
+  // "control node" that every node used to be called.
+  expect(chat.slice(before).some((m) => String(m.content).includes("Лифты")),
+    "the node's name did not reach the table");
 }
 
 console.log("An architecture can be shaped from the map");

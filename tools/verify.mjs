@@ -131,6 +131,17 @@ if (existsSync(cssPath)) {
   for (const c of tplClasses) {
     if (c && !cssClasses.has(c)) warn(`[6] class ${c} used in templates but not styled in CSS`);
   }
+
+  /* A custom property that was never declared. `var(--typo)` with no fallback
+     makes the whole declaration invalid at computed-value time, so the rule
+     silently does nothing — a border simply is not there, and nothing anywhere
+     says why. This has happened twice. */
+  const declared = new Set();
+  for (const m of css.matchAll(/(--crns-[a-z0-9-]+)\s*:/g)) declared.add(m[1]);
+  for (const m of css.matchAll(/var\(\s*(--crns-[a-z0-9-]+)\s*([,)])/g)) {
+    // A fallback (`var(--x, #fff)`) makes it survive, so only the bare form counts.
+    if (m[2] === ")" && !declared.has(m[1])) fail(`[6] ${m[1]} is used but never declared`);
+  }
 } else {
   fail("[6] styles/netrunning.css missing");
 }

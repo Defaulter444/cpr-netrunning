@@ -42,7 +42,7 @@
       "MoveDown": "Move down",
       "InsertAfter": "Insert floor after",
       "DeleteFloor": "Delete floor",
-      "LabelPlaceholder": "Custom label",
+      "LabelPlaceholder": "Name this floor",
       "DescPlaceholder": "GM notes: what this file or control node holds…",
       "Ice": "ICE",
       "Demon": "Demon",
@@ -171,7 +171,8 @@
       "TrapDerezFloor": "You must stand on the trap's floor to derez it.",
       "NoControlledNode": "You do not control any node.",
       "BadParent": "A floor cannot hang below itself or its own branch.",
-      "BadLink": "Those two floors cannot be linked."
+      "BadLink": "Those two floors cannot be linked.",
+      "NodeReleaseFailed": "Nobody is holding that node."
     },
     "Hints": {
       "FreeRoll": "Hold Shift to roll without spending a NET action (e.g. defending against an attack).",
@@ -194,7 +195,9 @@
         "eyedee": "Not lit: no file here, or you have already read it.",
         "virus": "Not lit: a virus goes at the bottom of a branch, and there is a way down from here.",
         "slide": "Not lit: pick a Black ICE as your target first."
-      }
+      },
+      "ControlNode": "Make a node you hold do its thing — open the door, kill the lights, run the lift.\n\nCosts one NET action.",
+      "ControlRelease": "Stop holding a node. Costs nothing, but taking it back means another Control Node roll against its DV."
     },
     "Actions": {
       "InterfaceRank": "Interface rank",
@@ -274,7 +277,9 @@
       "StateTrap": "Trap",
       "StateDeployed": "Deployed",
       "AutoDerezHint": "Attacker programs deactivate automatically after a damage roll.",
-      "PipToggle": "Click: spend a filled pip / restore an empty one"
+      "PipToggle": "Click: spend a filled pip / restore an empty one",
+      "ControlRelease": "Let go",
+      "ControlReleasePick": "Let go of which node?"
     },
     "ProgramClass": {
       "booster": "Booster",
@@ -312,7 +317,9 @@
       "TookDamage": "«{name}» takes {n} damage.",
       "DestroyedTitle": "Destroyed",
       "Destroyed": "«{name}» derezzed.",
-      "FileEmpty": "Opened — and empty. Somebody wiped it, or it never held anything."
+      "FileEmpty": "Opened — and empty. Somebody wiped it, or it never held anything.",
+      "NodeRelease": "Node released",
+      "NodeReleaseBody": "{name} lets go of {floor}."
     },
     "Ice": {
       "Asp": {

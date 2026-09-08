@@ -6,7 +6,7 @@
  * arch. */
 
 import { loc, uid, BLACK_ICE, DEMONS, FLOOR_KINDS, FLOOR_ICONS, ENTITY_ICONS, MAX_ICE_PER_FLOOR, maxDemons, CHECK_ABILITIES } from "../constants.js";
-import * as tree from "../rules/tree.js";
+import * as archTree from "../rules/tree.js";
 import { getWorld, mutate } from "../data.js";
 
 const ICE_TYPES = Object.keys(BLACK_ICE);
@@ -48,7 +48,7 @@ export function getData(app) {
   const kinds = FLOOR_KINDS.map((k) => ({ id: k, label: loc(`CRNS.Floor.${k}`) }));
 
   // Every floor needs a parent before the pickers below can describe the tree.
-  tree.normalizeFloors(draft.floors || []);
+  archTree.normalizeFloors(draft.floors || []);
 
   /* What a floor is called in the "hangs below" picker.
    *
@@ -68,7 +68,7 @@ export function getData(app) {
    * to land. `normalizeFloors` would cut such a link on the next read anyway;
    * refusing to offer it is friendlier than silently undoing the GM's choice. */
   const parentChoices = (idx) => {
-    const banned = new Set([idx, ...tree.descendantsOf(draft.floors, idx)]);
+    const banned = new Set([idx, ...archTree.descendantsOf(draft.floors, idx)]);
     const out = [{ id: "", label: loc("CRNS.Editor.ParentNone") }];
     (draft.floors || []).forEach((other, i) => {
       if (banned.has(i)) return;
@@ -100,14 +100,14 @@ export function getData(app) {
     const demon = f.demon
       ? { uid: f.demon.id, type: f.demon.type, name: loc(`CRNS.Demon.${f.demon.type}.name`), img: ENTITY_ICONS[f.demon.type] }
       : null;
-    const kids = tree.childrenOf(draft.floors, idx);
+    const kids = archTree.childrenOf(draft.floors, idx);
     return {
       id: f.id,
       index: idx,
       number: idx + 1,
       parent: f.parent || "",
       parentChoices: parentChoices(idx),
-      depth: tree.depthOf(draft.floors, idx),
+      depth: archTree.depthOf(draft.floors, idx),
       forks: kids.length > 1 ? kids.length : 0,
       check: f.check || "",
       checkChoices,
@@ -208,7 +208,7 @@ export function activateListeners(app, html) {
     // Re-normalise straight away: if the pick somehow closed a loop the tree is
     // repaired here, while the GM is still looking at it, rather than silently
     // on the next read.
-    tree.normalizeFloors(app.state.draft?.floors || []);
+    archTree.normalizeFloors(app.state.draft?.floors || []);
     reRender(app);
   });
   html.find('[data-action="floor-gate"]').on("change", (ev) => {

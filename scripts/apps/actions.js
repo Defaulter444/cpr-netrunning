@@ -14,7 +14,7 @@
  * last damage total this client rolled is stashed on app._lastDamage. */
 
 import { MODULE_ID, loc, esc, BLACK_ICE, DEMONS, ENTITY_ICONS, abbrFor, blackIceTypeForName } from "../constants.js";
-import * as tree from "../rules/tree.js";
+import * as archTree from "../rules/tree.js";
 import { getWorld, mutate, notifyClients, canDerezTrap } from "../data.js";
 import * as bridge from "../cpr-bridge.js";
 
@@ -262,7 +262,7 @@ function abilityAvailability(part, session, archs) {
   const fx = floor ? (session.floorState || {})[`${part.archId}:${floor.id}`] : null;
   const myPid = part.pid;
   const breached = !!(fx && fx.breached);
-  const isLast = tree.isLeaf(floors, idx);
+  const isLast = archTree.isLeaf(floors, idx);
 
   const targetRef = (session.targets || {})[game.user.id] || "";
   const [tKind] = targetRef.split(":");

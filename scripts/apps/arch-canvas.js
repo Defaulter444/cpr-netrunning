@@ -6,7 +6,7 @@
  * CSS `zoom`, so the screen↔local scale divisor is always 1. */
 
 import { MODULE_ID, FLOOR_ICONS, ENTITY_ICONS, loc, abbrFor } from "../constants.js";
-import * as tree from "../rules/tree.js";
+import * as archTree from "../rules/tree.js";
 import { getWorld, mutate } from "../data.js";
 import { getDeck, installedPrograms } from "../cpr-bridge.js";
 
@@ -80,7 +80,7 @@ export function getData(app) {
   const selection = app.state.selection || "";
   // Normalised on read: a world saved before branching existed is a chain, and
   // this is what turns it into a spine so the layout below has a tree to draw.
-  const floors = tree.normalizeFloors(arch.floors || []);
+  const floors = archTree.normalizeFloors(arch.floors || []);
   const lastIndex = floors.length - 1;
   const myRunnerPid = me?.kind === "runner" ? me.pid : "";
   const myFloor = me?.kind === "runner" ? (me.floorIndex || 0) : -1;
@@ -113,10 +113,10 @@ export function getData(app) {
     add(myFloor);
     // A runner who has never moved still stands somewhere: without this the
     // very first frame after jacking in would be an empty screen.
-    if (!known.size) add(tree.rootIndex(floors));
+    if (!known.size) add(archTree.rootIndex(floors));
 
     for (const i of known) {
-      for (const child of tree.childrenOf(floors, i)) {
+      for (const child of archTree.childrenOf(floors, i)) {
         if (!known.has(child)) sensed.add(child);
       }
     }
@@ -360,14 +360,14 @@ export function getData(app) {
       };
     });
 
-  const layout = tree.layoutTree(floors);
+  const layout = archTree.layoutTree(floors);
   const cellOf = new Map(layout.cells.map((c) => [c.index, c]));
-  const entryIndex = tree.rootIndex(floors);
+  const entryIndex = archTree.rootIndex(floors);
 
   const floorVMs = floors.map((floor, index) => {
     // "Root" here means the bottom of a branch — where a Virus may be left —
     // not the array's last element, which on a tree is an accident of order.
-    const isRoot = tree.isLeaf(floors, index);
+    const isRoot = archTree.isLeaf(floors, index);
     const entities = [];
     for (const ice of floor.ice || []) entities.push(buildEntity(ice, "ice", floor, false));
     if (floor.demon) entities.push(buildEntity(floor.demon, "demon", floor, true));
@@ -405,7 +405,7 @@ export function getData(app) {
     // A runner may step to the floor above or to any floor below. Upstream
     // asked whether the indices differed by one, which stops being the same
     // question as soon as an architecture forks.
-    const showMoveHere = myFloor >= 0 && tree.adjacentOf(floors, myFloor).includes(index);
+    const showMoveHere = myFloor >= 0 && archTree.adjacentOf(floors, myFloor).includes(index);
 
     const markers = floorMarkers(floor);
     const cell = cellOf.get(index) || { row: 0, col: 0 };
@@ -447,7 +447,7 @@ export function getData(app) {
   // existence — no name, no contents, no DV, no idea who is standing there.
   let visibleFloors = floorVMs;
   if (fogActive) {
-    const stepTo = myFloor >= 0 ? tree.adjacentOf(floors, myFloor) : [];
+    const stepTo = myFloor >= 0 ? archTree.adjacentOf(floors, myFloor) : [];
     visibleFloors = floorVMs
       .filter((f) => known.has(f.index) || sensed.has(f.index))
       .map((f) => {
@@ -475,7 +475,7 @@ export function getData(app) {
   // Connectors, drawn only where both ends survived the fog — a line into
   // nothing would tell the player more than the stub does.
   const shown = new Set(visibleFloors.map((f) => f.index));
-  const links = tree.linksOf(floors, layout).filter((l) => shown.has(l.from) && shown.has(l.to));
+  const links = archTree.linksOf(floors, layout).filter((l) => shown.has(l.from) && shown.has(l.to));
 
   // Stashed on the app because the drawing pass runs after the template has
   // been rendered and no longer has the view-model in hand.

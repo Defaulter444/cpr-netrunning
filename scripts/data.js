@@ -9,7 +9,7 @@
 
 import { MODULE_ID, SOCKET_NAME, uid, loc, BLACK_ICE, DEMONS, FLOOR_KINDS, MAX_ICE_PER_FLOOR, maxDemons } from "./constants.js";
 import * as bridge from "./cpr-bridge.js";
-import * as tree from "./rules/tree.js";
+import * as archTree from "./rules/tree.js";
 
 const FLOOR_KINDS_SET = new Set(FLOOR_KINDS);
 
@@ -23,7 +23,7 @@ const FLOOR_KINDS_SET = new Set(FLOOR_KINDS);
 function floorsOf(archs, archId) {
   const floors = archs?.[archId]?.floors;
   if (!Array.isArray(floors)) return [];
-  return tree.normalizeFloors(floors);
+  return archTree.normalizeFloors(floors);
 }
 
 /* Floors a runner standing on `from` may legally step to.
@@ -33,9 +33,9 @@ function floorsOf(archs, archId) {
  * exactly how a locked door behaves.
  */
 function reachableFrom(session, archId, floors, from) {
-  const out = tree.adjacentOf(floors, from);
+  const out = archTree.adjacentOf(floors, from);
   if (!isBlockingPasswordFloor(session, archId, floors[from])) return out;
-  const up = tree.parentOf(floors, from);
+  const up = archTree.parentOf(floors, from);
   return up >= 0 ? [up] : [];
 }
 
@@ -1006,7 +1006,7 @@ const OPS = {
     // offer a parent that would close a loop, but an imported file or a hand-
     // edited world has no such manners, and a cycle is an architecture with no
     // bottom — nothing to descend to and nowhere to leave a Virus.
-    tree.normalizeFloors(newArch.floors || []);
+    archTree.normalizeFloors(newArch.floors || []);
 
     // If the arch was renamed via the editor, rename the actor folder too.
     if (newArch.name !== oldArch.name) await bridge.renameEntityFolder(oldArch.name, newArch.name);
@@ -1317,7 +1317,7 @@ const OPS = {
       const reachable = reachableFrom(session, part.archId, floors, from);
       if (!reachable.includes(dest)) {
         const blocked = isBlockingPasswordFloor(session, part.archId, floors[from])
-          && tree.childrenOf(floors, from).includes(dest);
+          && archTree.childrenOf(floors, from).includes(dest);
         return { error: blocked ? "CRNS.Errors.PasswordBlocked" : "CRNS.Errors.MoveStep" };
       }
     }
@@ -1813,7 +1813,7 @@ const OPS = {
         // Only at the bottom of a branch. On a tree there are several
         // bottoms — one per branch — and "last element of the array" stopped
         // meaning anything the moment architectures could fork.
-        const isLast = tree.isLeaf(floors, part.floorIndex || 0);
+        const isLast = archTree.isLeaf(floors, part.floorIndex || 0);
         if (isLast) {
           const fx = getFloorFx(session, part.archId, floor.id);
           fx.viruses.push({ id: uid("fx"), pid });
@@ -1837,7 +1837,7 @@ const OPS = {
           if (ffx && ffx.breached) return false;
           return (Number(f.dv) || 0) > t;
         };
-        const found = tree.revealFrom(floors, start, t, blocks)
+        const found = archTree.revealFrom(floors, start, t, blocks)
           .map((i) => floors[i]?.id)
           .filter(Boolean);
 

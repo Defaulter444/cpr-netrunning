@@ -105,11 +105,12 @@
     </div>
     {{/if}}
 
-    <div class="crns-act-abilities" title="{{localize "CRNS.Hints.FreeRoll"}}">
+    <div class="crns-act-abilities">
       {{#each actions.abilities as |ab|}}
       <button type="button" class="crns-chip-btn{{#if ab.free}} free{{/if}}{{#if ab.dim}} dim{{/if}}" data-action="ability-roll"
               data-pid="{{../actions.pid}}" data-actor-id="{{../actions.actorId}}"
-              data-ability="{{ab.key}}" data-free="{{ab.free}}">{{ab.label}}</button>
+              data-ability="{{ab.key}}" data-free="{{ab.free}}"
+              title="{{ab.hint}}">{{ab.label}}</button>
       {{/each}}
       {{#if actions.hasControl}}
       <button type="button" class="crns-chip-btn crns-ctrl-node" data-action="control-node"

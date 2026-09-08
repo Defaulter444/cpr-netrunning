@@ -397,6 +397,42 @@ console.log("A floor the GM opened can be shut again");
   expect(denied === false, `a player toggled a lock: ${JSON.stringify(denied)}`);
 }
 
+console.log("The GM can make a runner forget the map");
+{
+  freshWorld();
+  seedArch([
+    { id: "m1", parent: "", kind: "custom", dv: 0, ice: [], demon: null },
+    { id: "m2", parent: "m1", kind: "custom", dv: 0, ice: [], demon: null },
+    { id: "m3", parent: "m2", kind: "custom", dv: 0, ice: [], demon: null },
+  ]);
+  game.actors.length = 0;
+  game.actors.push({ ...RUNNER, id: "p4", uuid: "Actor.p4" });
+
+  const pid = "actor:Actor_p4";
+  await D.applyOp("session.connect",
+    { pid, actorUuid: "Actor.p4", userId: "player", archId: "a1" }, "gm");
+  await D.applyOp("session.move", { pid, floorIndex: 1 }, "player");
+  await D.applyOp("run.abilityResult", { pid, ability: "pathfinder", total: 9 }, "player");
+
+  let session = settings.get("session");
+  expect(session.participants[pid].visited.length >= 2, "the runner remembers nothing to forget");
+  expect((session.reveal[pid] || {}).a1?.length > 0, "pathfinder revealed nothing to forget");
+
+  const cleared = await D.applyOp("run.clearReveal", { pid }, "gm");
+  expect(cleared === true, `clearing returned ${JSON.stringify(cleared)}`);
+
+  session = settings.get("session");
+  // Both halves go. Clearing only the scouted floors left the walked ones on
+  // screen, which is why the button looked like it did nothing.
+  expect(!session.reveal[pid], "the scouted floors survived");
+  eq(session.participants[pid].visited, ["m2"],
+     "the walked floors survived, or the current floor was forgotten too");
+
+  // A player cannot wipe their own map, nor anyone else's.
+  const denied = await D.applyOp("run.clearReveal", { pid }, "player");
+  expect(denied === false, `a player cleared the map: ${JSON.stringify(denied)}`);
+}
+
 console.log("An architecture can be shaped from the map");
 {
   freshWorld();

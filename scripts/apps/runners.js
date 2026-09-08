@@ -64,7 +64,11 @@ export function getData(app) {
       position: positionLabel(p, archs),
       connected: !!p.archId,
       hasActiveTab: !!activeTab,
-      hasReveal: Object.keys((session.reveal || {})[pid] || {}).length > 0,
+      // Offered whenever the runner knows anything at all — scouted floors or
+      // walked ones. Keyed only on the reveal, the button vanished exactly when
+      // the GM most wanted it: after the runner had explored on foot.
+      hasReveal: Object.keys((session.reveal || {})[pid] || {}).length > 0
+        || (Array.isArray(p.visited) ? p.visited.length : 0) > 1,
       selected: selection === `runner:${pid}`,
     });
   }

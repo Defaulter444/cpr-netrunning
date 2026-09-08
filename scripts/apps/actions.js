@@ -334,10 +334,16 @@ function buildRunnerVM(app, sel, session) {
   for (let i = 0; i < maxVal; i++) pips.push({ filled: i < (actions.value || 0) });
 
   const avail = abilityAvailability(part, session, archs);
-  const abilities = bridge.interfaceAbilities().map((ab) => ({
-    ...ab,
-    dim: (ab.key in avail) ? !avail[ab.key] : false,
-  }));
+  const abilities = bridge.interfaceAbilities().map((ab) => {
+    const dim = (ab.key in avail) ? !avail[ab.key] : false;
+    // What the ability does, plus — when it is dimmed — why it is not lit here.
+    // Ten identical chips with one-word names told the player nothing about
+    // which one to press, and nothing at all about why the one he wanted was
+    // greyed out.
+    const what = loc(`CRNS.Hints.Ability.${ab.key}`);
+    const why = dim ? loc(`CRNS.Hints.Dim.${ab.key}`) : "";
+    return { ...ab, dim, hint: why ? `${what}\n\n${why}` : what };
+  });
   const nodes = controlledNodes(part, session, archs);
   const programs = programVMs(actor, part, session);
   const target = targetPanel(session, game.user.id, app);

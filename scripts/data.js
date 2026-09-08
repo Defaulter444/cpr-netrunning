@@ -2094,13 +2094,37 @@ const OPS = {
   },
 
   /** GM: clear the pathfinder reveal of a runner. */
+  /* Forget everything this runner knows about the architecture.
+   *
+   * It used to clear only the Pathfinder reveal, while the floors the runner
+   * had WALKED through are remembered separately — so pressing it left most of
+   * the map on his screen and the button looked broken. A GM reaching for
+   * "hide the floors" means all of them.
+   *
+   * The floor he is standing on stays: hiding that would leave him looking at
+   * an empty screen with no way to act. */
   async "run.clearReveal"({ pid } = {}, callerId) {
     if (!requesterIsGM(callerId)) return false;
     const session = getWorld("session") || {};
+    let changed = false;
+
     if (session.reveal && session.reveal[pid]) {
       delete session.reveal[pid];
-      await setWorld("session", session);
+      changed = true;
     }
+
+    const part = (session.participants || {})[pid];
+    if (part && Array.isArray(part.visited) && part.visited.length) {
+      const floors = floorsOf(getWorld("netArchs") || {}, part.archId);
+      const here = floors[part.floorIndex || 0]?.id;
+      const keep = here ? [here] : [];
+      if (part.visited.length !== keep.length) {
+        part.visited = keep;
+        changed = true;
+      }
+    }
+
+    if (changed) await setWorld("session", session);
     return true;
   },
 

@@ -96,7 +96,7 @@
       "ToggleBreach": "Toggle breached",
       "SetControl": "Set controller",
       "ClearControl": "Clear control",
-      "HideReveal": "Hide revealed floors",
+      "HideReveal": "Forget this runner's map",
       "Standby": "Standby — escorting its owner, no target assigned",
       "Chasing": "Chasing: {name}",
       "Encrypted": "ENCRYPTED",
@@ -162,7 +162,27 @@
       "BadLink": "Those two floors cannot be linked."
     },
     "Hints": {
-      "FreeRoll": "Hold Shift to roll without spending a NET action (e.g. defending against an attack)."
+      "FreeRoll": "Hold Shift to roll without spending a NET action (e.g. defending against an attack).",
+      "Ability": {
+        "scanner": "Find the physical access points of nearby architectures. A meat action — it happens in the room, not in the NET.",
+        "backdoor": "Break a password. Beat the floor's DV and the way down opens.",
+        "cloak": "Cover your tracks and any virus you left. Another netrunner must beat your roll with Pathfinder to see what you did.",
+        "control": "Take a control node — cameras, turrets, doors, lifts. Each device on it costs another NET action.",
+        "eyedee": "Work out what a file is and what it is worth.",
+        "pathfinder": "Map the floors below you. The better the roll, the deeper you see; a lock you cannot beat stops that branch.",
+        "slide": "Break away from one Black ICE and slip to the next floor. Not demons, and only once per turn.",
+        "virus": "Leave something behind that outlives the run. Only at the bottom of a branch.",
+        "zap": "A bare attack on a program or another netrunner: 1d6 straight to the target.",
+        "speed": "Your reaction when Black ICE catches you on a floor. Free.",
+        "defense": "Your defence against an attack in the NET. Free."
+      },
+      "Dim": {
+        "backdoor": "Not lit: this floor has no lock, or it is already open.",
+        "control": "Not lit: this floor has no control node, or you already hold it.",
+        "eyedee": "Not lit: no file here, or you have already read it.",
+        "virus": "Not lit: a virus goes at the bottom of a branch, and there is a way down from here.",
+        "slide": "Not lit: pick a Black ICE as your target first."
+      }
     },
     "Actions": {
       "InterfaceRank": "Interface rank",

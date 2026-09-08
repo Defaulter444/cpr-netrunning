@@ -2,7 +2,7 @@
   "id": "cpr-netrunning",
   "title": "Cyberpunk RED: Нетраннинг",
   "description": "Интерактивный нетраннинг для Cyberpunk RED: ветвящаяся архитектура СЕТи, туман войны, свои проверки на этаж, чёрный лёд и демоны. Форк Netrunning Suite (MIT) авторства Lumiel.",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "compatibility": {
     "minimum": "12",
     "verified": "12.343"
@@ -49,7 +49,7 @@
   },
   "url": "https://github.com/Defaulter444/cpr-netrunning",
   "manifest": "https://github.com/Defaulter444/cpr-netrunning/releases/latest/download/module.json",
-  "download": "https://github.com/Defaulter444/cpr-netrunning/releases/download/v1.4.0/module.zip",
+  "download": "https://github.com/Defaulter444/cpr-netrunning/releases/download/v1.5.0/module.zip",
   "license": "LICENSE",
   "readme": "README.md"
 }

@@ -442,6 +442,12 @@ export function getData(app) {
       dv: isGM ? (floor.dv || 0) : 0,
       showDv: isGM && !!floor.dv,
       description: isGM ? (floor.description || "") : "",
+      // What the file holds. The GM always sees it; a runner only once he has
+      // beaten its check. `description` stays GM-only — those are notes about
+      // the floor, not something the fiction hands to the player.
+      contents: (isGM || (floorState[`${archId}:${floor.id}`]?.eyedee || []).includes(myRunnerPid))
+        ? (floor.contents || "")
+        : "",
       floorId: floor.id,
       entities,
       participants,

@@ -504,13 +504,18 @@ export async function moveToTopOfQueue(actorId) {
 }
 
 /** Post a localized chat card. `whisperGM` sends it only to GM users. */
-function postChatCard(title, body, { whisperGM = false } = {}) {
+function postChatCard(title, body, { whisperGM = false, whisperTo = null } = {}) {
   const content =
     `<div class="crns-chat-card"><div class="crns-chat-title">` +
     `<i class="fas fa-shield-halved"></i> ${escHtml(title)}</div>` +
     `<div class="crns-chat-body">${escHtml(body)}</div></div>`;
   const msg = { user: game.user.id, content };
   if (whisperGM) msg.whisper = game.users.filter((u) => u.isGM).map((u) => u.id);
+  // A named audience: what a runner reads out of a file is for him and the GM,
+  // not for the table.
+  if (Array.isArray(whisperTo) && whisperTo.length) {
+    msg.whisper = [...new Set([...(msg.whisper || []), ...whisperTo])];
+  }
   return ChatMessage.create(msg);
 }
 
@@ -1039,7 +1044,7 @@ const OPS = {
 
     const floor = {
       id: uid("f"), parent, alsoFrom: [], kind: "password", label: "", dv: 6,
-      check: "backdoor", gate: false, description: "", ice: [], demon: null,
+      check: "backdoor", gate: false, description: "", contents: "", ice: [], demon: null,
     };
     const next = foundry.utils.deepClone(arch);
     next.floors = [...floors, floor];
@@ -2018,6 +2023,21 @@ const OPS = {
         }
         postChatCard(loc("CRNS.Chat.Eyedee"),
           loc(applied ? "CRNS.Chat.Accessed" : "CRNS.Chat.AccessFailed", { name }));
+        // Reading it is the whole point. Beating the DV used to do nothing but
+        // put a marker on the card: the runner "had access" to a file whose
+        // contents he could not see anywhere.
+        if (applied) {
+          const text = String(floor.contents || "").trim();
+          const audience = [
+            ...game.users.filter((u) => u.isGM).map((u) => u.id),
+            ...(part.userId ? [part.userId] : []),
+          ];
+          postChatCard(
+            floor.label || loc("CRNS.Floor.file"),
+            text || loc("CRNS.Chat.FileEmpty"),
+            { whisperTo: audience }
+          );
+        }
         break;
       }
       case "virus": {

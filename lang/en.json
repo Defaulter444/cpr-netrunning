@@ -61,7 +61,10 @@
       "GateHint": "Nobody descends past this floor until its check is beaten.",
       "AddBelow": "Add a floor below this one (press twice to fork)",
       "Merge": "Also from",
-      "MergeHint": "Other floors that also lead into this one — how two branches converge. Hold Ctrl to pick several."
+      "MergeHint": "Other floors that also lead into this one — how two branches converge. Hold Ctrl to pick several.",
+      "Contents": "Contents",
+      "ContentsHint": "What the runner reads once he beats this floor's check. Unlike the GM notes above, this is shown to him.",
+      "ContentsPlaceholder": "Shift rosters, a name, a set of coordinates…"
     },
     "Floor": {
       "password": "Password",
@@ -102,7 +105,8 @@
       "Encrypted": "ENCRYPTED",
       "Forks": "{n} ways",
       "OpenFloor": "Open this floor's settings",
-      "OpenedBy": "Opened by this ability"
+      "OpenedBy": "Opened by this ability",
+      "FileContents": "What you read here"
     },
     "Runners": {
       "Title": "Netrunners",
@@ -299,7 +303,8 @@
       "DamageTitle": "Damage",
       "TookDamage": "«{name}» takes {n} damage.",
       "DestroyedTitle": "Destroyed",
-      "Destroyed": "«{name}» derezzed."
+      "Destroyed": "«{name}» derezzed.",
+      "FileEmpty": "Opened — and empty. Somebody wiped it, or it never held anything."
     },
     "Ice": {
       "Asp": {

@@ -433,6 +433,52 @@ console.log("The GM can make a runner forget the map");
   expect(denied === false, `a player cleared the map: ${JSON.stringify(denied)}`);
 }
 
+console.log("A cracked file can actually be read");
+{
+  freshWorld();
+  seedArch([
+    { id: "k1", parent: "", kind: "file", label: "Личное дело", dv: 8,
+      description: "Заметки мастера, игроку не показывать",
+      contents: "Смены охраны: 06:00, 14:00, 22:00. Ключ у Соколова.",
+      ice: [], demon: null },
+  ]);
+  game.actors.length = 0;
+  game.actors.push({ ...RUNNER, id: "p5", uuid: "Actor.p5" });
+
+  const pid = "actor:Actor_p5";
+  await D.applyOp("session.connect",
+    { pid, actorUuid: "Actor.p5", userId: "player", archId: "a1" }, "gm");
+
+  const before = chat.length;
+  // A failed roll tells him nothing.
+  await D.applyOp("run.abilityResult", { pid, ability: "eyedee", total: 5 }, "player");
+  let session = settings.get("session");
+  expect(!((session.floorState["a1:k1"] || {}).eyedee || []).includes(pid),
+    "a failed roll granted access");
+  expect(!chat.slice(before).some((m) => String(m.content).includes("Смены охраны")),
+    "a failed roll leaked the contents");
+
+  // Beating the DV opens it — and hands over what is inside.
+  const res = await D.applyOp("run.abilityResult", { pid, ability: "eyedee", total: 12 }, "player");
+  expect(res && res.applied, `reading the file returned ${JSON.stringify(res)}`);
+
+  session = settings.get("session");
+  expect(((session.floorState["a1:k1"] || {}).eyedee || []).includes(pid),
+    "access was not recorded");
+
+  const posted = chat.filter((m) => String(m.content).includes("Смены охраны"));
+  expect(posted.length === 1, `the contents were posted ${posted.length} times`);
+  // Whispered to the runner and the GM, not read out to the table.
+  const audience = posted[0]?.whisper || [];
+  expect(audience.includes("player"), "the runner was not told what he read");
+  expect(audience.includes("gm"), "the GM was not told");
+  expect(audience.length === 2, `the contents went to ${JSON.stringify(audience)}`);
+
+  // The GM's own notes stay the GM's.
+  expect(!chat.some((m) => String(m.content).includes("Заметки мастера")),
+    "the GM notes were shown to the player");
+}
+
 console.log("An architecture can be shaped from the map");
 {
   freshWorld();

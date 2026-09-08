@@ -1564,3 +1564,21 @@ body.crns-resizing { cursor: ns-resize !important; -webkit-user-select: none !im
 .crns-ask-sent { margin-top: 8px; font-size: 11px; color: var(--crns-accent); opacity: 0.85; }
 .crns-runner-asking { color: var(--crns-accent); margin-left: 4px; animation: crns-blink 1.4s steps(1) infinite; }
 .crns-runner-row:has(.crns-runner-asking) { border-color: var(--crns-accent); }
+
+/* What a runner read out of a file. Shown on the card so it stays available
+   after the chat has scrolled away — a name or a set of coordinates is exactly
+   the thing you need again three floors later. */
+.crns-floor-contents {
+  display: flex; gap: 6px; align-items: flex-start;
+  font-size: 11px; line-height: 1.35; padding: 5px 7px;
+  border: 1px solid color-mix(in srgb, var(--crns-accent) 35%, transparent);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--crns-accent) 7%, transparent);
+}
+.crns-floor-contents i { opacity: 0.7; margin-top: 1px; }
+.crns-floor-contents-edit { display: flex; align-items: flex-start; gap: 6px; }
+.crns-floor-contents-edit textarea {
+  flex: 1 1 auto; min-width: 180px; resize: vertical;
+  background: transparent; color: var(--crns-text); border: 1px solid var(--crns-border);
+  padding: 3px 5px; font: inherit;
+}

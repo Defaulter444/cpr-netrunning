@@ -136,6 +136,7 @@ export function getData(app) {
       depth: archTree.depthOf(draft.floors, idx),
       forks: kids.length > 1 ? kids.length : 0,
       check: f.check || "",
+      contents: f.contents || "",
       checkChoices,
       // A password gates by its nature; anything else gates only if the GM says
       // so. Showing the switch as already-on for a password keeps the card
@@ -258,6 +259,11 @@ export function activateListeners(app, html) {
     const f = floorAt(app, ev.currentTarget.closest("[data-floor-id]")?.dataset.floorId);
     if (f) { f.gate = !!ev.currentTarget.checked; reRender(app); }
   });
+  html.find('[data-action="floor-contents"]').on("change", (ev) => {
+    const f = floorAt(app, ev.currentTarget.closest("[data-floor-id]")?.dataset.floorId);
+    if (f) f.contents = ev.currentTarget.value;
+  });
+
   html.find('[data-action="floor-check"]').on("change", (ev) => {
     const f = floorAt(app, ev.currentTarget.closest("[data-floor-id]")?.dataset.floorId);
     if (f) { f.check = ev.currentTarget.value || ""; reRender(app); }
@@ -297,7 +303,7 @@ export function activateListeners(app, html) {
     // floor and it now has two children.
     const nf = {
       id: uid("f"), parent: id || "", kind: "password", label: "", dv: 6,
-      check: "backdoor", gate: false, description: "", ice: [], demon: null,
+      check: "backdoor", gate: false, description: "", contents: "", ice: [], demon: null,
     };
     app.state.draft.floors.splice(i + 1, 0, nf);
     reRender(app);

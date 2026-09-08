@@ -61,6 +61,11 @@
           </select>
         </label>
         {{#if floor.mergeChoices}}
+        <label class="crns-floor-contents-edit" title="{{localize "CRNS.Editor.ContentsHint"}}">
+          <span class="crns-floor-parent-lbl">{{localize "CRNS.Editor.Contents"}}</span>
+          <textarea data-action="floor-contents" rows="2"
+                    placeholder="{{localize "CRNS.Editor.ContentsPlaceholder"}}">{{floor.contents}}</textarea>
+        </label>
         <label class="crns-floor-merge" title="{{localize "CRNS.Editor.MergeHint"}}">
           <span class="crns-floor-parent-lbl">{{localize "CRNS.Editor.Merge"}}</span>
           <select data-action="floor-merge" multiple size="3">

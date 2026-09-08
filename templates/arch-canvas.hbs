@@ -105,6 +105,12 @@
         </div>
         {{/if}}
 
+        {{#if floor.contents}}
+        <div class="crns-floor-contents" title="{{localize "CRNS.Canvas.FileContents"}}">
+          <i class="fas fa-file-lines"></i><span>{{floor.contents}}</span>
+        </div>
+        {{/if}}
+
         {{!-- floor markers: breach / virus / control / eyedee (cloaks are arch-level) --}}
         <div class="crns-floor-markers">
           {{#if floor.markers.isPassword}}

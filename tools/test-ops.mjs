@@ -285,6 +285,83 @@ console.log("An un-breached password blocks the way down");
   expect(gmMove === true, `the GM was blocked by a password: ${JSON.stringify(gmMove)}`);
 }
 
+console.log("An architecture can be shaped from the map");
+{
+  freshWorld();
+  const arch = { id: "a1", name: "Shape", floors: [
+    { id: "f1", parent: "", alsoFrom: [], kind: "custom", dv: 0, ice: [], demon: null },
+  ] };
+  settings.set("netArchs", { a1: arch });
+  // arch.update rejects an architecture that is not tab-open in some paths and
+  // renames actor folders; the stub has neither, so it just has to not throw.
+  settings.set("session", { ...settings.get("session"), tabs: ["a1"], activeTab: "a1" });
+
+  // Two floors under the entry — a fork.
+  const left = await D.applyOp("arch.addFloor", { archId: "a1", parentId: "f1" }, "gm");
+  const right = await D.applyOp("arch.addFloor", { archId: "a1", parentId: "f1" }, "gm");
+  expect(left && left.floorId, `adding a floor returned ${JSON.stringify(left)}`);
+  expect(right && right.floorId, `adding a second floor returned ${JSON.stringify(right)}`);
+
+  let floors = settings.get("netArchs").a1.floors;
+  eq(floors.length, 3, "wrong number of floors after two additions");
+  eq(floors.filter((f) => f.parent === "f1").length, 2, "the fork did not appear");
+
+  // One floor below the left branch, then linked from the right one too: the
+  // diamond the strict tree could not express.
+  const bottom = await D.applyOp("arch.addFloor", { archId: "a1", parentId: left.floorId }, "gm");
+  const linked = await D.applyOp("arch.linkFloor",
+    { archId: "a1", floorId: bottom.floorId, fromId: right.floorId }, "gm");
+  expect(!linked?.error, `linking returned ${JSON.stringify(linked)}`);
+
+  floors = settings.get("netArchs").a1.floors;
+  const merge = floors.find((f) => f.id === bottom.floorId);
+  eq(merge.parent, left.floorId, "the primary way in changed");
+  eq(merge.alsoFrom, [right.floorId], "the second way in was not recorded");
+
+  // A link from below would close a loop.
+  const loop = await D.applyOp("arch.linkFloor",
+    { archId: "a1", floorId: "f1", fromId: bottom.floorId }, "gm");
+  expect(loop && loop.error === "CRNS.Errors.Cycle", `a loop returned ${JSON.stringify(loop)}`);
+
+  // Unlinking the extra route leaves the primary alone.
+  await D.applyOp("arch.unlinkFloor",
+    { archId: "a1", floorId: bottom.floorId, fromId: right.floorId }, "gm");
+  floors = settings.get("netArchs").a1.floors;
+  eq(floors.find((f) => f.id === bottom.floorId).alsoFrom, [], "the extra route survived");
+  eq(floors.find((f) => f.id === bottom.floorId).parent, left.floorId, "the primary route was lost");
+
+  // Unlinking the PRIMARY promotes an extra rather than orphaning the floor.
+  await D.applyOp("arch.linkFloor",
+    { archId: "a1", floorId: bottom.floorId, fromId: right.floorId }, "gm");
+  await D.applyOp("arch.unlinkFloor",
+    { archId: "a1", floorId: bottom.floorId, fromId: left.floorId }, "gm");
+  floors = settings.get("netArchs").a1.floors;
+  eq(floors.find((f) => f.id === bottom.floorId).parent, right.floorId,
+     "removing the primary way in did not promote the other one");
+
+  // Deleting a middle floor lifts what hung under it.
+  const before = settings.get("netArchs").a1.floors.length;
+  await D.applyOp("arch.removeFloor", { archId: "a1", floorId: right.floorId }, "gm");
+  floors = settings.get("netArchs").a1.floors;
+  eq(floors.length, before - 1, "the floor was not deleted");
+  expect(!floors.some((f) => f.id === right.floorId), "the deleted floor is still there");
+  eq(floors.find((f) => f.id === bottom.floorId).parent, "f1",
+     "the orphaned floor did not move up to the grandparent");
+
+  // The last floor cannot be deleted: an architecture with no floors has no
+  // entry to jack into.
+  const only = { id: "a2", name: "Lone", floors: [
+    { id: "g1", parent: "", alsoFrom: [], kind: "custom", dv: 0, ice: [], demon: null },
+  ] };
+  settings.set("netArchs", { ...settings.get("netArchs"), a2: only });
+  const last = await D.applyOp("arch.removeFloor", { archId: "a2", floorId: "g1" }, "gm");
+  expect(last && last.error === "CRNS.Errors.MinFloor", `deleting the last floor returned ${JSON.stringify(last)}`);
+
+  // Players cannot reshape anything.
+  const denied = await D.applyOp("arch.addFloor", { archId: "a1", parentId: "f1" }, "player");
+  expect(denied === false, `a player was allowed to add a floor: ${JSON.stringify(denied)}`);
+}
+
 fs.rmSync(scripts, { recursive: true, force: true });
 
 console.log(`\nChecks: ${checks}, failures: ${failures}`);

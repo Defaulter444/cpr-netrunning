@@ -154,7 +154,8 @@
       "NoTarget": "Pick a target first.",
       "TrapDerezFloor": "You must stand on the trap's floor to derez it.",
       "NoControlledNode": "You do not control any node.",
-      "BadParent": "A floor cannot hang below itself or its own branch."
+      "BadParent": "A floor cannot hang below itself or its own branch.",
+      "BadLink": "Those two floors cannot be linked."
     },
     "Hints": {
       "FreeRoll": "Hold Shift to roll without spending a NET action (e.g. defending against an attack)."
@@ -336,6 +337,17 @@
       "balron": {
         "name": "Balron"
       }
+    },
+    "Shape": {
+      "Toggle": "Shape",
+      "WaysIn": "In from",
+      "Entry": "entry",
+      "AddBelow": "Add a floor below this one",
+      "Link": "Lead from this floor into another",
+      "LinkHere": "Lead into this floor",
+      "PickTarget": "Now pick the floor it leads into",
+      "Unlink": "Remove this way in",
+      "Remove": "Delete this floor"
     }
   }
 }

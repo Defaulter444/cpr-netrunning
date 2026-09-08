@@ -1514,3 +1514,43 @@ body.crns-resizing { cursor: ns-resize !important; -webkit-user-select: none !im
 .crns-floor-merge { display: flex; align-items: flex-start; gap: 6px; }
 .crns-floor-merge select { min-width: 150px; background: transparent; color: var(--crns-text);
                            border: 1px solid var(--crns-border); }
+
+/* ---- shape editing on the map -------------------------------------- */
+
+/* The list editor is fine for what is ON a floor and hopeless for the shape of
+   the network — a column of rows cannot show that two branches meet. These
+   controls appear on the cards themselves, where the shape is visible. */
+.crns-shape-overlay {
+  position: absolute; top: 8px; left: 8px; z-index: 4;
+  display: flex; align-items: center; gap: 8px;
+}
+.crns-shape-overlay .on { border-color: var(--crns-accent); color: var(--crns-accent); }
+.crns-shape-hint {
+  font-size: 11px; letter-spacing: 0.06em; color: var(--crns-accent);
+  display: inline-flex; align-items: center; gap: 6px;
+  border: 1px dashed var(--crns-accent); border-radius: 4px; padding: 2px 8px;
+}
+
+.crns-shape-box {
+  display: flex; flex-direction: column; gap: 6px;
+  border-top: 1px dashed var(--crns-border); margin-top: 6px; padding-top: 6px;
+}
+.crns-shape-box.linking { border-color: var(--crns-accent); }
+.crns-shape-ways { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
+.crns-shape-lbl, .crns-shape-entry {
+  font-size: 10px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--crns-dim);
+}
+.crns-shape-entry { color: var(--crns-accent); }
+.crns-shape-way {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 11px; padding: 1px 4px 1px 7px;
+  border: 1px solid var(--crns-border); border-radius: 10px;
+}
+/* The primary way in is what the layout hangs the card from; the others are
+   extra routes. Worth telling apart before removing one. */
+.crns-shape-way.primary { border-color: color-mix(in srgb, var(--crns-accent) 55%, transparent); }
+.crns-shape-x { background: none; border: 0; color: inherit; cursor: pointer; opacity: 0.6; padding: 0 2px; }
+.crns-shape-x:hover { opacity: 1; color: #ff6b6b; }
+.crns-shape-btns { display: flex; gap: 4px; }
+.crns-shape-btns .accent { border-color: var(--crns-accent); color: var(--crns-accent); }
+.crns-shape-btns .danger:hover { color: #ff6b6b; border-color: #ff6b6b; }

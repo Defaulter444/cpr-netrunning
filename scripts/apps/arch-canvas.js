@@ -362,6 +362,9 @@ export function getData(app) {
       };
     });
 
+  // Shape editing is a GM mode and only on the architecture he is looking at.
+  const shapeEdit = isGM && !!app.state.shapeEdit;
+
   const layout = archTree.layoutTree(floors);
   const cellOf = new Map(layout.cells.map((c) => [c.index, c]));
   const entryIndex = archTree.rootIndex(floors);
@@ -434,6 +437,20 @@ export function getData(app) {
       // GM gear popover (breach toggle / control set-clear). Controls are gated
       // by floor kind: breach only means something on password floors, control
       // only on control nodes — hide the irrelevant widgets elsewhere.
+      // Shape editing: the ways INTO this floor, each removable, plus the
+      // buttons that grow the network. Only built in edit mode — the ordinary
+      // view has no business carrying them.
+      shape: shapeEdit ? {
+        entrances: archTree.entrancesOf(floors, index).map((i) => ({
+          id: floors[i].id,
+          label: floors[i].label || loc(`CRNS.Floor.${floors[i].kind}`),
+          primary: floors[i].id === floor.parent,
+        })),
+        isEntry: index === entryIndex,
+        linking: app.state.linkFrom === floor.id,
+        // Armed elsewhere: this card is a possible destination.
+        linkTarget: !!app.state.linkFrom && app.state.linkFrom !== floor.id,
+      } : null,
       // Which ability opens this floor, in words. The runner is allowed to
       // know he is looking at a lock and what kind — that is what a password
       // prompt IS. The DV stays hidden. Without this the player saw a padlock
@@ -507,6 +524,9 @@ export function getData(app) {
       branching: layout.cols > 1,
       cloakStrip,
       hasCloaks: cloakStrip.length > 0,
+      shapeEdit,
+      linking: shapeEdit ? (app.state.linkFrom || "") : "",
+      canEditShape: isGM,
     },
   };
 }
@@ -889,6 +909,52 @@ export function activateListeners(app, html) {
       app.state.focusFloorId = floorId;
       app.render(false);
     };
+
+    /* Shape editing. Every gesture writes straight through to the stored
+     * architecture: there is no draft to lose, and no Save to forget. The ops
+     * refuse anything that would close a loop or empty the network. */
+    const floorIdOf = (ev) => ev.currentTarget.closest("[data-floor-id]")?.dataset.floorId || "";
+    const warnErr = (res) => { if (res && res.error) ui.notifications.warn(loc(res.error)); };
+
+    html.find('[data-action="shape-toggle"]').on("click", () => {
+      app.state.shapeEdit = !app.state.shapeEdit;
+      app.state.linkFrom = "";
+      app.render(false);
+    });
+    html.find('[data-action="shape-link-cancel"]').on("click", () => {
+      app.state.linkFrom = "";
+      app.render(false);
+    });
+    html.find('[data-action="shape-add"]').on("click", async (ev) => {
+      ev.stopPropagation();
+      warnErr(await mutate("arch.addFloor", { archId, parentId: floorIdOf(ev) }));
+    });
+    html.find('[data-action="shape-remove"]').on("click", async (ev) => {
+      ev.stopPropagation();
+      warnErr(await mutate("arch.removeFloor", { archId, floorId: floorIdOf(ev) }));
+    });
+    html.find('[data-action="shape-link"]').on("click", (ev) => {
+      ev.stopPropagation();
+      const id = floorIdOf(ev);
+      // Pressing it again on the same card disarms — otherwise the only way out
+      // of a mis-click would be to link something wrong.
+      app.state.linkFrom = app.state.linkFrom === id ? "" : id;
+      app.render(false);
+    });
+    html.find('[data-action="shape-link-to"]').on("click", async (ev) => {
+      ev.stopPropagation();
+      const fromId = app.state.linkFrom;
+      const floorId = floorIdOf(ev);
+      app.state.linkFrom = "";
+      if (!fromId || !floorId) { app.render(false); return; }
+      warnErr(await mutate("arch.linkFloor", { archId, floorId, fromId }));
+    });
+    html.find('[data-action="shape-unlink"]').on("click", async (ev) => {
+      ev.stopPropagation();
+      warnErr(await mutate("arch.unlinkFloor", {
+        archId, floorId: floorIdOf(ev), fromId: ev.currentTarget.dataset.fromId,
+      }));
+    });
 
     // Double-click anywhere on the card — but not on something that already
     // means something. A chip is a target, a button is a button.

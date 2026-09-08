@@ -1007,6 +1007,127 @@ const OPS = {
 
   /* ---- arch ---- (Phase B) */
 
+  /* ---- shaping an architecture from the map (GM) ----
+   *
+   * The list editor is fine for the contents of a floor and hopeless for the
+   * shape of a network: a column of rows cannot show that two branches meet.
+   * These operations let the GM build that shape where he can see it.
+   *
+   * Each one mutates the floors and then hands the whole architecture to
+   * `arch.update`, which already normalises the tree, validates the caps,
+   * reconciles the backing ICE/Demon actors and repairs live session
+   * references. Duplicating any of that here is how the two paths would drift.
+   */
+
+  /** Add a floor under `parentId` ("" → under the entry). Returns its id. */
+  async "arch.addFloor"({ archId, parentId = "" } = {}, userId) {
+    if (!requesterIsGM(userId)) return false;
+    const archs = getWorld("netArchs") || {};
+    const arch = archs[archId];
+    if (!arch) return false;
+
+    const floors = floorsOf(archs, archId);
+    let parent = parentId;
+    if (parent && !floors.some((f) => f.id === parent)) parent = "";
+    // No parent named and floors already exist: hang it off the entry rather
+    // than creating a second way in, which normalisation would undo anyway.
+    if (!parent && floors.length) parent = floors[archTree.rootIndex(floors)]?.id || "";
+
+    const floor = {
+      id: uid("f"), parent, alsoFrom: [], kind: "password", label: "", dv: 6,
+      check: "backdoor", gate: false, description: "", ice: [], demon: null,
+    };
+    const next = foundry.utils.deepClone(arch);
+    next.floors = [...floors, floor];
+    const res = await OPS["arch.update"]({ archId, arch: next }, userId);
+    if (res && res.error) return res;
+    return { ok: true, floorId: floor.id };
+  },
+
+  /** Make `fromId` lead into `floorId`. */
+  async "arch.linkFloor"({ archId, floorId, fromId } = {}, userId) {
+    if (!requesterIsGM(userId)) return false;
+    const archs = getWorld("netArchs") || {};
+    const arch = archs[archId];
+    if (!arch) return false;
+
+    const floors = floorsOf(archs, archId);
+    const at = floors.findIndex((f) => f.id === floorId);
+    const from = floors.findIndex((f) => f.id === fromId);
+    if (at < 0 || from < 0 || at === from) return { error: "CRNS.Errors.BadLink" };
+
+    // A link from a floor BELOW would close a loop: an architecture with no
+    // bottom, nothing to descend to and nowhere to leave a Virus.
+    if (archTree.descendantsOf(floors, at).includes(from)) return { error: "CRNS.Errors.Cycle" };
+
+    const next = foundry.utils.deepClone(arch);
+    next.floors = foundry.utils.deepClone(floors);
+    const target = next.floors[at];
+    if (!target.parent) target.parent = fromId;
+    else if (target.parent !== fromId) {
+      target.alsoFrom = [...new Set([...(target.alsoFrom || []), fromId])];
+    }
+    return OPS["arch.update"]({ archId, arch: next }, userId);
+  },
+
+  /** Remove the route from `fromId` into `floorId`. */
+  async "arch.unlinkFloor"({ archId, floorId, fromId } = {}, userId) {
+    if (!requesterIsGM(userId)) return false;
+    const archs = getWorld("netArchs") || {};
+    const arch = archs[archId];
+    if (!arch) return false;
+
+    const floors = floorsOf(archs, archId);
+    const at = floors.findIndex((f) => f.id === floorId);
+    if (at < 0) return false;
+
+    const next = foundry.utils.deepClone(arch);
+    next.floors = foundry.utils.deepClone(floors);
+    const target = next.floors[at];
+
+    if (target.parent === fromId) {
+      // Losing the primary way in: promote one of the extras rather than
+      // leaving the floor parentless, which would fling it back to the entry
+      // and quietly rearrange the GM's network.
+      const promoted = (target.alsoFrom || [])[0] || "";
+      target.parent = promoted;
+      target.alsoFrom = (target.alsoFrom || []).filter((id) => id !== promoted);
+    } else {
+      target.alsoFrom = (target.alsoFrom || []).filter((id) => id !== fromId);
+    }
+    return OPS["arch.update"]({ archId, arch: next }, userId);
+  },
+
+  /** Delete a floor, lifting whatever hung under it up to its own parent. */
+  async "arch.removeFloor"({ archId, floorId } = {}, userId) {
+    if (!requesterIsGM(userId)) return false;
+    const archs = getWorld("netArchs") || {};
+    const arch = archs[archId];
+    if (!arch) return false;
+
+    const floors = floorsOf(archs, archId);
+    if (floors.length <= 1) return { error: "CRNS.Errors.MinFloor" };
+    const at = floors.findIndex((f) => f.id === floorId);
+    if (at < 0) return false;
+
+    const next = foundry.utils.deepClone(arch);
+    next.floors = foundry.utils.deepClone(floors);
+    const gone = next.floors[at];
+    for (const other of next.floors) {
+      if (other.id === gone.id) continue;
+      // Splice it out of the graph, not just out of the array: children move up
+      // to its parent, and anything that entered THROUGH it now enters from
+      // where it did.
+      if (other.parent === gone.id) other.parent = gone.parent || "";
+      if (Array.isArray(other.alsoFrom) && other.alsoFrom.includes(gone.id)) {
+        other.alsoFrom = other.alsoFrom.filter((id) => id !== gone.id);
+        if (gone.parent && other.parent !== gone.parent) other.alsoFrom.push(gone.parent);
+      }
+    }
+    next.floors.splice(at, 1);
+    return OPS["arch.update"]({ archId, arch: next }, userId);
+  },
+
   async "arch.update"({ archId, arch } = {}, userId) {
     if (!requesterIsGM(userId)) return false;
     const archs = getWorld("netArchs") || {};

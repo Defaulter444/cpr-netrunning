@@ -1,61 +1,348 @@
-<div class="crnsl-root">
-  <header class="crnsl-header">
+<div class="crnsl-root {{themeClass}}{{#if reduceMotion}} reduced-motion{{/if}}">
+  <header class="crnsl-commandbar">
     <div class="crnsl-brand">
-      <svg class="crnsl-logo"><use href="modules/cpr-netrunning-next/assets/icons.svg#network"></use></svg>
-      <div><div class="crnsl-kicker">{{localize "CRNSL.Kicker"}}</div><h2>{{localize "CRNSL.Title"}}</h2></div>
+      <span class="crnsl-brand-mark"><svg><use href="modules/cpr-netrunning-next/assets/icons.svg#network"></use></svg></span>
+      <div class="crnsl-brand-copy">
+        <div class="crnsl-kicker">{{localize "CRNSL.Kicker"}}</div>
+        <h2>{{localize "CRNSL.Title"}}</h2>
+      </div>
     </div>
-    <div class="crnsl-mode {{#if preview}}player{{else}}gm{{/if}}">{{modeLabel}}</div>
+
     {{#if gm}}
-    <div class="crnsl-toolbar">
+    <div class="crnsl-mode-switch" role="group" aria-label="Mode">
+      <button type="button" data-action="mode-run" class="{{#if runMode}}active{{/if}}" title="{{localize "CRNSL.Mode.Run"}}">
+        <svg><use href="modules/cpr-netrunning-next/assets/icons.svg#play"></use></svg><span>{{localize "CRNSL.Mode.Run"}}</span>
+      </button>
+      <button type="button" data-action="mode-build" class="{{#if buildMode}}active{{/if}}" title="{{localize "CRNSL.Mode.Build"}}">
+        <svg><use href="modules/cpr-netrunning-next/assets/icons.svg#build"></use></svg><span>{{localize "CRNSL.Mode.Build"}}</span>
+      </button>
+      <button type="button" data-action="toggle-preview" class="{{#if preview}}active player{{/if}}" title="{{localize "CRNSL.PlayerPreview"}}">
+        <svg><use href="modules/cpr-netrunning-next/assets/icons.svg#eye"></use></svg><span>{{localize "CRNSL.PlayerPreview"}}</span>
+      </button>
+    </div>
+    {{else}}
+    <div class="crnsl-mode-readout"><svg><use href="modules/cpr-netrunning-next/assets/icons.svg#runner"></use></svg>{{localize "CRNSL.Mode.Player"}}</div>
+    {{/if}}
+
+    <div class="crnsl-command-spacer"></div>
+
+    {{#if gm}}
+    <div class="crnsl-architecture-picker">
+      <span>{{localize "CRNSL.Architecture"}}</span>
       <select data-role="architecture">
         {{#each architectures as |a|}}<option value="{{a.id}}" {{#if a.selected}}selected{{/if}}>{{a.name}}</option>{{/each}}
       </select>
-      <button type="button" data-action="import-production" {{#unless productionAvailable}}disabled{{/unless}}><svg><use href="modules/cpr-netrunning-next/assets/icons.svg#import"></use></svg>{{localize "CRNSL.Import"}}</button>
-      <button type="button" data-action="create-demo"><svg><use href="modules/cpr-netrunning-next/assets/icons.svg#node"></use></svg>{{localize "CRNSL.Demo"}}</button>
-      <button type="button" data-action="toggle-preview" class="{{#if preview}}active{{/if}}"><svg><use href="modules/cpr-netrunning-next/assets/icons.svg#eye"></use></svg>{{#if preview}}{{localize "CRNSL.BackToGM"}}{{else}}{{localize "CRNSL.PlayerPreview"}}{{/if}}</button>
     </div>
+    {{#if buildMode}}
+    <button type="button" class="crnsl-command-btn" data-action="import-production" {{#unless productionAvailable}}disabled{{/unless}} title="{{localize "CRNSL.Import"}}">
+      <svg><use href="modules/cpr-netrunning-next/assets/icons.svg#import"></use></svg><span>{{localize "CRNSL.Import"}}</span>
+    </button>
+    <button type="button" class="crnsl-command-btn" data-action="create-demo" title="{{localize "CRNSL.Demo"}}">
+      <svg><use href="modules/cpr-netrunning-next/assets/icons.svg#plus"></use></svg><span>{{localize "CRNSL.Demo"}}</span>
+    </button>
     {{/if}}
+    {{/if}}
+
+    <div class="crnsl-link-state {{#if secure}}secure{{else}}local{{/if}}" title="{{localize "CRNSL.Security.Private"}}">
+      <span class="dot"></span>
+      <span>{{#if secure}}{{localize "CRNSL.Security.Secure"}}{{else}}{{localize "CRNSL.Security.LocalOnly"}}{{/if}}</span>
+    </div>
   </header>
 
   {{#if hasArchitecture}}
-  <main class="crnsl-main">
-    <section class="crnsl-map-shell">
-      <div class="crnsl-map-title"><span>{{architectureName}}</span><small>{{#if preview}}{{localize "CRNSL.ProjectionHint"}}{{else}}{{localize "CRNSL.PrivateHint"}}{{/if}}</small></div>
+  <section class="crnsl-sessionbar">
+    {{#if gm}}
+    <div class="crnsl-runner-selector">
+      {{#if runtimeRunners.length}}
+      <label>
+        <span>{{localize "CRNSL.Runner"}}</span>
+        <select data-role="runner">
+          {{#each runtimeRunners as |r|}}<option value="{{r.id}}" {{#if r.selected}}selected{{/if}}>{{r.name}} · {{r.owner}}</option>{{/each}}
+        </select>
+      </label>
+      {{/if}}
+      {{#if candidateActors.length}}
+      <label class="candidate">
+        <select data-role="candidate">
+          {{#each candidateActors as |a|}}<option value="{{a.uuid}}" {{#if a.selected}}selected{{/if}}>{{a.name}}</option>{{/each}}
+        </select>
+      </label>
+      <button type="button" class="crnsl-small-action" data-action="runner-add" title="{{localize "CRNSL.Runner.Add"}}"><svg><use href="modules/cpr-netrunning-next/assets/icons.svg#plus"></use></svg>{{localize "CRNSL.Runner.Add"}}</button>
+      {{/if}}
+    </div>
+    {{/if}}
+
+    {{#if runner}}
+    <div class="crnsl-runner-capsule">
+      <img src="{{runner.img}}" alt="{{runner.name}}" />
+      <div class="identity">
+        <strong>{{runner.name}}</strong>
+        <small>{{runner.deckName}}</small>
+      </div>
+      <div class="metric interface"><span>{{localize "CRNSL.Runner.Interface"}}</span><b>{{runner.rank}}</b></div>
+      <div class="runner-state {{#if runner.stealthed}}stealth{{/if}}"><span class="dot"></span>{{runner.stateLabel}}</div>
+    </div>
+
+    <div class="crnsl-action-pips" title="{{localize "CRNSL.Runner.Actions"}}">
+      <span class="label">{{localize "CRNSL.Runner.Actions"}}</span>
+      <div class="pips">
+        {{#each runner.pips as |pip|}}<span class="pip {{#if pip.used}}used{{else}}ready{{/if}}"></span>{{/each}}
+      </div>
+      <b>{{runner.actionsRemaining}}/{{runner.actionsMax}}</b>
+    </div>
+
+    {{#unless buildMode}}
+    <div class="crnsl-session-actions">
+      {{#if gm}}<button type="button" data-action="start-turn" class="quiet"><svg><use href="modules/cpr-netrunning-next/assets/icons.svg#refresh"></use></svg>{{localize "CRNSL.Turn.New"}}</button>{{/if}}
+      {{#if runner.jackedIn}}
+        <button type="button" data-action="jack-out" class="danger"><svg><use href="modules/cpr-netrunning-next/assets/icons.svg#jackout"></use></svg>{{localize "CRNSL.Jack.Out"}}</button>
+      {{else}}
+        <button type="button" data-action="jack-in" class="accent"><svg><use href="modules/cpr-netrunning-next/assets/icons.svg#jackin"></use></svg>{{localize "CRNSL.Jack.In"}}</button>
+        <button type="button" data-action="quiet-jack" class="stealth"><svg><use href="modules/cpr-netrunning-next/assets/icons.svg#stealth"></use></svg><span>{{localize "CRNSL.Jack.Quiet"}}<small>{{localize "CRNSL.Jack.QuietCost"}}</small></span></button>
+      {{/if}}
+    </div>
+    {{/unless}}
+
+    {{#if gm}}{{#unless runner.jackedIn}}<button type="button" class="crnsl-icon-button danger ghost" data-action="runner-remove" title="{{localize "CRNSL.Runner.Remove"}}"><svg><use href="modules/cpr-netrunning-next/assets/icons.svg#close"></use></svg></button>{{/unless}}{{/if}}
+    {{else}}
+      <div class="crnsl-no-runner"><svg><use href="modules/cpr-netrunning-next/assets/icons.svg#runner"></use></svg><span>{{localize "CRNSL.Runner.NoRunner"}}</span></div>
+    {{/if}}
+  </section>
+
+  <main class="crnsl-workspace">
+    <section class="crnsl-canvas-column">
+      <div class="crnsl-map-head">
+        <div class="crnsl-map-title">
+          <span class="eyebrow">NET ARCHITECTURE</span>
+          <strong>{{architectureName}}</strong>
+        </div>
+        <div class="crnsl-map-legend">
+          <span><i class="legend-dot current"></i>{{localize "CRNSL.Map.Legend.Current"}}</span>
+          <span><i class="legend-dot known"></i>{{localize "CRNSL.Map.Legend.Known"}}</span>
+          <span><i class="legend-dot unknown"></i>{{localize "CRNSL.Map.Legend.Unknown"}}</span>
+          <span><i class="legend-dot move"></i>{{localize "CRNSL.Map.Legend.Free"}}</span>
+        </div>
+        {{#if gm}}{{#unless preview}}
+        <button type="button" class="crnsl-intel-toggle {{#if gmIntel}}active{{/if}}" data-action="intel-toggle" title="{{localize "CRNSL.Help.Intel"}}"><svg><use href="modules/cpr-netrunning-next/assets/icons.svg#intel"></use></svg>{{localize "CRNSL.Intel"}}</button>
+        {{/unless}}{{/if}}
+      </div>
+
       <div class="crnsl-map-scroll">
         <div class="crnsl-map" style="{{canvas.style}}">
-          <svg class="crnsl-connections" width="{{canvas.width}}" height="{{canvas.height}}">
+          <svg class="crnsl-connections" width="{{canvas.width}}" height="{{canvas.height}}" aria-hidden="true">
             {{#each canvas.edges as |edge|}}<line class="{{#if edge.secondary}}secondary{{/if}}" x1="{{edge.x1}}" y1="{{edge.y1}}" x2="{{edge.x2}}" y2="{{edge.y2}}"></line>{{/each}}
           </svg>
+
           {{#each canvas.nodes as |node|}}
-          <article class="crnsl-node {{#if node.unknown}}unknown{{/if}} {{#if node.isCurrent}}current{{/if}} {{#if node.selected}}selected{{/if}}" data-node-id="{{node.id}}" style="left:{{node.x}}px;top:{{node.y}}px;width:{{node.width}}px;height:{{node.height}}px">
-            <div class="crnsl-node-head"><svg class="crnsl-node-icon"><use href="{{node.iconHref}}"></use></svg><div class="crnsl-node-name">{{node.displayLabel}}</div>{{#if node.isCurrent}}<span class="crnsl-current-dot"></span>{{/if}}</div>
-            {{#unless node.unknown}}
-            <div class="crnsl-node-meta"><span>{{node.displayKind}}</span>{{#if node.showDv}}<span>DV {{node.dv}}</span>{{/if}}</div>
-            <div class="crnsl-node-badges">{{#if node.hasContents}}<span><svg><use href="modules/cpr-netrunning-next/assets/icons.svg#file"></use></svg></span>{{/if}}{{#if node.attachmentCount}}<span>{{node.attachmentCount}} <svg><use href="modules/cpr-netrunning-next/assets/icons.svg#journal"></use></svg></span>{{/if}}{{#if node.controlCount}}<span>{{node.controlCount}} <svg><use href="modules/cpr-netrunning-next/assets/icons.svg#control"></use></svg></span>{{/if}}</div>
-            {{else}}<div class="crnsl-encrypted-bar"></div>{{/unless}}
+          <article class="crnsl-node {{#if node.unknown}}unknown{{/if}} {{#if node.isCurrent}}current{{/if}} {{#if node.selected}}selected{{/if}} {{#if node.canMoveHere}}can-move{{/if}} {{#if node.moveBlocked}}blocked{{/if}}"
+                   data-node-id="{{node.id}}" data-can-move="{{node.canMoveHere}}"
+                   style="left:{{node.x}}px;top:{{node.y}}px;width:{{node.width}}px;height:{{node.height}}px">
+            <div class="crnsl-node-accent"></div>
+            <div class="crnsl-node-head">
+              <span class="node-icon"><svg><use href="{{node.iconHref}}"></use></svg></span>
+              <div class="node-copy"><strong>{{node.displayLabel}}</strong>{{#unless node.unknown}}<small>{{node.displayKind}}</small>{{/unless}}</div>
+              {{#if node.isCurrent}}<span class="crnsl-current-tag"><svg><use href="modules/cpr-netrunning-next/assets/icons.svg#target"></use></svg></span>{{/if}}
+            </div>
+
+            {{#if node.unknown}}
+              <div class="crnsl-encrypted-signal"><span></span><span></span><span></span><span></span><span></span></div>
+            {{else}}
+              <div class="crnsl-node-statuses">
+                {{#if node.showDv}}<span class="private-dv">{{localize "CRNSL.DV"}} {{node.dv}}</span>{{/if}}
+                {{#if node.status.scouted}}<span class="status scouted">{{localize "CRNSL.State.Scouted"}}</span>{{/if}}
+                {{#if node.status.breached}}<span class="status breached"><svg><use href="modules/cpr-netrunning-next/assets/icons.svg#unlocked"></use></svg></span>{{/if}}
+                {{#if node.status.identified}}<span class="status identified"><svg><use href="modules/cpr-netrunning-next/assets/icons.svg#eyedee"></use></svg></span>{{/if}}
+                {{#if node.status.controlled}}<span class="status controlled"><svg><use href="modules/cpr-netrunning-next/assets/icons.svg#control"></use></svg></span>{{/if}}
+                {{#if node.status.virus}}<span class="status virus"><svg><use href="modules/cpr-netrunning-next/assets/icons.svg#virus"></use></svg></span>{{/if}}
+                {{#if node.hasContents}}<span class="status data"><svg><use href="modules/cpr-netrunning-next/assets/icons.svg#data"></use></svg></span>{{/if}}
+                {{#if node.entityCount}}<span class="status threat"><svg><use href="modules/cpr-netrunning-next/assets/icons.svg#ice"></use></svg>{{node.entityCount}}</span>{{/if}}
+              </div>
+            {{/if}}
+
+            {{#unless @root.buildMode}}
+              {{#if node.canMoveHere}}<button type="button" class="crnsl-move-button" data-action="move" data-node-id="{{node.id}}" title="{{localize "CRNSL.Actions.FreeMoveHint"}}"><svg><use href="modules/cpr-netrunning-next/assets/icons.svg#move"></use></svg>{{localize "CRNSL.Actions.FreeMove"}}</button>{{/if}}
+              {{#if node.moveBlocked}}<div class="crnsl-blocked-label"><svg><use href="modules/cpr-netrunning-next/assets/icons.svg#lock"></use></svg>{{localize "CRNSL.Actions.Blocked"}}</div>{{/if}}
+            {{/unless}}
           </article>
           {{/each}}
         </div>
       </div>
+
+      {{#if buildMode}}
+      <div class="crnsl-build-dock">
+        <svg><use href="modules/cpr-netrunning-next/assets/icons.svg#build"></use></svg>
+        <div><strong>{{localize "CRNSL.Mode.Build"}}</strong><span>{{localize "CRNSL.Build.Hint"}}</span></div>
+        <span class="safe-chip">ISOLATED COPY</span>
+      </div>
+      {{else}}
+      {{#if runner}}
+      <div class="crnsl-action-dock">
+        <div class="crnsl-dock-label">
+          <span>{{localize "CRNSL.Actions.Title"}}</span>
+          {{#if runner.jackedIn}}<small>{{localize "CRNSL.Help.DoubleMove"}}</small>{{/if}}
+        </div>
+
+        <div class="crnsl-context-actions">
+          {{#if runner.jackedIn}}
+            {{#each actions.primary as |a|}}
+            <button type="button" class="crnsl-ability primary" data-action="ability" data-ability="{{a.key}}" data-node-id="{{@root.runner.currentNodeId}}" {{#unless @root.actions.canSpend}}disabled{{/unless}} title="{{a.hint}}">
+              <svg><use href="{{a.iconHref}}"></use></svg><span><strong>{{a.label}}</strong><small>{{localize "CRNSL.Actions.CostOne"}}</small></span>
+            </button>
+            {{/each}}
+            {{#unless actions.primary.length}}<div class="crnsl-context-empty">{{localize "CRNSL.Actions.None"}}</div>{{/unless}}
+          {{else}}
+            <div class="crnsl-context-empty">{{localize "CRNSL.Jack.In"}} / {{localize "CRNSL.Jack.Quiet"}}</div>
+          {{/if}}
+        </div>
+
+        <div class="crnsl-utility-actions">
+          {{#if runner.jackedIn}}
+            {{#each actions.utility as |a|}}
+            <button type="button" class="crnsl-utility" data-action="ability" data-ability="{{a.key}}" data-node-id="{{@root.runner.currentNodeId}}" {{#unless @root.actions.canSpend}}disabled{{/unless}} title="{{a.hint}}"><svg><use href="{{a.iconHref}}"></use></svg><span>{{a.label}}</span></button>
+            {{/each}}
+          {{/if}}
+          <button type="button" class="crnsl-program-toggle {{#if actions.programsOpen}}active{{/if}}" data-action="programs-toggle"><svg><use href="modules/cpr-netrunning-next/assets/icons.svg#program"></use></svg><span>{{#if actions.programsOpen}}{{localize "CRNSL.Actions.HidePrograms"}}{{else}}{{localize "CRNSL.Actions.Programs"}}{{/if}}</span><b>{{actions.programs.length}}</b></button>
+        </div>
+      </div>
+
+      {{#if actions.programsOpen}}
+      <div class="crnsl-program-drawer {{#if densePrograms}}dense{{/if}}">
+        {{#if actions.programs.length}}
+          {{#each actions.programs as |p|}}
+          <div class="crnsl-program-row {{p.bucket}} {{#if p.rezzed}}rezzed{{/if}}">
+            <span class="program-icon"><svg><use href="{{p.iconHref}}"></use></svg></span>
+            <div class="program-name"><strong>{{p.name}}</strong><small>{{p.class}}</small></div>
+            {{#if p.atk}}<span class="program-stat">{{localize "CRNSL.Program.ATK"}} +{{p.atk}}</span>{{/if}}
+            {{#if p.def}}<span class="program-stat">{{localize "CRNSL.Program.DEF"}} +{{p.def}}</span>{{/if}}
+            {{#if p.rezMax}}<div class="program-rez"><span>{{p.rez}}/{{p.rezMax}}</span><i><b style="width:{{p.rezPct}}%"></b></i></div>{{/if}}
+            <span class="program-state">{{#if p.rezzed}}{{localize "CRNSL.Program.Rezzed"}}{{else}}{{localize "CRNSL.Program.Offline"}}{{/if}}</span>
+            <button type="button" class="program-power {{#if p.rezzed}}on{{/if}}" data-action="program-toggle" data-program-id="{{p.id}}" data-rezzed="{{#if p.rezzed}}false{{else}}true{{/if}}" {{#unless @root.actions.canSpend}}disabled{{/unless}}>
+              <svg><use href="modules/cpr-netrunning-next/assets/icons.svg#bolt"></use></svg>{{#if p.rezzed}}{{localize "CRNSL.Program.DEREZ"}}{{else}}{{localize "CRNSL.Program.REZ"}}{{/if}}
+            </button>
+          </div>
+          {{/each}}
+        {{else}}<div class="crnsl-program-empty">{{localize "CRNSL.Program.NoPrograms"}}</div>{{/if}}
+      </div>
+      {{/if}}
+      {{/if}}
+      {{/if}}
     </section>
 
     <aside class="crnsl-inspector">
       {{#if inspector}}
-      <div class="crnsl-inspector-head"><svg><use href="{{inspector.iconHref}}"></use></svg><div><div class="crnsl-kicker">{{localize "CRNSL.SelectedNode"}}</div><h3>{{inspector.displayLabel}}</h3></div></div>
+      <div class="crnsl-inspector-head">
+        <span class="inspector-icon"><svg><use href="{{inspector.iconHref}}"></use></svg></span>
+        <div><span class="crnsl-kicker">{{localize "CRNSL.SelectedNode"}}</span><h3>{{inspector.displayLabel}}</h3></div>
+        {{#if inspector.isCurrent}}<span class="inspector-current"><svg><use href="modules/cpr-netrunning-next/assets/icons.svg#target"></use></svg></span>{{/if}}
+      </div>
+
       {{#if inspector.unknown}}
-      <div class="crnsl-unknown-panel"><svg><use href="modules/cpr-netrunning-next/assets/icons.svg#encrypted"></use></svg><p>{{localize "CRNSL.UnknownText"}}</p></div>
+        <div class="crnsl-unknown-panel"><svg><use href="modules/cpr-netrunning-next/assets/icons.svg#encrypted"></use></svg><strong>{{localize "CRNSL.Node.Encrypted"}}</strong><p>{{localize "CRNSL.UnknownText"}}</p></div>
       {{else}}
-      <details open><summary>{{localize "CRNSL.Overview"}}</summary><div class="crnsl-detail-body"><dl><div><dt>{{localize "CRNSL.Kind"}}</dt><dd>{{inspector.kind}}</dd></div><div><dt>DV</dt><dd>{{inspector.dv}}</dd></div><div><dt>{{localize "CRNSL.Check"}}</dt><dd>{{inspector.check}}</dd></div></dl>{{#if gm}}{{#unless preview}}{{#if inspector.gmNotes}}<div class="crnsl-note gm"><strong>GM</strong>{{inspector.gmNotes}}</div>{{/if}}{{/unless}}{{/if}}</div></details>
-      <details><summary>{{localize "CRNSL.Contents"}}</summary><div class="crnsl-detail-body">{{#if inspector.contents}}<div class="crnsl-file-content">{{inspector.contents}}</div>{{/if}}{{#if inspector.contentsImage}}<img class="crnsl-content-image" src="{{inspector.contentsImage}}" alt="" />{{/if}}</div></details>
-      <details><summary>{{localize "CRNSL.Attachments"}} <span class="crnsl-count">{{inspector.attachments.length}}</span></summary><div class="crnsl-detail-body">{{#if inspector.attachments.length}}<div class="crnsl-list">{{#each inspector.attachments as |a|}}<div class="crnsl-list-row"><svg><use href="{{a.iconHref}}"></use></svg><div class="crnsl-list-main"><strong>{{a.label}}</strong><small>{{a.documentType}}</small></div><button type="button" class="icon" data-action="attachment-open" data-uuid="{{a.uuid}}"><svg><use href="modules/cpr-netrunning-next/assets/icons.svg#eye"></use></svg></button>{{#if ../../gm}}{{#unless ../../preview}}<button type="button" class="icon {{#if a.visible}}on{{/if}}" data-action="attachment-toggle" data-attachment-id="{{a.id}}" data-node-id="{{../../inspector.id}}"><svg><use href="modules/cpr-netrunning-next/assets/icons.svg#broadcast"></use></svg></button><button type="button" class="icon danger" data-action="attachment-remove" data-attachment-id="{{a.id}}" data-node-id="{{../../inspector.id}}"><svg><use href="modules/cpr-netrunning-next/assets/icons.svg#close"></use></svg></button>{{/unless}}{{/if}}</div>{{/each}}</div>{{else}}<p class="crnsl-muted">{{localize "CRNSL.DropHint"}}</p>{{/if}}</div></details>
-      <details><summary>{{localize "CRNSL.Meatspace"}} <span class="crnsl-count">{{inspector.controls.length}}</span></summary><div class="crnsl-detail-body">{{#if gm}}{{#unless preview}}<button type="button" class="crnsl-wide" data-action="bind-selected" data-node-id="{{inspector.id}}"><svg><use href="modules/cpr-netrunning-next/assets/icons.svg#link"></use></svg>{{localize "CRNSL.BindSelected"}}</button>{{/unless}}{{/if}}{{#if inspector.controls.length}}<div class="crnsl-list">{{#each inspector.controls as |c|}}<div class="crnsl-control-row"><svg><use href="modules/cpr-netrunning-next/assets/icons.svg#control"></use></svg><div class="crnsl-list-main"><strong>{{c.label}}</strong><small>{{c.documentType}}</small></div>{{#if ../../gm}}{{#unless ../../preview}}<select data-control-action data-control-id="{{c.id}}">{{#each c.actions as |a|}}<option value="{{a.value}}" {{#if a.selected}}selected{{/if}}>{{a.label}}</option>{{/each}}</select><button type="button" class="icon accent" data-action="control-execute" data-control-id="{{c.id}}" data-node-id="{{../../inspector.id}}"><svg><use href="modules/cpr-netrunning-next/assets/icons.svg#bolt"></use></svg></button><button type="button" class="icon danger" data-action="control-remove" data-control-id="{{c.id}}" data-node-id="{{../../inspector.id}}"><svg><use href="modules/cpr-netrunning-next/assets/icons.svg#close"></use></svg></button>{{/unless}}{{/if}}</div>{{/each}}</div>{{/if}}</div></details>
-      {{#if gm}}{{#unless preview}}<details open><summary>{{localize "CRNSL.Runtime"}}</summary><div class="crnsl-detail-body"><div class="crnsl-runtime-actions">{{#if inspector.isDiscovered}}<button type="button" data-action="hide" data-node-id="{{inspector.id}}" {{#if inspector.isCurrent}}disabled{{/if}}><svg><use href="modules/cpr-netrunning-next/assets/icons.svg#hidden"></use></svg>{{localize "CRNSL.Hide"}}</button>{{else}}<button type="button" data-action="reveal" data-node-id="{{inspector.id}}"><svg><use href="modules/cpr-netrunning-next/assets/icons.svg#revealed"></use></svg>{{localize "CRNSL.Reveal"}}</button>{{/if}}<button type="button" data-action="set-current" data-node-id="{{inspector.id}}" {{#if inspector.isCurrent}}disabled{{/if}}><svg><use href="modules/cpr-netrunning-next/assets/icons.svg#target"></use></svg>{{localize "CRNSL.SetCurrent"}}</button></div><p class="crnsl-muted">{{localize "CRNSL.RuntimeHint"}}</p></div></details>{{/unless}}{{/if}}
+        <nav class="crnsl-inspector-tabs">
+          <button type="button" data-action="tab-node" class="{{#if tabNode}}active{{/if}}"><svg><use href="modules/cpr-netrunning-next/assets/icons.svg#node"></use></svg>{{localize "CRNSL.Node.Tab"}}</button>
+          <button type="button" data-action="tab-data" class="{{#if tabData}}active{{/if}}"><svg><use href="modules/cpr-netrunning-next/assets/icons.svg#data"></use></svg>{{localize "CRNSL.Data.Tab"}}</button>
+          <button type="button" data-action="tab-control" class="{{#if tabControl}}active{{/if}}"><svg><use href="modules/cpr-netrunning-next/assets/icons.svg#control"></use></svg>{{localize "CRNSL.Control.Tab"}}</button>
+        </nav>
+
+        <div class="crnsl-inspector-body">
+          {{#if tabNode}}
+          <section class="crnsl-inspector-section">
+            <dl class="crnsl-facts">
+              <div><dt>{{localize "CRNSL.Kind"}}</dt><dd>{{inspector.displayKind}}</dd></div>
+              {{#if inspector.showPrivateDV}}<div class="private"><dt>{{localize "CRNSL.DV"}}</dt><dd>{{inspector.dv}}</dd></div>{{/if}}
+              {{#if inspector.check}}<div><dt>{{localize "CRNSL.Check"}}</dt><dd>{{inspector.check}}</dd></div>{{/if}}
+            </dl>
+            <div class="crnsl-state-grid">
+              {{#if inspector.state.breached}}<span class="breached"><svg><use href="modules/cpr-netrunning-next/assets/icons.svg#unlocked"></use></svg>{{localize "CRNSL.State.Breached"}}</span>{{/if}}
+              {{#if inspector.state.identified}}<span class="identified"><svg><use href="modules/cpr-netrunning-next/assets/icons.svg#eyedee"></use></svg>{{localize "CRNSL.State.Identified"}}</span>{{/if}}
+              {{#if inspector.state.controlled}}<span class="controlled"><svg><use href="modules/cpr-netrunning-next/assets/icons.svg#control"></use></svg>{{localize "CRNSL.State.Controlled"}}</span>{{/if}}
+              {{#if inspector.state.virus}}<span class="virus"><svg><use href="modules/cpr-netrunning-next/assets/icons.svg#virus"></use></svg>{{localize "CRNSL.State.Virus"}}</span>{{/if}}
+              {{#if inspector.state.scouted}}<span class="scouted"><svg><use href="modules/cpr-netrunning-next/assets/icons.svg#pathfinder"></use></svg>{{localize "CRNSL.State.Scouted"}}</span>{{/if}}
+            </div>
+
+            {{#if inspector.entities.length}}
+            <div class="crnsl-section-title">{{localize "CRNSL.Node.Entities"}}</div>
+            <div class="crnsl-entity-list">
+              {{#each inspector.entities as |entity|}}
+              <button type="button" class="crnsl-entity" data-action="set-target" data-ref="{{entity.kind}}:{{entity.id}}" title="TARGET">
+                <svg><use href="{{entity.iconHref}}"></use></svg><span><strong>{{entity.label}}</strong><small>{{entity.kind}}</small></span><svg class="target-glyph"><use href="modules/cpr-netrunning-next/assets/icons.svg#target"></use></svg>
+              </button>
+              {{/each}}
+            </div>
+            {{else}}<p class="crnsl-muted">{{localize "CRNSL.Node.NoEntities"}}</p>{{/if}}
+
+            {{#if inspector.gmNotes}}<div class="crnsl-gm-note"><span>{{localize "CRNSL.Node.GMNotes"}}</span><p>{{inspector.gmNotes}}</p></div>{{/if}}
+          </section>
+          {{/if}}
+
+          {{#if tabData}}
+          <section class="crnsl-inspector-section">
+            {{#if inspector.hasLockedData}}
+              <div class="crnsl-locked-data"><svg><use href="modules/cpr-netrunning-next/assets/icons.svg#encrypted"></use></svg><p>{{localize "CRNSL.Data.Locked"}}</p></div>
+            {{else}}
+              {{#if inspector.contents}}<div class="crnsl-file-content">{{inspector.contents}}</div>{{/if}}
+              {{#if inspector.contentsImage}}<img class="crnsl-content-image" src="{{inspector.contentsImage}}" alt="" />{{/if}}
+              {{#unless inspector.contents}}{{#unless inspector.contentsImage}}{{#unless inspector.attachments.length}}<p class="crnsl-muted">{{localize "CRNSL.Data.Empty"}}</p>{{/unless}}{{/unless}}{{/unless}}
+            {{/if}}
+
+            {{#if inspector.attachments.length}}
+            <div class="crnsl-section-title">{{localize "CRNSL.Attachments"}}</div>
+            <div class="crnsl-doc-list">
+              {{#each inspector.attachments as |a|}}
+              <div class="crnsl-doc-row">
+                <svg><use href="{{a.iconHref}}"></use></svg>
+                <div><strong>{{a.label}}</strong><small>{{a.documentType}}</small></div>
+                <button type="button" class="icon" data-action="attachment-open" data-uuid="{{a.uuid}}" title="{{localize "CRNSL.Data.Open"}}"><svg><use href="modules/cpr-netrunning-next/assets/icons.svg#eye"></use></svg></button>
+                {{#if @root.buildMode}}
+                <button type="button" class="visibility {{#if a.visible}}on{{/if}}" data-action="attachment-toggle" data-attachment-id="{{a.id}}" data-node-id="{{@root.inspector.id}}" title="{{#if a.visible}}{{localize "CRNSL.Build.PlayerVisible"}}{{else}}{{localize "CRNSL.Build.GMOnly"}}{{/if}}"><svg><use href="modules/cpr-netrunning-next/assets/icons.svg#broadcast"></use></svg></button>
+                <button type="button" class="icon danger" data-action="attachment-remove" data-attachment-id="{{a.id}}" data-node-id="{{@root.inspector.id}}" title="{{localize "CRNSL.Build.Remove"}}"><svg><use href="modules/cpr-netrunning-next/assets/icons.svg#close"></use></svg></button>
+                {{/if}}
+              </div>
+              {{/each}}
+            </div>
+            {{else}}{{#if buildMode}}<div class="crnsl-drop-zone"><svg><use href="modules/cpr-netrunning-next/assets/icons.svg#journal"></use></svg><span>{{localize "CRNSL.DropHint"}}</span></div>{{/if}}{{/if}}
+          </section>
+          {{/if}}
+
+          {{#if tabControl}}
+          <section class="crnsl-inspector-section">
+            {{#if inspector.canBind}}<button type="button" class="crnsl-bind-button" data-action="bind-selected" data-node-id="{{inspector.id}}"><svg><use href="modules/cpr-netrunning-next/assets/icons.svg#link"></use></svg>{{localize "CRNSL.BindSelected"}}</button>{{/if}}
+
+            {{#if inspector.controls.length}}
+            <div class="crnsl-control-list">
+              {{#each inspector.controls as |c|}}
+              <div class="crnsl-control-row">
+                <span class="control-icon"><svg><use href="modules/cpr-netrunning-next/assets/icons.svg#control"></use></svg></span>
+                <div class="control-copy"><strong>{{c.label}}</strong>{{#if c.documentType}}<small>{{c.documentType}}</small>{{/if}}</div>
+                {{#if @root.buildMode}}
+                  <select data-control-action data-control-id="{{c.id}}">{{#each c.actions as |a|}}<option value="{{a.value}}" {{#if a.selected}}selected{{/if}}>{{a.label}}</option>{{/each}}</select>
+                  <button type="button" class="icon danger" data-action="control-remove" data-control-id="{{c.id}}" data-node-id="{{@root.inspector.id}}"><svg><use href="modules/cpr-netrunning-next/assets/icons.svg#close"></use></svg></button>
+                {{else}}
+                  {{#if @root.inspector.controlledByRunner}}<button type="button" class="execute" data-action="control-execute" data-control-id="{{c.id}}" data-node-id="{{@root.inspector.id}}" {{#unless @root.actions.canSpend}}disabled{{/unless}}><svg><use href="modules/cpr-netrunning-next/assets/icons.svg#bolt"></use></svg>{{localize "CRNSL.Control.Execute"}}</button>{{/if}}
+                {{/if}}
+              </div>
+              {{/each}}
+            </div>
+            {{#unless buildMode}}{{#unless inspector.controlledByRunner}}<div class="crnsl-control-locked"><svg><use href="modules/cpr-netrunning-next/assets/icons.svg#lock"></use></svg><p>{{localize "CRNSL.Control.NotOwned"}}</p></div>{{/unless}}{{/unless}}
+            {{else}}<p class="crnsl-muted">{{localize "CRNSL.Control.Empty"}}</p>{{/if}}
+          </section>
+          {{/if}}
+        </div>
       {{/if}}
-      {{else}}<div class="crnsl-empty-inspector"><svg><use href="modules/cpr-netrunning-next/assets/icons.svg#target"></use></svg><p>{{localize "CRNSL.SelectHint"}}</p></div>{{/if}}
+      {{else}}
+        <div class="crnsl-empty-inspector"><svg><use href="modules/cpr-netrunning-next/assets/icons.svg#target"></use></svg><p>{{localize "CRNSL.SelectHint"}}</p></div>
+      {{/if}}
     </aside>
   </main>
   {{else}}
-  <div class="crnsl-empty"><svg><use href="modules/cpr-netrunning-next/assets/icons.svg#network"></use></svg><h3>{{localize "CRNSL.NoArchitecture"}}</h3>{{#if gm}}<p>{{localize "CRNSL.NoArchitectureGM"}}</p>{{else}}<p>{{localize "CRNSL.NoArchitecturePlayer"}}</p>{{/if}}</div>
+  <div class="crnsl-empty-state">
+    <svg><use href="modules/cpr-netrunning-next/assets/icons.svg#network"></use></svg>
+    <h3>{{localize "CRNSL.NoArchitecture"}}</h3>
+    <p>{{#if gm}}{{localize "CRNSL.NoArchitectureGM"}}{{else}}{{localize "CRNSL.NoArchitecturePlayer"}}{{/if}}</p>
+    {{#if gm}}<div class="empty-actions"><button type="button" data-action="import-production" {{#unless productionAvailable}}disabled{{/unless}}><svg><use href="modules/cpr-netrunning-next/assets/icons.svg#import"></use></svg>{{localize "CRNSL.Import"}}</button><button type="button" data-action="create-demo"><svg><use href="modules/cpr-netrunning-next/assets/icons.svg#plus"></use></svg>{{localize "CRNSL.Demo"}}</button></div>{{/if}}
+  </div>
   {{/if}}
-  <footer class="crnsl-footer"><span><strong>LAB</strong> v0.1.0</span><span>{{localize "CRNSL.FooterSafety"}}</span></footer>
+
+  <footer class="crnsl-footer"><span><strong>LAB</strong> v{{footerVersion}}</span><span>{{localize "CRNSL.FooterSafety"}}</span></footer>
 </div>

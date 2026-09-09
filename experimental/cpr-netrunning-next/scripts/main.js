@@ -1,22 +1,25 @@
 import { ID, LabStore } from "./store.js";
 import { NetrunningLabApp } from "./lab-app.js";
-import { publishProjection } from "./projection.js";
+import { publishAllProjections } from "./projection.js";
 
 const store = new LabStore();
 
 Hooks.once("init", () => {
-  game.settings.register(ID, "runtime", {
-    scope: "world",
-    config: false,
-    type: Object,
-    default: { activeArchitectureId: "", currentNodeId: "", discoveredNodeIds: [] }
+  game.settings.register(ID, "reduceMotion", {
+    name: "CRNSL.Settings.ReduceMotion",
+    hint: "CRNSL.Settings.ReduceMotionHint",
+    scope: "client",
+    config: true,
+    type: Boolean,
+    default: false
   });
-
-  game.settings.register(ID, "publicProjection", {
-    scope: "world",
-    config: false,
-    type: Object,
-    default: {}
+  game.settings.register(ID, "densePrograms", {
+    name: "CRNSL.Settings.DensePrograms",
+    hint: "CRNSL.Settings.DenseProgramsHint",
+    scope: "client",
+    config: true,
+    type: Boolean,
+    default: true
   });
 });
 
@@ -28,22 +31,18 @@ Hooks.once("ready", async () => {
       if (!game.user.isGM) throw new Error("GM only.");
       const imported = await store.importProduction();
       if (imported[0]) {
-        const root = imported[0].nodes[0]?.id || "";
-        await game.settings.set(ID, "runtime", {
-          activeArchitectureId: imported[0].id,
-          currentNodeId: root,
-          discoveredNodeIds: root ? [root] : []
+        await store.mutateRuntime((runtime) => {
+          runtime.activeArchitectureId = imported[0].id;
         });
-        await publishProjection(store, imported[0].id);
       }
+      await publishAllProjections(store);
       return imported;
     }
   };
 
   if (game.user.isGM) {
     await store.ensure();
-    const runtime = game.settings.get(ID, "runtime") || {};
-    if (runtime.activeArchitectureId) await publishProjection(store, runtime.activeArchitectureId);
+    await publishAllProjections(store);
   }
 });
 
@@ -51,17 +50,28 @@ Hooks.on("getSceneControlButtons", (controls) => {
   const token = controls.find((c) => c.name === "token");
   token?.tools.push({
     name: "crnsl",
-    title: "NET Lab",
-    icon: "fas fa-flask",
+    title: "Netrunning Lab",
+    icon: "fas fa-network-wired",
     visible: true,
     button: true,
     onClick: () => globalThis.CRNSL?.ui?.render(true)
   });
 });
 
-Hooks.on("updateSetting", (setting) => {
+/* The private store and per-user projections are JournalEntry documents, so the
+ * normal Foundry document update channel is enough to refresh the UI. No secret
+ * runtime state is placed in a world setting.
+ */
+Hooks.on("updateJournalEntry", (doc) => {
   if (!globalThis.CRNSL?.ui?.rendered) return;
-  if (setting.key === `${ID}.runtime` || setting.key === `${ID}.publicProjection`) {
+  if (doc.getFlag(ID, "privateStore") === true || doc.getFlag(ID, "projectionFor")) {
+    globalThis.CRNSL.ui.render(false);
+  }
+});
+
+Hooks.on("deleteJournalEntry", (doc) => {
+  if (!globalThis.CRNSL?.ui?.rendered) return;
+  if (doc.getFlag(ID, "privateStore") === true || doc.getFlag(ID, "projectionFor")) {
     globalThis.CRNSL.ui.render(false);
   }
 });

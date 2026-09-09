@@ -10,7 +10,7 @@ const ok = (msg) => console.log(`OK: ${msg}`);
 const moduleJson = JSON.parse(fs.readFileSync(path.join(ROOT, "module.json"), "utf8"));
 if (moduleJson.id !== "cpr-netrunning-next") fail("module id must stay isolated"); else ok("isolated module id");
 if (moduleJson.socket !== true) fail("rules-aware multiplayer lab must declare socket:true"); else ok("module socket enabled");
-if (moduleJson.version !== "0.2.0") fail("experimental module version should be 0.2.0"); else ok("module version 0.2.0");
+if (moduleJson.version !== "0.3.0") fail("experimental module version should be 0.3.0"); else ok("module version 0.3.0");
 
 const scripts = fs.readdirSync(path.join(ROOT, "scripts")).filter((f) => f.endsWith(".js")).map((f) => path.join(ROOT, "scripts", f));
 for (const file of scripts) {

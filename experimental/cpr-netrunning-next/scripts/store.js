@@ -10,6 +10,17 @@ function uid(prefix = "lab") {
   return `${prefix}_${foundry.utils.randomID(12)}`;
 }
 
+export function defaultRuntime() {
+  return {
+    revision: 0,
+    activeArchitectureId: "",
+    activeRunnerId: "",
+    runners: {},
+    floorState: {},
+    turnSerial: 0
+  };
+}
+
 function normalizeFloors(rawFloors = []) {
   const floors = clone(Array.isArray(rawFloors) ? rawFloors : []);
   if (!floors.length) return [];
@@ -95,7 +106,7 @@ function demoArchitecture() {
       },
       {
         ...d, index: 3, label: "Shipping Manifest", kind: "file", dv: 8, check: "eyedee",
-        gate: false, contents: "Prototype cargo manifest. Player-visible only after reveal.",
+        gate: false, contents: "Prototype cargo manifest. Player-visible only after Eye-Dee.",
         contentsImage: "", gmNotes: "Both branches converge here",
         attachments: [], controls: []
       }
@@ -114,6 +125,7 @@ export class LabStore {
     const existing = game.journal?.find((j) => j.getFlag(ID, STORE_FLAG) === true);
     if (existing) {
       this.doc = existing;
+      if (!existing.getFlag(ID, "runtime")) await existing.setFlag(ID, "runtime", defaultRuntime());
       return existing;
     }
 
@@ -123,7 +135,8 @@ export class LabStore {
       flags: {
         [ID]: {
           [STORE_FLAG]: true,
-          architectures: {}
+          architectures: {},
+          runtime: defaultRuntime()
         }
       }
     });
@@ -159,13 +172,34 @@ export class LabStore {
     await doc.setFlag(ID, "architectures", all);
   }
 
+  async getRuntime() {
+    if (!game.user.isGM) return null;
+    const doc = await this.ensure();
+    return { ...defaultRuntime(), ...clone(doc?.getFlag(ID, "runtime") || {}) };
+  }
+
+  async saveRuntime(runtime) {
+    if (!game.user.isGM) throw new Error("GM only.");
+    const doc = await this.ensure();
+    const next = { ...defaultRuntime(), ...clone(runtime) };
+    next.revision = Number(next.revision || 0) + 1;
+    await doc.setFlag(ID, "runtime", next);
+    return next;
+  }
+
+  async mutateRuntime(mutator) {
+    const runtime = await this.getRuntime();
+    await mutator(runtime);
+    return this.saveRuntime(runtime);
+  }
+
   async importProduction() {
     if (!game.user.isGM) throw new Error("GM only.");
 
     let production;
     try {
       production = game.settings.get(PROD_ID, "netArchs");
-    } catch (error) {
+    } catch (_error) {
       throw new Error("cpr-netrunning is not available or its netArchs setting is missing.");
     }
 

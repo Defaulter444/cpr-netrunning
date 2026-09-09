@@ -637,6 +637,10 @@ console.log("Any floor can be named, not only a custom one");
     { pid, actorUuid: "Actor.p9", userId: "player", archId: "a1" }, "gm");
   await D.applyOp("run.abilityResult", { pid, ability: "control", total: 14 }, "player");
 
+  // This fixture has no Interface role, so provide the action spent by the pulse.
+  const funded = settings.get("session");
+  funded.participants[pid].actions = { value: 1, max: 1 };
+  settings.set("session", funded);
   const before = chat.length;
   await D.applyOp("run.nodePulse", { archId: "a1", floorId: "n1" }, "player");
   // The GM's own name for the node reaches the chat, rather than the generic

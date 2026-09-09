@@ -297,10 +297,15 @@ Hooks.on("deleteItem", _itemHook);
 /* Combat integration — reset a runner's NET actions on their turn      */
 /* ------------------------------------------------------------------ */
 
+const resetCombatTurns = new Map();
 function resetRunnerForCombatant(combat) {
   if (!isPrimaryGM()) return;
+  if (!combat?.started) return;
   const actor = combat?.combatant?.actor;
   if (!actor) return;
+  const key = `${combat.round}:${combat.turn}:${actor.uuid}`;
+  if (resetCombatTurns.get(combat.id) === key) return;
+  resetCombatTurns.set(combat.id, key);
   const session = getWorld("session") || {};
   const parts = session.participants || {};
   // Runner whose turn it is → reset its NET actions.
@@ -316,8 +321,10 @@ function resetRunnerForCombatant(combat) {
     mutate("demon.reset", { actorId: actor.id });
   }
 }
-Hooks.on("combatTurn", (combat) => resetRunnerForCombatant(combat));
-Hooks.on("combatRound", (combat) => resetRunnerForCombatant(combat));
+// combatTurn/combatRound run BEFORE Foundry applies the new turn. Reading their
+// combatant resets the outgoing actor. This hook runs on all clients AFTER it.
+Hooks.on("combatTurnChange", (combat) => resetRunnerForCombatant(combat));
+Hooks.on("deleteCombat", (combat) => resetCombatTurns.delete(combat.id));
 
 /* ------------------------------------------------------------------ */
 /* Auto-roll: primary GM answers a player's attack (SPEC §8.4)          */
@@ -372,12 +379,23 @@ function handleDefenseRequest(data) {
  *  (opposed, defender wins ties). `data.testRef` is the ICE ref; `data.pid` the
  *  runner; `data.runnerTotal` the runner's slide total. On success the ICE's
  *  attachment to this runner is dropped and a slid record stored. */
+const resolvingSlides = new Set();
 async function handleSlideTest(data) {
+  if (!data.attemptId || resolvingSlides.has(data.attemptId)) return;
+  resolvingSlides.add(data.attemptId);
+  try { await resolveSlideTest(data); }
+  finally { resolvingSlides.delete(data.attemptId); }
+}
+
+async function resolveSlideTest(data) {
+  const pending = getWorld("session")?.participants?.[data.pid]?.slidePending;
+  if (!pending || pending.id !== data.attemptId || pending.testRef !== data.testRef) return;
   const resolved = refToActor(data.testRef);
   if (!resolved?.actor || resolved.kind !== "ice") return;
   const iceActor = resolved.actor;
 
   const roll = await bridge.rollEntityStat(iceActor, "per");
+  if (!roll) return; // Cancelling the opposed roll is not a zero-result success.
   const iceTotal = Number(roll?.resultTotal) || 0;
   const runnerTotal = Number(data.runnerTotal) || 0;
 
@@ -392,27 +410,10 @@ async function handleSlideTest(data) {
     slide: true,
   });
 
-  if (success) {
-    // Slide target is either an arch ICE (ice:archId:floorId:iceId) or a player
-    // Black ICE (prog:<ownerPid>:<programId>) — resolve the right slideResolve
-    // shape so the attachment + slid record use matching identity (Addendum 2).
-    const testRef = data.testRef || "";
-    if (testRef.startsWith("prog:")) {
-      const rest = testRef.slice("prog:".length);
-      const cut = rest.lastIndexOf(":");
-      const ownerPid = rest.slice(0, cut);
-      const programId = rest.slice(cut + 1);
-      const st = (getWorld("session") || {}).progState?.[`${ownerPid}|${programId}`] || null;
-      const archId = (getWorld("session") || {}).participants?.[data.pid]?.archId
-        || (getWorld("session") || {}).participants?.[ownerPid]?.archId || "";
-      if (st && archId) {
-        await mutate("run.slideResolve", { archId, progKey: `${ownerPid}|${programId}`, pid: data.pid });
-      }
-    } else {
-      const [, archId, , iceId] = testRef.split(":");
-      await mutate("run.slideResolve", { archId, iceId, pid: data.pid });
-    }
-  }
+  await mutate("run.slideResolve", {
+    archId: pending.archId, iceId: pending.iceId, progKey: pending.progKey,
+    pid: data.pid, attemptId: data.attemptId, success,
+  });
 }
 
 /** Resolve the opposed side of a Black ICE attack-of-opportunity SPEED test
@@ -427,6 +428,7 @@ async function handleSpeedTest(data) {
   if (!iceActor) { await mutate("run.clearSpeedTest", { testId: data.testId }); return; }
 
   const roll = await bridge.rollEntityStat(iceActor, "spd");
+  if (!roll) return; // Keep the pending test when the GM cancels.
   const iceTotal = Number(roll?.resultTotal) || 0;
   const runnerTotal = Number(data.runnerTotal) || 0;
   const runnerName = participantName(session, test.pid);
@@ -546,19 +548,23 @@ async function handleRollRequest(data) {
   let defenderTotal = 0;
   if (kind === "ice") {
     const roll = await bridge.rollEntityStat(actor, "def");
+    if (!roll) return;
     defenderTotal = Number(roll?.resultTotal) || 0;
   } else if (kind === "demon") {
     // SPEC §14.8: demons now ROLL 1d10+Interface on defense (Combat Number stays
     // only as a separate manual action button on the demon panel).
     const roll = await bridge.rollEntityStat(actor, "interface");
+    if (!roll) return;
     defenderTotal = Number(roll?.resultTotal) || 0;
   } else if (kind === "runner") {
     // GM-controlled runner (userId "") — auto-roll GM-side.
     const roll = await bridge.rollInterface(actor, "defense");
+    if (!roll) return;
     defenderTotal = Number(roll?.resultTotal) || 0;
   } else if (kind === "prog") {
     // A player's rezzed Black ICE defends with its DEF stat (backing actor).
     const roll = await bridge.rollEntityStat(actor, "def");
+    if (!roll) return;
     defenderTotal = Number(roll?.resultTotal) || 0;
   }
 

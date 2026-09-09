@@ -120,7 +120,7 @@ const _pendingMutations = new Map(); // requestId -> resolve
 /** Mutate shared world data. GMs apply locally; players relay to the GM and
  *  await the GM's result over the socket (10s timeout -> null). */
 export async function mutate(op, payload = {}) {
-  if (game.user.isGM) {
+  if (isPrimaryGM()) {
     return applyOp(op, payload, game.user.id);
   }
   const gm = primaryGM();
@@ -268,9 +268,88 @@ function participantFloor(part, archs) {
  *  Returns { session, part, pid } or null (invalid / not permitted). */
 function resolveActingRunner(session, pid, callerId) {
   const part = (session.participants || {})[pid];
-  if (!part || part.kind !== "runner") return null;
+  if (!part || part.kind !== "runner" || !part.jackedIn || !part.archId) return null;
   if (!requesterIsGM(callerId) && !ownsParticipant(part, callerId)) return null;
   return { part, pid };
+}
+
+/** Foundry combat identifies a turn; outside combat the existing reset control advances it. */
+function turnKey(session) {
+  const c = game.combat;
+  return c?.started ? `${c.id}:${c.round}:${c.turn}` : `manual:${session.manualTurn || 0}`;
+}
+
+function takeActions(part, n = 1) {
+  if (!Number.isInteger(n) || n < 1) return { error: "CRNS.Errors.BadActionCount" };
+  if ((part.actions?.value || 0) < n) return { error: "CRNS.Errors.NoActions" };
+  part.actions.value -= n;
+  return true;
+}
+
+/** Remove effects which cannot survive this runner leaving the architecture. */
+async function endRunnerRun(session, pid) {
+  const part = session.participants?.[pid];
+  if (!part) return;
+  const archId = part.archId;
+  const actor = part.actorUuid ? fromUuidSync?.(part.actorUuid) : null;
+  for (const program of bridge.installedPrograms(bridge.getDeck(actor))) {
+    if (program.system?.isRezzed) await bridge.derezProgram(actor, program.id);
+  }
+  await deleteProgActors(session, pid);
+  clearProgFloors(session, pid);
+  clearProgState(session, pid);
+  prunePendingTests(session, t => t.pid === pid);
+  pruneAttachments(session, a => a.pid === pid);
+  session.slid = (session.slid || []).filter(s => s.pid !== pid);
+  if (session.reveal) delete session.reveal[pid];
+  delete part.slidePending;
+  part.rezzed = {};
+  part.jackedIn = false;
+  part.floorIndex = archTree.rootIndex(floorsOf(getWorld("netArchs") || {}, archId));
+  part.maxFloor = 0;
+  part.visited = [];
+  const last = !Object.entries(session.participants || {}).some(([id, p]) =>
+    id !== pid && p.kind === "runner" && p.jackedIn && p.archId === archId);
+  for (const [key, fx] of Object.entries(session.floorState || {})) {
+    if (!key.startsWith(`${archId}:`)) continue;
+    if (fx.control?.pid === pid) fx.control = null;
+    fx.eyedee = (fx.eyedee || []).filter(id => id !== pid);
+    if (fx.virusWork) delete fx.virusWork[pid];
+    if (last) fx.breached = false;
+  }
+}
+
+/** A Slide target must be living Black ICE currently engaging this runner. */
+function slideTarget(session, pid, ref) {
+  const part = session.participants?.[pid];
+  if (!part?.jackedIn) return null;
+  let iceId = "", progKey = "", actorId = "";
+  if (ref?.startsWith("ice:")) {
+    const [, archId, floorId, id] = ref.split(":");
+    if (archId !== part.archId) return null;
+    const floor = (getWorld("netArchs") || {})[archId]?.floors?.[part.floorIndex || 0];
+    if (floor?.id !== floorId) return null;
+    const def = floor.ice?.find(i => i.id === id);
+    iceId = id; actorId = def?.actorId || "";
+  } else if (ref?.startsWith("prog:")) {
+    const rest = ref.slice(5), cut = rest.lastIndexOf(":");
+    const ownerPid = rest.slice(0, cut), programId = rest.slice(cut + 1);
+    if (ownerPid === pid) return null;
+    const owner = session.participants?.[ownerPid];
+    const ownerActor = owner?.actorUuid ? fromUuidSync?.(owner.actorUuid) : null;
+    const program = ownerActor?.getOwnedItem?.(programId);
+    if (owner?.archId !== part.archId || program?.system?.class !== "blackice") return null;
+    progKey = `${ownerPid}|${programId}`;
+    const state = session.progState?.[progKey];
+    if (Number(state?.floorIndex) !== (part.floorIndex || 0)) return null;
+    actorId = state?.actorId || "";
+  } else return null; // Demons and ordinary programs cannot be Slid.
+  const actor = game.actors?.get(actorId);
+  if (!actor || (actor.system?.stats?.rez?.value ?? 0) <= 0) return null;
+  const engaged = (session.attachments || []).some(a => a.pid === pid && a.archId === part.archId &&
+    (iceId ? a.iceId === iceId : a.progKey === progKey)) ||
+    (session.pendingTests || []).some(t => t.pid === pid && t.ref === ref);
+  return engaged ? { archId: part.archId, iceId, progKey, actorId } : null;
 }
 
 /** Move an ICE def (by iceId) to another floor of the same arch, rewriting any
@@ -641,7 +720,7 @@ async function triggerFloorIce(session, archId, pid) {
       const follow = actor?.getFlag?.(MODULE_ID, "follow");
       if (follow === false) continue;
       const isSlid = session.slid.some((s) => s.archId === archId && s.iceId === def.id && s.pid === pid);
-      if (isSlid) continue;
+      if (isSlid) session.slid = session.slid.filter(s => !(s.archId === archId && s.iceId === def.id && s.pid === pid));
       const already = session.attachments.some((a) => a.archId === archId && a.iceId === def.id && a.pid === pid);
       if (!already) {
         session.attachments.push({ archId, iceId: def.id, pid });
@@ -676,7 +755,7 @@ async function triggerFloorIce(session, archId, pid) {
     // that triggered it ("They do not move, unless chasing a target that
     // triggered them") — ANY runner, player or GM-run NPC alike.
     const isSlid = session.slid.some((s) => s.archId === archId && s.progKey === trap.progKey && s.pid === pid);
-    if (isSlid) continue;
+    if (isSlid) session.slid = session.slid.filter(s => !(s.archId === archId && s.progKey === trap.progKey && s.pid === pid));
     session.attachments.push({ archId, progKey: trap.progKey, pid });
     changed = true;
   }
@@ -815,20 +894,15 @@ function validateArchCaps(arch) {
 async function disconnectArchParticipants(session, archId) {
   const parts = session.participants || {};
   const affected = new Set();
-  const progActorIds = [];
   for (const [pid, p] of Object.entries(parts)) {
     if (p.archId !== archId) continue;
     affected.add(pid);
     if (p.kind === "spectator") delete parts[pid];
     else {
+      await endRunnerRun(session, pid);
       p.archId = ""; p.floorIndex = 0; p.jackedIn = false; p.maxFloor = 0; p.visited = [];
-      progActorIds.push(...progActorIdsForPid(session, pid));
-      clearProgFloors(session, pid);
-      clearProgState(session, pid);
-      if (session.reveal && session.reveal[pid]) delete session.reveal[pid];
     }
   }
-  if (progActorIds.length) await bridge.deleteEntityActors(progActorIds);
   if (affected.size) {
     prunePendingTests(session, (t) => affected.has(t.pid));
     pruneAttachments(session, (a) => affected.has(a.pid) || a.archId === archId);
@@ -1372,6 +1446,7 @@ const OPS = {
     const max = actor ? bridge.netActionsMax(bridge.getInterfaceRank(actor)) : 2;
 
     const prev = session.participants[pid] || {};
+    if (prev.archId && prev.archId !== archId) await endRunnerRun(session, pid);
     const connecting = !!archId; // archId "" → roster only (not jacked in).
     const part = {
       kind: "runner",
@@ -1456,15 +1531,8 @@ const OPS = {
 
     if (part.kind === "spectator") delete parts[pid];
     else {
-      part.archId = ""; part.floorIndex = 0; part.jackedIn = false; part.maxFloor = 0; part.visited = [];
-      await deleteProgActors(session, pid); // delete backing prog-ICE actors first.
-      clearProgFloors(session, pid);
-      clearProgState(session, pid);
-      prunePendingTests(session, (t) => t.pid === pid);
-      // Drop this runner's ICE attachments (SPEC §14.11).
-      pruneAttachments(session, (a) => a.pid === pid);
-      // Drop its pathfinder reveal.
-      if (session.reveal && session.reveal[pid]) delete session.reveal[pid];
+      await endRunnerRun(session, pid);
+      part.archId = ""; part.floorIndex = 0;
     }
     await setWorld("session", session);
     return true;
@@ -1474,7 +1542,7 @@ const OPS = {
     const session = getWorld("session") || {};
     const parts = session.participants || {};
     const part = parts[pid];
-    if (!part || part.kind !== "runner" || !part.archId) return false;
+    if (!part || part.kind !== "runner" || !part.archId || !part.jackedIn) return false;
 
     const isGM = requesterIsGM(callerId);
     if (!isGM && !ownsParticipant(part, callerId)) return false;
@@ -1499,6 +1567,7 @@ const OPS = {
       }
     }
 
+    if (dest === from) return true;
     part.floorIndex = dest;
     // Fog-of-war baseline: which floors this runner has actually stood on. The
     // origin is marked too — a GM may drop a runner anywhere, and a participant
@@ -1678,13 +1747,7 @@ const OPS = {
     const session = getWorld("session") || {};
     const parts = session.participants || {};
     if (!parts[pid]) return false;
-    // Delete the runner's backing prog-ICE actors before dropping it (Task 1).
-    await deleteProgActors(session, pid);
-    clearProgState(session, pid);
-    // Drop attachments/pending tests where this pid is the chased/attacked runner
-    // (a player BI chasing them, or an arch-ICE follow) — Addendum 2/5.
-    pruneAttachments(session, (a) => a.pid === pid);
-    prunePendingTests(session, (t) => t.pid === pid);
+    await endRunnerRun(session, pid);
     delete parts[pid];
     // Remember the removal. The roster auto-lists every eligible actor, so
     // dropping the participant alone put the same row straight back — which is
@@ -1741,8 +1804,7 @@ const OPS = {
 
   /* ---- run ---- (Phase D) */
 
-  /** Jack In/Out toggle from the UI. Costs 1 action. Jack-out clears the
-   *  rezzed mirror (the GM decides actual disconnection). */
+  /** Jack In/Out costs one action and clears temporary run effects on exit. */
   async "run.jack"({ pid, in: jackIn } = {}, callerId) {
     const session = getWorld("session") || {};
     const parts = session.participants || {};
@@ -1750,24 +1812,22 @@ const OPS = {
     if (!part || part.kind !== "runner") return false;
     if (!requesterIsGM(callerId) && !ownsParticipant(part, callerId)) return false;
 
-    const actions = part.actions || { value: 0, max: 0 };
-    if ((actions.value || 0) < 1) return { error: "CRNS.Errors.NoActions" };
-    actions.value = Math.max(0, (actions.value || 0) - 1);
-    part.actions = actions;
-    part.jackedIn = !!jackIn;
-    if (!jackIn) {
-      part.rezzed = {}; // Clear the rezzed mirror on jack-out.
-      await deleteProgActors(session, pid); // delete backing prog-ICE actors first.
-      clearProgFloors(session, pid); // …and any floor overrides for it.
-      clearProgState(session, pid);  // …and any trap/deployed BI state (§14.12).
-      pruneAttachments(session, (a) => a.pid === pid); // …and ICE attachments.
-      if (session.reveal && session.reveal[pid]) delete session.reveal[pid];
+    if (!part.archId || !(getWorld("netArchs") || {})[part.archId]) return { error: "CRNS.Errors.NotConnected" };
+    if (part.jackedIn === !!jackIn) return true;
+    const spent = takeActions(part);
+    if (spent !== true) return spent;
+    if (!jackIn) await endRunnerRun(session, pid);
+    else {
+      part.jackedIn = true;
+      part.floorIndex = archTree.rootIndex(floorsOf(getWorld("netArchs") || {}, part.archId));
+      part.visited = entryVisited(part.archId);
+      await triggerFloorIce(session, part.archId, pid);
     }
     await setWorld("session", session);
     return true;
   },
 
-  /** Spend NET actions (clamped at 0). */
+  /** Spend NET actions only when the full positive integer cost is available. */
   async "run.spend"({ pid, n = 1 } = {}, callerId) {
     const session = getWorld("session") || {};
     const parts = session.participants || {};
@@ -1775,9 +1835,9 @@ const OPS = {
     if (!part || part.kind !== "runner") return false;
     if (!requesterIsGM(callerId) && !ownsParticipant(part, callerId)) return false;
 
-    const actions = part.actions || { value: 0, max: 0 };
-    actions.value = Math.max(0, (actions.value || 0) - (Number(n) || 0));
-    part.actions = actions;
+    if (!part.jackedIn || !part.archId) return { error: "CRNS.Errors.NotConnected" };
+    const spent = takeActions(part, Number(n));
+    if (spent !== true) return spent;
     await setWorld("session", session);
     return true;
   },
@@ -1790,6 +1850,7 @@ const OPS = {
     if (!part || part.kind !== "runner") return false;
     if (!requesterIsGM(callerId) && !ownsParticipant(part, callerId)) return false;
 
+    if (!Number.isInteger(Number(n)) || Number(n) < 1) return { error: "CRNS.Errors.BadActionCount" };
     const actions = part.actions || { value: 0, max: 0 };
     const max = actions.max || participantActionMax(part);
     actions.value = Math.min(max, (actions.value || 0) + (Number(n) || 0));
@@ -1808,6 +1869,7 @@ const OPS = {
 
     const max = participantActionMax(part);
     part.actions = { value: max, max };
+    if (!game.combat?.started) session.manualTurn = (session.manualTurn || 0) + 1;
     await setWorld("session", session);
     return true;
   },
@@ -1823,6 +1885,7 @@ const OPS = {
       const max = participantActionMax(part);
       part.actions = { value: max, max };
     }
+    if (!game.combat?.started) session.manualTurn = (session.manualTurn || 0) + 1;
     await setWorld("session", session);
     return true;
   },
@@ -2158,6 +2221,14 @@ const OPS = {
       const part = (session.participants || {})[controllerPid];
       if (!ownsParticipant(part, callerId)) return false;
     }
+    const part = (session.participants || {})[controllerPid];
+    if (!part?.jackedIn || part.archId !== archId) return { error: "CRNS.Errors.NotConnected" };
+    const turn = turnKey(session);
+    if (fx.pulseTurn === turn) return { error: "CRNS.Errors.NodeUsed" };
+    const spent = takeActions(part);
+    if (spent !== true) return spent;
+    fx.pulseTurn = turn;
+    await setWorld("session", session);
     const arch = (getWorld("netArchs") || {})[archId];
     const floor = (arch?.floors || []).find((f) => f.id === floorId);
     const label = floor ? (floor.label || loc(`CRNS.Floor.${floor.kind}`)) : "";
@@ -2328,14 +2399,58 @@ const OPS = {
     return true;
   },
 
+  async "run.slideAttempt"({ pid, testRef, total, floorIndex } = {}, callerId) {
+    const session = getWorld("session") || {};
+    const acting = resolveActingRunner(session, pid, callerId);
+    if (!acting) return { error: "CRNS.Errors.NotConnected" };
+    const part = acting.part;
+    const target = slideTarget(session, pid, testRef);
+    if (!target) return { error: "CRNS.Errors.SlideTarget" };
+    const floors = floorsOf(getWorld("netArchs") || {}, part.archId);
+    if (!Number.isInteger(floorIndex) || !reachableFrom(session, part.archId, floors, part.floorIndex || 0).includes(floorIndex))
+      return { error: "CRNS.Errors.MoveStep" };
+    const turn = turnKey(session);
+    if (part.slideTurn === turn) return { error: "CRNS.Errors.SlideUsed" };
+    if (!Number.isFinite(Number(total))) return false;
+    const spent = takeActions(part);
+    if (spent !== true) return spent;
+    part.slideTurn = turn;
+    const attemptId = uid("slide");
+    part.slidePending = { id: attemptId, testRef, floorIndex, total: Number(total), fromIndex: part.floorIndex || 0, ...target };
+    await setWorld("session", session);
+    notifyClients({ kind: "slideTest", pid, testRef, runnerTotal: Number(total), attemptId });
+    return true;
+  },
+
+  /** Retry only the cancelled GM half of a saved opposed roll. No new action or player roll. */
+  async "run.slideRetry"({ pid } = {}, callerId) {
+    const session = getWorld("session") || {};
+    const acting = resolveActingRunner(session, pid, callerId);
+    const pending = acting?.part.slidePending;
+    if (!pending) return false;
+    notifyClients({ kind: "slideTest", pid, testRef: pending.testRef,
+      runnerTotal: pending.total, attemptId: pending.id });
+    return true;
+  },
+
   /** Record a successful slide: drop the ICE's attachment to this runner and add
    *  a slid record so it never re-attaches (until GM clears). GM only — called
    *  by the primary-GM slideTest notify consumer. Handles both arch ICE (iceId)
    *  and player-placed BI (progKey) targets (Addendum 2). */
-  async "run.slideResolve"({ archId, iceId, progKey = null, pid } = {}, callerId) {
+  async "run.slideResolve"({ archId, iceId, progKey = null, pid, attemptId, success = true } = {}, callerId) {
     if (!requesterIsGM(callerId)) return false;
     if (!archId || !pid || (!iceId && !progKey)) return false;
     const session = getWorld("session") || {};
+    const part = session.participants?.[pid];
+    const pending = part?.slidePending;
+    if (!pending || pending.id !== attemptId || !part.jackedIn || part.archId !== archId) return false;
+    delete part.slidePending;
+    if (!success || part.floorIndex !== pending.fromIndex) {
+      await setWorld("session", session);
+      return !success;
+    }
+    const floors = floorsOf(getWorld("netArchs") || {}, archId);
+    if (!reachableFrom(session, archId, floors, part.floorIndex || 0).includes(pending.floorIndex)) return false;
     session.slid = session.slid || [];
     if (progKey) {
       pruneAttachments(session, (a) => a.archId === archId && a.progKey === progKey && a.pid === pid);
@@ -2346,8 +2461,10 @@ const OPS = {
       const exists = session.slid.some((s) => s.archId === archId && s.iceId === iceId && s.pid === pid);
       if (!exists) session.slid.push({ archId, iceId, pid });
     }
+    prunePendingTests(session, t => t.pid === pid && t.ref === pending.testRef);
     await setWorld("session", session);
-    return true;
+    // Internal call stays inside the operation queue and uses the normal movement rules.
+    return OPS["session.move"]({ pid, floorIndex: pending.floorIndex }, callerId);
   },
 
   /* ---- Round-2: demon state (SPEC §14.8) ---- */
@@ -2360,7 +2477,8 @@ const OPS = {
     const session = getWorld("session") || {};
     const state = ensureDemonState(session, actorId);
     if (!state) return false;
-    state.value = Math.max(0, (state.value || 0) - (Number(n) || 0));
+    const spent = takeActions({ actions: state }, Number(n));
+    if (spent !== true) return spent;
     await setWorld("session", session);
     return true;
   },
@@ -2389,6 +2507,11 @@ const OPS = {
     const acting = resolveActingRunner(session, pid, callerId);
     if (!acting) return false;
     if (!programId || (mode !== "trap" && mode !== "deployed")) return false;
+    const runnerActor = acting.part.actorUuid ? fromUuidSync?.(acting.part.actorUuid) : null;
+    const program = runnerActor?.getOwnedItem?.(programId);
+    const installed = bridge.installedPrograms(bridge.getDeck(runnerActor));
+    if (program?.system?.class !== "blackice" || !program.system.isRezzed ||
+        !installed.some(p => p.id === programId)) return false;
 
     // Deployed mode requires a valid target; trap needs none.
     if (mode === "deployed" && !validEntityRef(targetRef)) return { error: "CRNS.Errors.NoTarget" };
@@ -2407,8 +2530,6 @@ const OPS = {
     const prev = session.progState[key] || null;
     let actorId = prev?.actorId || "";
     if (!actorId || !game.actors?.get(actorId)) {
-      const runnerActor = part.actorUuid ? (fromUuidSync?.(part.actorUuid) ?? null) : null;
-      const program = runnerActor?.getOwnedItem?.(programId) ?? null;
       const archName = (getWorld("netArchs") || {})[part.archId]?.name || loc("CRNS.Tree.Untitled");
       if (program) {
         actorId = await bridge.createProgIceActor({
@@ -2481,7 +2602,15 @@ export function hasOp(op) {
   return typeof OPS[op] === "function";
 }
 
-export async function applyOp(op, payload, userId) {
+let operationQueue = Promise.resolve();
+
+export function applyOp(op, payload, userId) {
+  const result = operationQueue.then(() => executeOp(op, payload, userId));
+  operationQueue = result.catch(() => false);
+  return result;
+}
+
+async function executeOp(op, payload, userId) {
   const fn = OPS[op];
   if (!fn) {
     console.warn(`${MODULE_ID} | unknown op ${op}`);

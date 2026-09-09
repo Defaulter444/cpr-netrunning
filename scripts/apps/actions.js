@@ -694,6 +694,11 @@ export function activateListeners(app, html) {
     const shift = !!ev.shiftKey;
     const spend = !free && !shift; // Defence/Speed are free; Shift skips the spend.
 
+    if (ability === "slide" && participantById(pid)?.slidePending) {
+      await mutate("run.slideRetry", { pid });
+      return;
+    }
+
     if (ability === "virus") {
       const work = await mutate("run.virusWork", { pid });
       if (work?.error) { ui.notifications.warn(loc(work.error)); return; }
@@ -704,18 +709,27 @@ export function activateListeners(app, html) {
     } else if (spend && (participantById(pid)?.actions?.value ?? 0) < 1) {
       ui.notifications.warn(loc("CRNS.Errors.NoActions")); return;
     }
+    const part = participantById(pid);
+    if (!part?.jackedIn) { ui.notifications.warn(loc("CRNS.Errors.NotConnected")); return; }
+    const sessionBefore = getWorld("session") || {};
+    const testRef = (sessionBefore.targets || {})[game.user.id] || "";
+    let slideFloor = null;
+    if (ability === "slide") {
+      slideFloor = await pickSlideFloor(part, sessionBefore);
+      if (slideFloor === null) return;
+    }
     const roll = await bridge.rollInterface(actor, ability, ev.originalEvent || ev);
     if (!roll) return;
-    if (spend && ability !== "virus") await mutate("run.spend", { pid, n: 1 });
+    if (spend && ability !== "virus" && ability !== "slide") {
+      const spent = await mutate("run.spend", { pid, n: 1 });
+      if (spent !== true) { ui.notifications.warn(loc(spent?.error || "CRNS.Errors.NoActions")); return; }
+    }
 
     // Slide is an opposed roll vs the targeted ICE — arch ICE (ice:) or a
     // player-placed Black ICE (prog:, Addendum 2) → emit the slideTest notify.
     if (ability === "slide") {
-      const session = getWorld("session") || {};
-      const testRef = (session.targets || {})[game.user.id] || "";
-      if (testRef.startsWith("ice:") || testRef.startsWith("prog:")) {
-        notifyClients({ kind: "slideTest", testRef, pid, runnerTotal: Number(roll.resultTotal) || 0 });
-      }
+      const res = await mutate("run.slideAttempt", { pid, testRef, total: Number(roll.resultTotal), floorIndex: slideFloor });
+      if (res?.error) ui.notifications.warn(loc(res.error));
       return;
     }
 
@@ -740,7 +754,6 @@ export function activateListeners(app, html) {
     if ((part?.actions?.value ?? 0) < 1) { ui.notifications.warn(loc("CRNS.Errors.NoActions")); return; }
     const floorId = await pickControlledNode(html, el);
     if (!floorId) return;
-    await mutate("run.spend", { pid, n: 1 });
     const res = await mutate("run.nodePulse", { archId, floorId });
     if (res && res.error) ui.notifications.warn(loc(res.error));
   });
@@ -768,7 +781,7 @@ export function activateListeners(app, html) {
     // Player Black-ICE deploy flow (SPEC §14.12): trap vs deployed.
     if (cls === "blackice") { await activateBlackIce(app, part, pid, actor, programId); return; }
 
-    await mutate("run.spend", { pid, n: 1 });
+    if ((await mutate("run.spend", { pid, n: 1 })) !== true) return;
     await bridge.rezProgram(actor, programId);
   });
 
@@ -786,7 +799,7 @@ export function activateListeners(app, html) {
       if (!canDerezTrap(session, pid, programId)) { ui.notifications.warn(loc("CRNS.Errors.TrapDerezFloor")); return; }
     }
 
-    await mutate("run.spend", { pid, n: 1 });
+    if ((await mutate("run.spend", { pid, n: 1 })) !== true) return;
     await bridge.derezProgram(actor, programId);
     if (cls === "blackice") await mutate("run.setRezzed", { pid, programId, state: null });
   });
@@ -873,8 +886,9 @@ export function activateListeners(app, html) {
     ev.preventDefault();
     const actor = game.actors?.get(ev.currentTarget.dataset.actorId);
     if (!actor) return;
-    if (!(await spendDemonAction(ev.currentTarget.dataset.actorId))) return;
-    await bridge.rollEntityStat(actor, "interface", ev.originalEvent || ev);
+    if (!hasDemonAction(actor.id)) return;
+    const roll = await bridge.rollEntityStat(actor, "interface", ev.originalEvent || ev);
+    if (roll) await spendDemonAction(ev.currentTarget.dataset.actorId);
   });
 
   // Demon Zap (SPEC §14.8): attack roll 1d10+Interface posted as an attack; if a
@@ -884,9 +898,10 @@ export function activateListeners(app, html) {
     const actorId = ev.currentTarget.dataset.actorId;
     const actor = game.actors?.get(actorId);
     if (!actor) return;
-    if (!(await spendDemonAction(actorId))) return;
+    if (!hasDemonAction(actorId)) return;
     const roll = await bridge.rollEntityStat(actor, "interface", ev.originalEvent || ev);
     if (!roll) return;
+    if (!(await spendDemonAction(actorId))) return;
     const session = getWorld("session") || {};
     const targetRef = (session.targets || {})[game.user.id] || "";
     if (targetRef.startsWith("runner:")) {
@@ -1049,13 +1064,39 @@ export function confirmDisconnect(pid) {
   });
 }
 
+async function pickSlideFloor(part, session) {
+  const floors = (getWorld("netArchs") || {})[part.archId]?.floors || [];
+  const from = part.floorIndex || 0;
+  const floor = floors[from];
+  let exits = archTree.adjacentOf(floors, from);
+  const fx = session.floorState?.[`${part.archId}:${floor?.id}`];
+  if ((floor?.kind === "password" || floor?.gate) && !fx?.breached) {
+    const parent = archTree.parentOf(floors, from);
+    exits = parent >= 0 ? [parent] : [];
+  }
+  if (!exits.length) { ui.notifications.warn(loc("CRNS.Errors.MoveStep")); return null; }
+  if (exits.length === 1) return exits[0];
+  return new Promise(resolve => {
+    const buttons = {};
+    for (const index of exits) buttons[`floor${index}`] = {
+      label: `${index + 1}. ${esc(floors[index].label || loc(`CRNS.Floor.${floors[index].kind}`))}`,
+      callback: () => resolve(index),
+    };
+    new Dialog({ title: loc("CRNS.Actions.SlideExit"), content: "", buttons, close: () => resolve(null) }).render(true);
+  });
+}
+
 /** GM demon action spend with 0-action warn. Returns true when spent (or when a
  *  demon has no tracked counter — legacy actors). */
 async function spendDemonAction(actorId) {
+  if (!hasDemonAction(actorId)) return false;
+  return (await mutate("demon.spend", { actorId, n: 1 })) === true;
+}
+
+function hasDemonAction(actorId) {
   const session = getWorld("session") || {};
   const state = (session.demonState || {})[actorId];
   if (state && (state.value || 0) < 1) { ui.notifications.warn(loc("CRNS.Errors.NoActions")); return false; }
-  await mutate("demon.spend", { actorId, n: 1 });
   return true;
 }
 
@@ -1068,7 +1109,7 @@ async function activateBlackIce(app, part, pid, actor, programId) {
   const targetRef = (session.targets || {})[game.user.id] || "";
   const hasTarget = targetRef && !targetRef.startsWith("prog:");
 
-  await mutate("run.spend", { pid, n: 1 });
+  if ((await mutate("run.spend", { pid, n: 1 })) !== true) return;
   const ok = await bridge.rezProgram(actor, programId);
   if (!ok) return;
   await mutate("run.setRezzed", { pid, programId, state: { rezzed: true } });

@@ -398,5 +398,11 @@
       "Unlink": "Remove this way in",
       "Remove": "Delete this floor"
     }
-  }
+  },
+  "CRNS.Errors.NotConnected": "Jack into an architecture first.",
+  "CRNS.Errors.BadActionCount": "Action cost must be a positive whole number.",
+  "CRNS.Errors.NodeUsed": "This Control Node has already been activated this turn.",
+  "CRNS.Errors.SlideUsed": "Slide has already been attempted this turn.",
+  "CRNS.Errors.SlideTarget": "Choose living Black ICE currently engaging this runner. Demons cannot be Slid.",
+  "CRNS.Actions.SlideExit": "Slide: choose the adjacent floor"
 }

@@ -1,8 +1,8 @@
 {
   "id": "cpr-netrunning-next",
   "title": "Cyberpunk RED: Netrunning Lab",
-  "description": "Experimental sidecar UI and Foundry integration laboratory for cpr-netrunning. Uses isolated storage and never writes production cpr-netrunning settings.",
-  "version": "0.1.0",
+  "description": "Experimental rules-aware Netrunning cockpit for Cyberpunk RED. Isolated from production cpr-netrunning data, with per-user projections and native CPR rolls.",
+  "version": "0.2.0",
   "compatibility": {
     "minimum": "12",
     "verified": "12.343",
@@ -13,7 +13,7 @@
       "name": "Horusian"
     }
   ],
-  "socket": false,
+  "socket": true,
   "esmodules": [
     "scripts/main.js"
   ],

@@ -1,6 +1,6 @@
 import { ID } from "./store.js";
 import { publishAllProjections } from "./projection.js";
-import { rollPlainInterface } from "./runner-profile.js";
+import { rollPlainInterface, setProgramRezzed } from "./runner-profile.js";
 import { rollWatcherInterface } from "./entity-rolls.js";
 
 function uid() {
@@ -14,6 +14,30 @@ function validMessage(user, grant, messageId) {
   if (!flag || flag.token !== grant.token || flag.actorUuid !== grant.actorUuid) return null;
   if (!Number.isFinite(Number(flag.total))) return null;
   return { message, total: Number(flag.total) };
+}
+
+function controlActions(documentName) {
+  return {
+    Wall: ["open", "close", "lock", "unlock"],
+    Token: ["show", "hide"],
+    Tile: ["show", "hide"],
+    AmbientLight: ["enable", "disable"],
+    AmbientSound: ["enable", "disable"]
+  }[documentName] || [];
+}
+
+async function executeSceneControl(control) {
+  const doc = await fromUuid(control.uuid);
+  if (!doc || doc.documentName !== control.documentType) throw new Error("Linked Scene Document is unavailable or changed type.");
+  if (!controlActions(doc.documentName).includes(control.action)) throw new Error("Unsupported Control Node action.");
+  if (doc.documentName === "Wall") {
+    if (!(doc.door > 0)) throw new Error("Linked Wall is not a door.");
+    await doc.update({ ds: { open: 1, close: 0, lock: 2, unlock: 0 }[control.action] });
+  } else if (doc.documentName === "Token" || doc.documentName === "Tile") {
+    await doc.update({ hidden: control.action === "hide" });
+  } else {
+    await doc.update({ hidden: control.action === "disable" });
+  }
 }
 
 export class LabRequestController {
@@ -31,8 +55,8 @@ export class LabRequestController {
       return true;
     }
 
-    const runtime = await this.store.getRuntime();
-    const runner = runtime?.runners?.[request.runnerId];
+    const state = await this.store.getRuntime();
+    const runner = state?.runners?.[request.runnerId];
     if (!runner) throw new Error("Runner not found.");
     this._authorize(user, runner);
 
@@ -60,7 +84,7 @@ export class LabRequestController {
         return { ok: true };
 
       case "beginAbility":
-        return this._grant(user, runner, runtime, "ability", {
+        return this._grant(user, runner, state, "ability", {
           ability: request.ability,
           nodeId: request.nodeId,
           virusText: String(request.virusText || "")
@@ -72,15 +96,34 @@ export class LabRequestController {
       case "beginQuietJack":
         if (runner.jackedIn) throw new Error("Runner is already Jacked In.");
         if (Number(runner.actionsMax || 0) - Number(runner.actionsUsed || 0) < 2) throw new Error("Quiet Jack In needs two NET Actions.");
-        return this._grant(user, runner, runtime, "quietJack", {});
+        return this._grant(user, runner, state, "quietJack", {});
 
       case "completeQuietJack":
         return this._completeQuietJack(user, request);
 
-      case "controlPulse":
-        await this.runtime.activateControlledNode(runner.id, request.nodeId);
+      case "programToggle": {
+        if (Number(runner.actionsUsed || 0) >= Number(runner.actionsMax || 0)) throw new Error("No NET Actions remaining this Turn.");
+        const actor = await fromUuid(runner.actorUuid);
+        if (!actor) throw new Error("Runner Actor is unavailable.");
+        await setProgramRezzed(actor, request.programId, !!request.rezzed);
+        await this.runtime.spendAction(runner.id, 1);
+        await this.runtime.refreshRunner(runner.id);
         await publishAllProjections(this.store);
         return { ok: true };
+      }
+
+      case "executeControl": {
+        if (Number(runner.actionsUsed || 0) >= Number(runner.actionsMax || 0)) throw new Error("No NET Actions remaining this Turn.");
+        const arch = await this.store.get(state.activeArchitectureId);
+        const node = arch?.nodes?.find((n) => n.id === request.nodeId);
+        const control = node?.controls?.find((c) => c.id === request.controlId);
+        if (!control) throw new Error("Control Node binding not found.");
+        if (state.floorState?.[node.id]?.control?.runnerId !== runner.id) throw new Error("Take control of this Control Node first.");
+        await executeSceneControl(control);
+        await this.runtime.activateControlledNode(runner.id, node.id);
+        await publishAllProjections(this.store);
+        return { ok: true, label: control.label, action: control.action };
+      }
 
       case "setTarget":
         await this.runtime.setTarget(runner.id, request.ref || "");
@@ -98,7 +141,7 @@ export class LabRequestController {
     return true;
   }
 
-  _grant(user, runner, runtime, kind, data) {
+  _grant(user, runner, _state, kind, data) {
     const token = uid();
     const grant = {
       token,
@@ -119,8 +162,8 @@ export class LabRequestController {
   async _verifyCompletion(user, request, kind) {
     const grant = this.grants.get(request.token);
     if (!grant || grant.kind !== kind || grant.userId !== user.id || Date.now() > grant.expires) throw new Error("Roll grant expired or does not match.");
-    const runtime = await this.store.getRuntime();
-    const runner = runtime.runners?.[grant.runnerId];
+    const state = await this.store.getRuntime();
+    const runner = state.runners?.[grant.runnerId];
     this._authorize(user, runner);
     if (!runner || runner.actorUuid !== grant.actorUuid || runner.currentNodeId !== grant.currentNodeId || Number(runner.actionsUsed || 0) !== grant.actionsUsed || runner.deckId !== grant.deckId) {
       throw new Error("NET state changed while the roll was open. Cancel and try again.");
@@ -128,7 +171,7 @@ export class LabRequestController {
     const verified = validMessage(user, grant, request.messageId);
     if (!verified) throw new Error("Matching native CPR roll card not found.");
     this.grants.delete(grant.token);
-    return { grant, runtime, runner, total: verified.total };
+    return { grant, state, runner, total: verified.total };
   }
 
   async _completeAbility(user, request) {
@@ -145,8 +188,8 @@ export class LabRequestController {
   }
 
   async _completeQuietJack(user, request) {
-    const { grant, runtime, total } = await this._verifyCompletion(user, request, "quietJack");
-    const arch = await this.store.get(runtime.activeArchitectureId);
+    const { grant, state, total } = await this._verifyCompletion(user, request, "quietJack");
+    const arch = await this.store.get(state.activeArchitectureId);
     const watcherTotals = [];
 
     for (const node of arch?.nodes || []) {
@@ -157,7 +200,7 @@ export class LabRequestController {
       }
     }
 
-    for (const other of Object.values(runtime.runners || {})) {
+    for (const other of Object.values(state.runners || {})) {
       if (other.id === grant.runnerId || !other.jackedIn || !other.watcher) continue;
       const actor = await fromUuid(other.actorUuid);
       if (!actor) continue;

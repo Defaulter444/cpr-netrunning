@@ -1,106 +1,168 @@
-# Cyberpunk RED: Netrunning Lab 0.3
+# Cyberpunk RED: Netrunning Lab 0.5
 
-Experimental **sidecar module** for `cpr-netrunning`. It is deliberately isolated from production saves so the UX and runtime can be tested without touching the working module.
+Experimental **sidecar module** for `cpr-netrunning`. It is deliberately isolated from production saves so UX, rules and multiplayer behavior can be tested without touching the working module.
 
 - module id: `cpr-netrunning-next`
-- Foundry VTT: 12.343
-- Cyberpunk RED - CORE: 0.92.4
-- production `cpr-netrunning`: read-only source for an imported copy
+- Foundry VTT: **12.343**
+- Cyberpunk RED - CORE: **0.92.4**
+- production `cpr-netrunning`: read-only source for **Import Copy**
 
-## 0.3 goal: rules-first cockpit
+## 0.5 — Black ICE becomes a real runtime state
 
-0.2 proved the contextual RUN / BUILD / PLAYER VIEW structure. 0.3 refines it instead of adding another permanent panel.
+0.3 built the rules-first cockpit. 0.4 added Foundry-safe motion. 0.5 tackles the first combat lifecycle instead of adding decorative combat buttons.
 
-The permanent surface remains small:
+A Black ICE encounter is now a blocking state that must actually resolve before the Netrunner can continue doing unrelated NET Actions.
 
-- **map** = what exists in the NET and what the runner currently knows;
-- **session strip** = runner, equipped Cyberdeck, Interface, NET Action budget, Jack state;
-- **action dock** = only actions that make sense in the current context;
-- **inspector** = details for the selected node;
-- **program drawer** = collapsible, not always visible.
+### Normal Black ICE encounter
 
-New 0.3 map tools are floating and optional: Fit, zoom, inspector collapse, Focus Mode and Help. Mouse/keyboard navigation is intentionally closer to a tactical-map workflow than a form-heavy admin panel.
+When a Netrunner enters a floor containing active Black ICE:
 
-Keyboard shortcuts while the Lab has focus:
+1. the Black ICE is triggered and begins following the Netrunner;
+2. it enters the top of the shared Foundry Combat initiative queue;
+3. the cockpit shows a contextual **SPEED CHECK** banner instead of adding a permanent combat panel;
+4. the Netrunner rolls the native CPR Interface SPEED check, including normal modifiers/LUCK/crits;
+5. the Black ICE rolls native SPD;
+6. a tie protects the defending Netrunner from the immediate effect;
+7. on failure, the immediate ICE effect becomes an explicit GM-resolution state and the run cannot silently continue past it.
 
-- `F` — fit the NET Architecture;
+The module does **not** guess how every Black ICE effect should mutate a Character. Effects include damage, Program destruction, fire, forced unsafe Jack Out and other behavior. Until each effect has a verified implementation, the GM opens the actual ICE sheet/card, applies the effect, then clicks **Effect resolved**. This is deliberate rules safety, not missing UI polish.
+
+### Going Quiet + Black ICE
+
+A stealthed Netrunner encountering Black ICE does not use SPEED. The Lab now follows Going Quiet v1.1:
+
+- native Interface + Cloak bonuses vs Black ICE PER;
+- success: ICE does not detect the runner, never enters Initiative, and is not marked encountered from that successful pass;
+- failure: stealth breaks, the failed ICE immediate effect resolves as a failed SPEED Check, the ICE enters the top of Initiative, and other Black ICE on that floor react normally.
+
+### Pursuit
+
+Black ICE that has engaged a Netrunner now has a virtual runtime position independent of the authored floor definition.
+
+- pursuing ICE follows the runner between NET floors;
+- the action dock shows a compact **PURSUIT** strip only while something is following;
+- clicking the pursuing ICE makes it the current target;
+- the current node gets a subtle threat state rather than another permanent sidebar.
+
+### Slide
+
+Slide is no longer hidden because its complete action flow now exists:
+
+- valid target = one non-Demon Black ICE currently following the Netrunner;
+- costs 1 NET Action;
+- only one Slide attempt per Turn;
+- player chooses the adjacent destination **before** rolling;
+- destination must be normally reachable and cannot cross a NET obstruction;
+- native Slide roll vs native Black ICE PER;
+- the Netrunner must strictly beat PER; ties stay with the ICE;
+- success immediately moves the Netrunner to the chosen adjacent floor;
+- escaped ICE remains on the floor where pursuit broke and lays in wait there;
+- returning to that floor can trigger the ICE again.
+
+## Control Node correction retained from 0.4
+
+A Control Node and a device behind it are not the same action:
+
+- taking Control costs a NET Action;
+- activating the controlled node/device costs another NET Action;
+- **each Control Node can be activated only once per Turn**;
+- the activation is reserved before Foundry changes a Wall/Token/Tile/Light/Sound;
+- if the Scene Document update throws, the activation reservation and spent NET Action are rolled back.
+
+0.5 intentionally keeps the 0.4 Control runtime instead of replacing it inside the Black ICE code.
+
+## Foundry VTT v12 UI philosophy
+
+The Lab is a resizable Foundry **Application window**, not a replacement Scene canvas.
+
+Permanent UI remains small:
+
+- **map** — NET topology and known state;
+- **session strip** — Netrunner, Cyberdeck, Interface, NET Actions and Jack state;
+- **action dock** — only currently relevant actions;
+- **inspector** — selected node details;
+- **program drawer** — collapsible;
+- **encounter banner** — exists only while an immediate Black ICE check/effect is unresolved.
+
+Map controls remain floating: Fit, zoom, inspector collapse, Focus Mode and Help.
+
+Keyboard:
+
+- `F` — Fit;
 - `[` / `]` — zoom;
-- `P` — Programs drawer;
+- `P` — Programs;
 - `I` — inspector;
-- `?` — rules/controls help;
-- `Space + drag` or middle mouse drag — pan;
+- `?` — help;
+- `Space + drag` / middle mouse — pan;
 - `Alt+1 / Alt+2 / Alt+3` — GM RUN / BUILD / PLAYER VIEW.
 
-## Design policy
+## Motion
 
-**More capability must not mean more permanent chrome.**
+Motion remains optional and tied to state truth.
 
-- Foundry Document configuration lives in BUILD.
-- Scene bindings live in BUILD and appear in RUN only after the runner owns that Control Node.
-- DV is a GM-intel overlay, not ordinary player information.
-- unavailable combat mechanics are hidden instead of disabled-but-mysterious buttons.
-- small windows can collapse the inspector or enter Focus Mode without losing the action dock.
-- themes use original SVG/CSS assets: REDLINE, NEON and MONO.
-- visible keyboard focus and reduced-motion modes are first-class behavior.
+**Off** — no decorative motion.
 
-## Rules policy
+**Subtle** — default:
 
-The module does not copy game math into random UI handlers. Native Cyberpunk RED rolls go through `cyberpunk-red-core`; state rules are isolated and tested.
+- route packet on confirmed movement;
+- decrypt/reveal transition;
+- state/pip/Program feedback;
+- Black ICE wake/engagement pulse;
+- failed immediate-effect impact;
+- successful Slide pursuit-break pulse.
 
-Important 0.3 hardening:
+**Cinematic** adds low-intensity topology flow and threat breathing, but no animation creates or resolves a rule.
 
-1. **Control Node use is once per Turn.** Taking the node and activating its connected system remain separate NET Actions, and a second activation of the same node in the same Turn is rejected before an action is spent.
-2. **Going Quiet plain Interface Check is truly plain.** 0.2 used Scanner as a technical carrier. 0.3 builds CPR's native `CPRInterfaceRoll` directly so Scanner-specific modifiers cannot contaminate the check. If the exact CPR internals are unavailable, it fails closed and asks for manual adjudication instead of inventing a result.
-3. **Scanner stays meatspace-only.** It is not presented as an action inside a NET Architecture.
-4. **Slide / Zap / unfinished Black ICE combat remain hidden** until their complete opposed resolver, destination/damage flow and lifecycle are implemented. The Lab does not pretend that a partial implementation is rules-correct.
+`Reduce Motion` and `prefers-reduced-motion` disable decorative animation.
 
-See [RULES-MATRIX.md](RULES-MATRIX.md) for the automation status of each relevant rule.
+## Existing rules-aware runtime
 
-## Current rules-aware runtime
+Already automated/tested:
 
-Implemented now:
-
-- Interface action bands 2 / 3 / 4 / 5 from rank;
-- strict `total > DV` checks;
+- Interface action bands 2 / 3 / 4 / 5;
+- strict `total > DV`;
 - native CPR Interface dialogs, modifiers, LUCK, crits and chat cards;
-- Jack In / safe Jack Out costs;
-- Quiet Jack In cost and Watcher contest model from Going Quiet;
+- Jack In / safe Jack Out;
+- Quiet Jack In and Watcher contest;
 - free adjacent virtual movement;
-- branch-aware topology and blocked descent through unresolved obstructions;
-- Pathfinder branch reveal without leaking DV;
+- branch-aware topology and obstruction gating;
+- Pathfinder without leaking DV;
 - Backdoor, Eye-Dee, Control, Cloak and Virus state;
 - Virus only at a branch bottom;
 - per-Turn NET Action reset from Foundry Combat;
-- Control Node physical actions as separate NET Actions and once-per-Turn activation;
-- multiple runner records in one Architecture;
-- architecture reset only after no connected friendly runner remains Jacked In;
+- Control Node once-per-Turn activation;
+- Black ICE initial SPEED encounter;
+- Going Quiet Black ICE Cloak-vs-PER encounter;
+- Black ICE pursuit position;
+- Slide opposed flow + mandatory adjacent move;
+- multiple Netrunners in one Architecture;
 - player-specific sanitized projections.
 
-Not falsely automated yet:
+Still **not** claimed complete:
 
-- complete Black ICE Speed / encounter / follow lifecycle;
-- full Slide opposed flow and destination picker;
-- Zap opposed flow + damage;
-- Program combat end-to-end;
-- unsafe Jack Out effects;
-- full Watcher active-search lifecycle.
+- Black ICE normal Turn attacks / DEF / damage/effect lifecycle;
+- automatic application of every Black ICE effect;
+- unsafe Jack Out effects from all encountered/rezzed hostile ICE;
+- Zap end-to-end damage flow;
+- full Program-vs-Program / Program-vs-Netrunner combat;
+- Watcher active Pathfinder search once per Turn;
+- live multiplayer acceptance testing on Foundry 12.343.
 
-## Privacy model
+See [RULES-MATRIX.md](RULES-MATRIX.md).
 
-Full Architecture and live runtime remain in a GM-only JournalEntry:
+## Privacy
 
-`[CRNS LAB] Private Store`
+Full Architecture/runtime live in GM-only Journal storage. Each player gets a separate sanitized projection.
 
-Each player receives a separate projection document. Unknown nodes contain only minimum topology. Hidden DV, GM notes, hidden content, private attachments and Scene-control configuration never enter that projection.
+The projection does not include hidden DV, GM notes, undiscovered content, private Scene-control configuration, or Black ICE Actor IDs. Encounter summaries expose only what the affected player needs to act.
 
-Player mutations are validated by the authoritative GM. Secure transport uses ECDH P-256 + AES-GCM when WebCrypto is available. Without secure transport, the module does not silently downgrade player write trust: unsafe remote mutations remain unavailable while the GM can continue local testing.
+Player mutations are validated by the authoritative GM. Secure transport uses ECDH P-256 + AES-GCM when WebCrypto is available; insecure player writes do not silently downgrade.
 
-## Foundry integration
+## BUILD integration
 
-BUILD supports real Foundry Documents:
+BUILD accepts real Foundry Documents:
 
-- JournalEntry;
-- JournalEntryPage;
+- JournalEntry / JournalEntryPage;
 - Item;
 - Wall door;
 - Token;
@@ -108,7 +170,7 @@ BUILD supports real Foundry Documents:
 - AmbientLight;
 - AmbientSound.
 
-RUN shows only contextual actions. For example, a door binding does not appear just because it exists: the selected runner must control the corresponding Control Node.
+RUN only exposes a bound Scene action when the relevant Control Node is actually owned.
 
 ## Installation
 
@@ -120,26 +182,28 @@ into:
 
 `Data/modules/cpr-netrunning-next`
 
-Restart Foundry and enable **Cyberpunk RED: Netrunning Lab**. Production `cpr-netrunning` can remain enabled; module ids and stores are separate.
+Restart Foundry and enable **Cyberpunk RED: Netrunning Lab**. Production `cpr-netrunning` can remain enabled because ids and stores are separate.
 
-## Test sequence
+## Recommended 0.5 test sequence
 
 1. BUILD → Import Copy or Demo.
-2. Add an Actor with active Interface Role and equipped Cyberdeck.
-3. RUN → Jack In.
-4. Check free adjacent movement and blocked descent through an undefeated obstruction.
-5. Use Backdoor / Eye-Dee / Pathfinder and verify native CPR chat cards.
-6. PLAYER VIEW → confirm hidden DV/notes/content are absent, not merely CSS-hidden.
-7. BUILD → attach a Journal/Item and bind a Scene door to a Control Node.
-8. RUN → take Control, operate the device once, then confirm a second activation in the same Turn is rejected without spending an action.
-9. Advance Foundry Combat to the Netrunner and confirm the NET Action pool refreshes.
-10. Try Fit/zoom/pan, inspector collapse, Focus Mode and keyboard navigation at both 1240px and the 860px minimum window.
+2. Use an Architecture with at least one real Black ICE Actor reference.
+3. Add a Netrunner Actor with active Interface Role and equipped Cyberdeck.
+4. RUN → Jack In and enter the ICE floor.
+5. Confirm the SPEED banner appears before unrelated NET actions can continue.
+6. Test both a SPEED success and failure; on failure verify the GM effect gate.
+7. With pursuing ICE targeted, use Slide and choose an adjacent destination.
+8. Confirm success moves the runner, leaves ICE behind, and returning to that floor triggers it again.
+9. Quiet Jack In and approach ICE again: confirm Cloak-vs-PER replaces SPEED while stealthed.
+10. PLAYER VIEW → confirm encounter state is useful but private Actor IDs/DVs/GM notes remain absent.
+11. Test Control Node twice in one Turn: the second activation must be rejected without changing the Scene.
+12. Test Off/Subtle/Cinematic and OS Reduce Motion.
 
 ## Checks
 
 ```bash
 node experimental/cpr-netrunning-next/tools/check.mjs
-node experimental/cpr-netrunning-next/tools/test-v03.mjs
+node experimental/cpr-netrunning-next/tools/test-v05.mjs
 ```
 
-The experiment stays in a draft PR until real Foundry 12.343 multiplayer acceptance testing passes. `master` is not the test bench.
+The experiment remains a draft PR. `master` is not modified until live Foundry 12.343 acceptance testing is good enough to justify selectively porting features back.

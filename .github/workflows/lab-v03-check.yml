@@ -1,4 +1,4 @@
-name: Netrunning Lab 0.4 checks
+name: Netrunning Lab 0.5 checks
 
 on:
   push:
@@ -12,18 +12,20 @@ on:
       - ".github/workflows/lab-v03-check.yml"
 
 jobs:
-  lab-v04:
+  lab-v05:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
-      - name: Full lab checks
+      - name: Full integrity and regression checks
         run: node experimental/cpr-netrunning-next/tools/check.mjs
       - name: Rules tests
         run: node experimental/cpr-netrunning-next/tools/test-rules.mjs
-      - name: Lab 0.3 baseline checks
+      - name: UX baseline
         run: node experimental/cpr-netrunning-next/tools/test-v03.mjs
-      - name: Lab 0.4 motion and rules checks
+      - name: Motion baseline
         run: node experimental/cpr-netrunning-next/tools/test-v04.mjs
+      - name: Black ICE and Slide checks
+        run: node experimental/cpr-netrunning-next/tools/test-v05.mjs

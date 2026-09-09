@@ -1,61 +1,73 @@
-# Netrunning Lab 0.4 — motion design for Foundry VTT v12
+# Netrunning Lab 0.5 — motion design for Foundry VTT v12
 
-This module is a Foundry **Application window**, not a PIXI canvas effect package. The animation layer therefore uses browser-native DOM/CSS/Web Animations APIs and Foundry render hooks instead of fighting the Scene canvas.
+The Lab is a Foundry **Application window**, not a PIXI effect package. Motion therefore uses ordinary DOM/CSS/Web Animations plus Foundry render hooks, without fighting the Scene canvas or running a second render loop.
 
-## Design goals
+## Design rules
 
-1. **Animation follows truth.** Motion is triggered only by state that already changed: current NET floor, discovered node, NET Action pips, node status, or Program REZ state.
-2. **No fake combat.** There is no attack flash, damage number, Slide trail, or Black ICE pursuit animation until the matching RED resolver exists.
-3. **No permanent JS animation loop.** Continuous decorative motion is CSS-only and exists only in the optional Cinematic preset. JavaScript reacts to Foundry/Application renders and short state transitions.
-4. **Foundry window safe.** Route packets use viewport coordinates so Foundry's resizable window, scroll container and map zoom do not distort their path. The effect is visual only; the actual position still comes from the runtime projection.
-5. **Accessible by default.** `Reduce Motion` and the OS/browser `prefers-reduced-motion` setting force motion off. The default preset is Subtle, not Cinematic.
+1. **Animation follows state truth.** The runtime changes first; motion only explains what already happened.
+2. **No fake combat.** A visual effect never stands in for an unresolved RED mechanic.
+3. **No permanent JS loop.** Continuous decorative motion is optional CSS; event motion is short-lived.
+4. **Foundry-window safe.** Effects tolerate resize, scroll, map zoom and window repositioning.
+5. **Reduced motion wins.** Client Reduce Motion and `prefers-reduced-motion` disable decorative animation.
+6. **Context before spectacle.** A Black ICE banner exists only while the player actually has to resolve that encounter.
 
-## Presets
+## Motion presets
 
 ### Off
-No decorative or transition motion. Layout, colors, status icons and all controls remain fully functional.
+No decorative or transition animation. Mechanical colors, icons and controls remain.
 
 ### Subtle — default
-Short event animations only:
+Short state transitions:
 
-- confirmed NET movement: small route packet + arrival pulse;
-- unknown → known node: decrypt/reveal transition;
-- new Breached / Eye-Dee / Control / Virus state: status pulse;
-- NET Action spend/reset: pip feedback;
-- Program REZ/DEREZ: program-row feedback.
+- confirmed NET movement: route packet + arrival pulse;
+- unknown → known: decrypt transition;
+- new Breach / Eye-Dee / Control / Virus state: short pulse;
+- NET Action spend/reset: pip response;
+- Program REZ/DEREZ: row response;
+- new Black ICE encounter: current-floor threat wake;
+- failed SPEED / stealth encounter: impact feedback while the GM effect gate appears;
+- Black ICE pursuit begins: short lock pulse;
+- successful Slide: pursuit-break pulse after the runner moves.
 
 ### Cinematic
-Everything in Subtle plus deliberately slow ambient motion:
+Everything in Subtle plus low-intensity ambient NET flow, faint scan passes, and a gentle threat breathing effect on a current floor while Black ICE is following. These loops are CSS-only and encode no rules.
 
-- low-intensity data flow on topology lines;
-- a faint scan pass through the NET map;
-- gentle breathing glow on the runner's current node.
+## Black ICE animation contract
 
-None of those continuous effects encode mechanical state.
+0.5 deliberately couples motion to the encounter runtime:
 
-## Foundry VTT v12 implementation
+`enter floor → encounter state → native roll → authoritative comparison → runtime state → render → animation`
 
-The layer lives in:
+The animation never starts the SPEED check, never decides who wins, never applies an ICE effect, and never moves the runner. It observes the resulting DOM state.
 
-- `scripts/animations-v04.js`
-- `styles/animations-v04.css`
+### SPEED
+A triggered Black ICE produces a contextual banner. The current node receives a short threat pulse only after the runtime has actually created the pending encounter. A failed check produces an impact response and the explicit GM effect-resolution banner.
 
-It hooks `renderApplication` / `renderNetrunningLabApp`, snapshots the freshly rendered cockpit and compares it with the previous render for that Application instance. The first render never animates every node by accident.
+### Going Quiet
+The same encounter slot changes visual language from red/threat to violet/stealth. Success simply clears the banner; failure transitions into normal threat state because stealth is actually broken by the runtime.
 
-The route packet is a short `Element.animate()` call and removes itself when finished. Continuous ambient effects are pure CSS keyframes. There is no `setInterval` game loop.
+### Pursuit
+Following ICE is represented by a compact PURSUIT strip and a controlled glow on the current NET floor. In Cinematic mode that glow breathes slowly. There is no animated sprite continuously flying behind the runner because that would add noise to a Foundry window and imply a physical simulation that the rules do not need.
 
-## Rules safety added in the same pass
+### Slide
+A successful Slide first resolves the opposed roll and mandatory adjacent move. Only after the new runtime state renders does the current node get the pursuit-break animation. The escaped ICE remains at the previous virtual floor in runtime; animation does not teleport it.
 
-Control Node scene execution now reserves the once-per-Turn activation and spends its NET Action **before** mutating the linked Foundry Wall/Token/Tile/Light/Sound. If the Scene Document update throws, the reservation and NET Action are rolled back. This prevents a second activation from changing meatspace and only then being rejected.
+## Existing Foundry v12 implementation
 
-## What still does not animate
+- `scripts/animations-v04.js` — generic map/status/program motion.
+- `styles/animations-v04.css` — generic state motion and Cinematic ambient flow.
+- `scripts/animations-v05.js` — encounter/pursuit/Slide state diff.
+- `styles/v05.css` — encounter presentation and Black ICE transition keyframes.
 
-Until the corresponding full RED mechanics are implemented and live-tested:
+`Element.animate()` is used only for bounded route packets. The module does not use `setInterval()` or a game-loop-style animation scheduler.
 
-- Slide;
-- Zap / NET damage;
-- Black ICE Speed/initiative/follow lifecycle;
-- unsafe Jack Out effects;
-- Watcher search lifecycle.
+## Still intentionally unanimated
 
-The UI continues to hide those unfinished actions instead of implying that a visual effect equals correct automation.
+Until corresponding rules are fully implemented and live-tested:
+
+- Black ICE normal Turn attacks and damage/effect automation;
+- Zap and Program combat;
+- unsafe Jack Out consequences;
+- Watcher active-search lifecycle.
+
+Those mechanics may gain animation later, but only after the same rule → native roll → authoritative state → projection chain is complete.

@@ -5,6 +5,12 @@ export const INTERFACE_ABILITIES = Object.freeze([
 ]);
 
 export const beatsDV = (total, dv) => Number(total || 0) > Number(dv || 0);
+/* Opposed NET checks do not all break ties the same way. A Netrunner defending
+ * a Black ICE SPEED encounter avoids the free effect on a tie; an initiating
+ * Slide or stealth-vs-ICE Cloak check must strictly beat the ICE. */
+export const speedCheckAvoided = (runnerTotal, iceTotal) => Number(runnerTotal || 0) >= Number(iceTotal || 0);
+export const slideCheckSucceeded = (runnerTotal, icePerTotal) => Number(runnerTotal || 0) > Number(icePerTotal || 0);
+export const stealthIceAvoided = (runnerTotal, icePerTotal) => Number(runnerTotal || 0) > Number(icePerTotal || 0);
 
 export function netActionsMax(rank) {
   const r = Math.trunc(Number(rank) || 0);

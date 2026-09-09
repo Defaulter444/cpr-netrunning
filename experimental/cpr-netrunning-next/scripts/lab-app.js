@@ -197,25 +197,18 @@ export class NetrunningLabApp extends Application {
       privateState = await this.store.getRuntime();
       const all = await this.store.all();
       privateArch = all[privateState.activeArchitectureId] || Object.values(all)[0] || null;
-      if (privateArch && privateState.activeArchitectureId !== privateArch.id) {
-        privateState.activeArchitectureId = privateArch.id;
-      }
+      if (privateArch && privateState.activeArchitectureId !== privateArch.id) privateState.activeArchitectureId = privateArch.id;
       runner = privateState.runners?.[privateState.activeRunnerId] || Object.values(privateState.runners || {})[0] || null;
       if (runner && privateState.activeRunnerId !== runner.id) privateState.activeRunnerId = runner.id;
 
       architectures = Object.values(all).map((a) => ({ id: a.id, name: a.name, selected: a.id === privateArch?.id }));
-      runtimeRunners = Object.values(privateState.runners || {}).map((r) => ({
-        id: r.id,
-        name: r.name,
-        img: r.img,
-        selected: r.id === runner?.id,
-        jackedIn: !!r.jackedIn,
-        watcher: !!r.watcher,
-        owner: game.users.get(r.userId)?.name || "GM"
-      }));
-      const existingActorUuids = new Set(runtimeRunners.map((r) => privateState.runners[r.id]?.actorUuid));
-      candidateActors = candidateRunners().filter((actor) => !existingActorUuids.has(actor.uuid)).map((actor) => ({ uuid: actor.uuid, name: actor.name }));
-      if (!this.candidateActorUuid && candidateActors[0]) this.candidateActorUuid = candidateActors[0].uuid;
+      runtimeRunners = Object.values(privateState.runners || {}).map((r) => ({ id: r.id, name: r.name, img: r.img, selected: r.id === runner?.id, jackedIn: !!r.jackedIn, watcher: !!r.watcher, owner: game.users.get(r.userId)?.name || "GM" }));
+      const existingActorUuids = new Set(Object.values(privateState.runners || {}).map((r) => r.actorUuid));
+      candidateActors = candidateRunners().filter((actor) => !existingActorUuids.has(actor.uuid)).map((actor) => ({ uuid: actor.uuid, name: actor.name, selected: actor.uuid === this.candidateActorUuid }));
+      if (!this.candidateActorUuid && candidateActors[0]) {
+        this.candidateActorUuid = candidateActors[0].uuid;
+        candidateActors[0].selected = true;
+      }
 
       if (this.preview && runner && privateArch) {
         projection = sanitizeArchitecture(privateArch, privateState, runner.id);
@@ -233,23 +226,14 @@ export class NetrunningLabApp extends Application {
     }
 
     const currentNodeId = runner?.currentNodeId || projection?.currentNodeId || "";
+    if (runner && !runner.currentNodeId) runner.currentNodeId = currentNodeId;
     if (arch && (!this.selectedNodeId || !arch.nodes.some((n) => n.id === this.selectedNodeId))) this.selectedNodeId = currentNodeId || arch.nodes[0]?.id || "";
 
-    let actionContext = [];
-    let moves = [];
-    let floorState = {};
+    let actionContext = [], moves = [], floorState = {};
     if (gm && !this.preview && privateArch && runner) {
       floorState = privateState.floorState || {};
       const current = privateArch.nodes.find((n) => n.id === runner.currentNodeId) || null;
-      actionContext = current ? rules.primaryContext({
-        nodes: privateArch.nodes,
-        node: current,
-        floorState,
-        runnerId: runner.id,
-        hasIceTarget: String(runner.targetRef || "").startsWith("ice:"),
-        hasZapTarget: !!runner.targetRef,
-        slideUsed: !!runner.slideUsed
-      }) : [];
+      actionContext = current ? rules.primaryContext({ nodes: privateArch.nodes, node: current, floorState, runnerId: runner.id, hasIceTarget: String(runner.targetRef || "").startsWith("ice:"), hasZapTarget: !!runner.targetRef, slideUsed: !!runner.slideUsed }) : [];
       moves = current ? rules.neighborIds(privateArch.nodes, current.id).map((id) => ({ id, ...rules.canMove(privateArch.nodes, current.id, id, floorState) })) : [];
     } else if (projection) {
       actionContext = projection.actionContext || [];
@@ -260,7 +244,6 @@ export class NetrunningLabApp extends Application {
     const canvas = layoutArchitecture(arch, canvasRuntime, runner, { gmIntel: gm && !this.preview && this.gmIntel });
     canvas.nodes.forEach((node) => node.selected = node.id === this.selectedNodeId);
     const selected = arch?.nodes?.find((node) => node.id === this.selectedNodeId) || null;
-
     const inspector = selected ? this._inspectorVM(selected, { gm, privateState, privateArch, runner, preview: this.preview }) : null;
     const context = actionMeta(actionContext);
     const primary = context.filter((a) => a.available && !["pathfinder", "cloak"].includes(a.key));
@@ -275,38 +258,21 @@ export class NetrunningLabApp extends Application {
     } : null;
 
     return {
-      gm,
-      preview: this.preview,
+      gm, preview: this.preview,
       buildMode: gm && !this.preview && this.mode === "build",
       runMode: gm && !this.preview && this.mode === "run",
       playerMode: !gm || this.preview,
-      themeClass: `theme-${theme}`,
-      reduceMotion,
-      densePrograms,
+      themeClass: `theme-${theme}`, reduceMotion, densePrograms,
       secure: !!(gm || this.transport?.secure),
       modeLabel: this.preview ? "PLAYER VIEW" : this.mode === "build" ? "BUILD" : gm ? "GM RUN" : "PLAYER",
-      hasArchitecture: !!arch,
-      architectureName: arch?.name || "",
-      architectures,
-      runtimeRunners,
-      candidateActors,
-      candidateActorUuid: this.candidateActorUuid,
+      hasArchitecture: !!arch, architectureName: arch?.name || "", architectures,
+      runtimeRunners, candidateActors, candidateActorUuid: this.candidateActorUuid,
       runner: runnerVM,
       canvas: { ...canvas, style: `width:${canvas.width}px;height:${canvas.height}px` },
       inspector,
       inspectorTab: this.inspectorTab,
-      tabNode: this.inspectorTab === "node",
-      tabData: this.inspectorTab === "data",
-      tabControl: this.inspectorTab === "control",
-      actions: {
-        primary,
-        utility,
-        hasAny: primary.length > 0 || utility.length > 0,
-        canSpend: !!runnerVM && runnerVM.actionsRemaining > 0,
-        canOperate: !!runnerVM && !!(gm || this.transport?.secure),
-        programsOpen: this.programsOpen,
-        programs: runnerVM?.programs || []
-      },
+      tabNode: this.inspectorTab === "node", tabData: this.inspectorTab === "data", tabControl: this.inspectorTab === "control",
+      actions: { primary, utility, hasAny: primary.length > 0 || utility.length > 0, canSpend: !!runnerVM && runnerVM.actionsRemaining > 0, canOperate: !!runnerVM && !!(gm || this.transport?.secure), programsOpen: this.programsOpen, programs: runnerVM?.programs || [] },
       gmIntel: this.gmIntel,
       productionAvailable: game.modules.get("cpr-netrunning")?.active === true,
       footerVersion: "0.2.0"
@@ -318,11 +284,8 @@ export class NetrunningLabApp extends Application {
     const source = privateNode || selected;
     const fx = privateState?.floorState?.[source.id] || {};
     const attachments = (source.attachments || []).map((a) => ({ ...a, iconHref: ICON(a.documentType === "Item" ? "item" : "journal") }));
-    const controls = (source.controls || []).map((c) => ({
-      ...c,
-      actions: controlActions(c.documentType).map((value) => ({ value, label: value.toUpperCase(), selected: value === c.action }))
-    }));
-    const entities = (source.entities || []).map((entity) => ({ ...entity, iconHref: ICON(entity.kind === "demon" ? "demon" : "ice") }));
+    const controls = (source.controls || []).map((c) => ({ ...c, actions: controlActions(c.documentType).map((value) => ({ value, label: value.toUpperCase(), selected: value === c.action })) }));
+    const entities = (source.entities || []).map((entity) => ({ ...entity, targetRef: `${entity.kind === "blackice" ? "ice" : entity.kind}:${entity.id}`, iconHref: ICON(entity.kind === "demon" ? "demon" : "ice") }));
     const controlledByRunner = !!runner && (selected.state?.controlledByMe || fx.control?.runnerId === runner.id);
     return {
       ...selected,
@@ -337,19 +300,10 @@ export class NetrunningLabApp extends Application {
       contents: selected.contents || (gm && !preview ? source.contents || "" : ""),
       contentsImage: selected.contentsImage || (gm && !preview ? source.contentsImage || "" : ""),
       hasLockedData: !!selected.hasLockedData,
-      attachments,
-      controls,
-      entities,
-      controlledByRunner,
+      attachments, controls, entities, controlledByRunner,
       canBind: gm && !preview && this.mode === "build",
       isCurrent: runner?.currentNodeId === selected.id,
-      state: {
-        breached: !!(selected.state?.breached ?? fx.breached),
-        identified: !!(selected.state?.identified ?? false),
-        controlled: controlledByRunner,
-        virus: !!(selected.state?.hasVirus ?? (fx.viruses || []).some((v) => v.runnerId === runner?.id)),
-        scouted: !!selected.scouted
-      }
+      state: { breached: !!(selected.state?.breached ?? fx.breached), identified: !!(selected.state?.identified ?? false), controlled: controlledByRunner, virus: !!(selected.state?.hasVirus ?? (fx.viruses || []).some((v) => v.runnerId === runner?.id)), scouted: !!selected.scouted }
     };
   }
 
@@ -357,29 +311,16 @@ export class NetrunningLabApp extends Application {
     super.activateListeners(html);
     html.on("click", "[data-action]", (event) => {
       event.preventDefault();
-      this._action(event.currentTarget.dataset.action, event.currentTarget, event.originalEvent || event).catch((error) => {
-        console.error(`${ID} |`, error);
-        ui.notifications.error(error.message);
-      });
+      this._action(event.currentTarget.dataset.action, event.currentTarget, event.originalEvent || event).catch((error) => { console.error(`${ID} |`, error); ui.notifications.error(error.message); });
     });
     html.on("change", "[data-role='architecture']", (event) => this._selectArchitecture(event.currentTarget.value).catch((e) => ui.notifications.error(e.message)));
     html.on("change", "[data-role='runner']", (event) => this._selectRunner(event.currentTarget.value).catch((e) => ui.notifications.error(e.message)));
     html.on("change", "[data-role='candidate']", (event) => { this.candidateActorUuid = event.currentTarget.value; });
     html.on("change", "[data-control-action]", (event) => this._changeControlAction(event.currentTarget.dataset.controlId, event.currentTarget.value).catch((e) => ui.notifications.error(e.message)));
-    html.on("click", ".crnsl-node", (event) => {
-      if (event.target.closest("button")) return;
-      this.selectedNodeId = event.currentTarget.dataset.nodeId;
-      this.render(false);
-    });
-    html.on("dblclick", ".crnsl-node[data-can-move='true']", (event) => {
-      this._move(event.currentTarget.dataset.nodeId).catch((e) => ui.notifications.error(e.message));
-    });
+    html.on("click", ".crnsl-node", (event) => { if (event.target.closest("button")) return; this.selectedNodeId = event.currentTarget.dataset.nodeId; this.render(false); });
+    html.on("dblclick", ".crnsl-node[data-can-move='true']", (event) => this._move(event.currentTarget.dataset.nodeId).catch((e) => ui.notifications.error(e.message)));
     html.on("dragover", ".crnsl-node", (event) => { if (game.user.isGM && !this.preview && this.mode === "build") event.preventDefault(); });
-    html.on("drop", ".crnsl-node", (event) => {
-      if (!game.user.isGM || this.preview || this.mode !== "build") return;
-      event.preventDefault();
-      this._dropDocument(event.originalEvent || event, event.currentTarget.dataset.nodeId).catch((e) => ui.notifications.error(e.message));
-    });
+    html.on("drop", ".crnsl-node", (event) => { if (!game.user.isGM || this.preview || this.mode !== "build") return; event.preventDefault(); this._dropDocument(event.originalEvent || event, event.currentTarget.dataset.nodeId).catch((e) => ui.notifications.error(e.message)); });
   }
 
   async _action(action, target, event) {
@@ -404,6 +345,7 @@ export class NetrunningLabApp extends Application {
       case "move": await this._move(nodeId); break;
       case "ability": await this._runAbility(target.dataset.ability, nodeId, event); break;
       case "program-toggle": await this._request({ op: "programToggle", programId: target.dataset.programId, rezzed: target.dataset.rezzed === "true" }); break;
+      case "set-target": await this._request({ op: "setTarget", ref: target.dataset.ref || "" }); break;
       case "control-execute": await this._request({ op: "executeControl", nodeId, controlId: target.dataset.controlId }); break;
       case "attachment-open": await this._openAttachment(target.dataset.uuid); return;
       case "attachment-toggle": await this._toggleAttachment(nodeId, target.dataset.attachmentId); break;
@@ -431,27 +373,17 @@ export class NetrunningLabApp extends Application {
     if (!ABILITY_META[ability]) throw new Error("Unknown Interface Ability.");
     let virusText = "";
     if (ability === "virus") {
-      virusText = await Dialog.prompt({
-        title: game.i18n.localize("CRNSL.Virus.Title"),
-        content: `<p>${game.i18n.localize("CRNSL.Virus.Hint")}</p><textarea name="virus" rows="4"></textarea>`,
-        callback: (html) => String(html.find("textarea[name='virus']").val() || "")
-      });
+      virusText = await Dialog.prompt({ title: game.i18n.localize("CRNSL.Virus.Title"), content: `<p>${game.i18n.localize("CRNSL.Virus.Hint")}</p><textarea name="virus" rows="4"></textarea>`, callback: (html) => String(html.find("textarea[name='virus']").val() || "") });
       if (virusText === null || virusText === undefined) return;
     }
-
     const runnerId = await this._currentRunnerId();
     const grant = await this.transport.request({ op: "beginAbility", runnerId, ability, nodeId, virusText });
     const actor = await fromUuid(grant.actorUuid);
     if (!actor) throw new Error("Runner Actor is unavailable.");
     const rolled = await rollInterface(actor, ability, event, { grantToken: grant.token });
-    if (!rolled?.messageId) {
-      await this.transport.request({ op: "cancelRoll", token: grant.token, runnerId });
-      return;
-    }
+    if (!rolled?.messageId) { await this.transport.request({ op: "cancelRoll", token: grant.token, runnerId }); return; }
     const result = await this.transport.request({ op: "completeAbility", runnerId, token: grant.token, messageId: rolled.messageId });
-    if (["backdoor", "control", "eyedee"].includes(ability)) {
-      ui.notifications[result.success ? "info" : "warn"](game.i18n.localize(result.success ? "CRNSL.Roll.Success" : "CRNSL.Roll.Failure"));
-    }
+    if (["backdoor", "control", "eyedee"].includes(ability)) ui.notifications[result.success ? "info" : "warn"](game.i18n.localize(result.success ? "CRNSL.Roll.Success" : "CRNSL.Roll.Failure"));
   }
 
   async _quietJack(event) {
@@ -460,164 +392,43 @@ export class NetrunningLabApp extends Application {
     const actor = await fromUuid(grant.actorUuid);
     if (!actor) throw new Error("Runner Actor is unavailable.");
     const rolled = await rollPlainInterface(actor, event, { grantToken: grant.token });
-    if (!rolled?.messageId) {
-      await this.transport.request({ op: "cancelRoll", token: grant.token, runnerId });
-      return;
-    }
+    if (!rolled?.messageId) { await this.transport.request({ op: "cancelRoll", token: grant.token, runnerId }); return; }
     const result = await this.transport.request({ op: "completeQuietJack", runnerId, token: grant.token, messageId: rolled.messageId });
     ui.notifications[result.stealthSucceeded ? "info" : "warn"](game.i18n.localize(result.stealthSucceeded ? "CRNSL.Stealth.Established" : "CRNSL.Stealth.Detected"));
   }
 
-  async _move(nodeId) {
-    await this._request({ op: "move", nodeId });
-    this.selectedNodeId = nodeId;
-  }
+  async _move(nodeId) { await this._request({ op: "move", nodeId }); this.selectedNodeId = nodeId; }
 
   async _selectArchitecture(id) {
     if (!game.user.isGM) return;
     const runtime = await this.store.getRuntime();
     if (Object.values(runtime.runners || {}).some((runner) => runner.jackedIn)) throw new Error("Jack all Netrunners Out before switching architecture.");
-    const arch = await this.store.get(id);
-    if (!arch) return;
+    const arch = await this.store.get(id); if (!arch) return;
     await this.store.mutateRuntime((state) => {
-      state.activeArchitectureId = id;
-      state.floorState = {};
-      for (const runner of Object.values(state.runners || {})) {
-        runner.currentNodeId = arch.nodes.find((n) => !n.parent)?.id || arch.nodes[0]?.id || "";
-        runner.knownNodeIds = [];
-        runner.visitedNodeIds = [];
-        runner.actionsUsed = 0;
-        runner.stealthed = false;
-      }
+      state.activeArchitectureId = id; state.floorState = {};
+      for (const runner of Object.values(state.runners || {})) { runner.currentNodeId = arch.nodes.find((n) => !n.parent)?.id || arch.nodes[0]?.id || ""; runner.knownNodeIds = []; runner.visitedNodeIds = []; runner.actionsUsed = 0; runner.stealthed = false; }
     });
-    this.selectedNodeId = "";
-    await publishAllProjections(this.store);
-    this.render(false);
+    this.selectedNodeId = ""; await publishAllProjections(this.store); this.render(false);
   }
 
-  async _selectRunner(id) {
-    if (!game.user.isGM) return;
-    await this.runtimeService.selectRunner(id);
-    this.selectedNodeId = "";
-    await publishAllProjections(this.store);
-    this.render(false);
-  }
-
-  async _addRunner() {
-    if (!game.user.isGM) return;
-    if (!this.candidateActorUuid) throw new Error("Choose an eligible Netrunner Actor.");
-    await this.runtimeService.addRunner(this.candidateActorUuid);
-    await publishAllProjections(this.store);
-    this.candidateActorUuid = "";
-  }
-
-  async _removeRunner() {
-    if (!game.user.isGM) return;
-    const runtime = await this.store.getRuntime();
-    const id = runtime.activeRunnerId;
-    if (!id) return;
-    if (runtime.runners[id]?.jackedIn) throw new Error("Jack the Netrunner Out first.");
-    await this.runtimeService.removeRunner(id);
-    await publishAllProjections(this.store);
-  }
-
-  async _importProduction() {
-    if (!game.user.isGM) return;
-    const imported = await this.store.importProduction();
-    if (!imported.length) return;
-    await this._selectArchitecture(imported[0].id);
-    ui.notifications.info(game.i18n.format("CRNSL.Imported", { count: imported.length }));
-  }
-
-  async _createDemo() {
-    if (!game.user.isGM) return;
-    const demo = await this.store.createDemo();
-    await this._selectArchitecture(demo.id);
-  }
+  async _selectRunner(id) { if (!game.user.isGM) return; await this.runtimeService.selectRunner(id); this.selectedNodeId = ""; await publishAllProjections(this.store); this.render(false); }
+  async _addRunner() { if (!game.user.isGM) return; if (!this.candidateActorUuid) throw new Error("Choose an eligible Netrunner Actor."); await this.runtimeService.addRunner(this.candidateActorUuid); await publishAllProjections(this.store); this.candidateActorUuid = ""; }
+  async _removeRunner() { if (!game.user.isGM) return; const runtime = await this.store.getRuntime(); const id = runtime.activeRunnerId; if (!id) return; if (runtime.runners[id]?.jackedIn) throw new Error("Jack the Netrunner Out first."); await this.runtimeService.removeRunner(id); await publishAllProjections(this.store); }
+  async _importProduction() { if (!game.user.isGM) return; const imported = await this.store.importProduction(); if (!imported.length) return; await this._selectArchitecture(imported[0].id); ui.notifications.info(game.i18n.format("CRNSL.Imported", { count: imported.length })); }
+  async _createDemo() { if (!game.user.isGM) return; const demo = await this.store.createDemo(); await this._selectArchitecture(demo.id); }
 
   async _dropDocument(event, nodeId) {
-    const data = TextEditor.getDragEventData(event);
-    if (!data?.uuid) throw new Error("Drop a JournalEntry, JournalEntryPage, or Item.");
-    const doc = await fromUuid(data.uuid);
-    if (!doc || !["JournalEntry", "JournalEntryPage", "Item"].includes(doc.documentName)) throw new Error("Supported: JournalEntry, JournalEntryPage, Item.");
+    const data = TextEditor.getDragEventData(event); if (!data?.uuid) throw new Error("Drop a JournalEntry, JournalEntryPage, or Item.");
+    const doc = await fromUuid(data.uuid); if (!doc || !["JournalEntry", "JournalEntryPage", "Item"].includes(doc.documentName)) throw new Error("Supported: JournalEntry, JournalEntryPage, Item.");
     const runtime = await this.store.getRuntime();
-    await this.store.mutateNode(runtime.activeArchitectureId, nodeId, (node) => {
-      node.attachments ||= [];
-      if (!node.attachments.some((a) => a.uuid === doc.uuid)) node.attachments.push({ id: uid("att"), uuid: doc.uuid, label: doc.name, documentType: doc.documentName, visible: false });
-    });
-    await publishAllProjections(this.store);
-    this.selectedNodeId = nodeId;
+    await this.store.mutateNode(runtime.activeArchitectureId, nodeId, (node) => { node.attachments ||= []; if (!node.attachments.some((a) => a.uuid === doc.uuid)) node.attachments.push({ id: uid("att"), uuid: doc.uuid, label: doc.name, documentType: doc.documentName, visible: false }); });
+    await publishAllProjections(this.store); this.selectedNodeId = nodeId;
   }
-
-  async _openAttachment(uuid) {
-    const doc = await fromUuid(uuid);
-    if (!doc) throw new Error("Linked document unavailable.");
-    doc.sheet?.render(true);
-  }
-
-  async _toggleAttachment(nodeId, attachmentId) {
-    if (!game.user.isGM || this.preview || this.mode !== "build") return;
-    const runtime = await this.store.getRuntime();
-    await this.store.mutateNode(runtime.activeArchitectureId, nodeId, (node) => {
-      const attachment = (node.attachments || []).find((a) => a.id === attachmentId);
-      if (!attachment) throw new Error("Attachment not found.");
-      attachment.visible = !attachment.visible;
-    });
-    await publishAllProjections(this.store);
-  }
-
-  async _removeAttachment(nodeId, attachmentId) {
-    if (!game.user.isGM || this.preview || this.mode !== "build") return;
-    const runtime = await this.store.getRuntime();
-    await this.store.mutateNode(runtime.activeArchitectureId, nodeId, (node) => {
-      node.attachments = (node.attachments || []).filter((a) => a.id !== attachmentId);
-    });
-    await publishAllProjections(this.store);
-  }
-
-  async _bindSelected(nodeId) {
-    if (!game.user.isGM || this.preview || this.mode !== "build") return;
-    const doc = selectedSceneDocument();
-    if (!doc) throw new Error("Select a door, Token, Tile, Light, or Sound first.");
-    const actions = controlActions(doc.documentName);
-    if (!actions.length) throw new Error(`Unsupported: ${doc.documentName}.`);
-    const runtime = await this.store.getRuntime();
-    await this.store.mutateNode(runtime.activeArchitectureId, nodeId, (node) => {
-      node.controls ||= [];
-      node.controls.push({ id: uid("ctl"), uuid: doc.uuid, label: doc.name || `${doc.documentName} control`, documentType: doc.documentName, action: actions[0], visible: true });
-    });
-    await publishAllProjections(this.store);
-  }
-
-  async _changeControlAction(controlId, action) {
-    if (!game.user.isGM || this.preview || this.mode !== "build") return;
-    const runtime = await this.store.getRuntime();
-    await this.store.mutateNode(runtime.activeArchitectureId, this.selectedNodeId, (node) => {
-      const control = (node.controls || []).find((c) => c.id === controlId);
-      if (!control) throw new Error("Control not found.");
-      if (!controlActions(control.documentType).includes(action)) throw new Error("Unsupported action.");
-      control.action = action;
-    });
-    await publishAllProjections(this.store);
-    this.render(false);
-  }
-
-  async _removeControl(nodeId, controlId) {
-    if (!game.user.isGM || this.preview || this.mode !== "build") return;
-    const runtime = await this.store.getRuntime();
-    await this.store.mutateNode(runtime.activeArchitectureId, nodeId, (node) => {
-      node.controls = (node.controls || []).filter((c) => c.id !== controlId);
-    });
-    await publishAllProjections(this.store);
-  }
-
-  async onActorUpdated(actor) {
-    if (!game.user.isGM) return;
-    const runtime = await this.store.getRuntime();
-    const runner = Object.values(runtime.runners || {}).find((r) => r.actorUuid === actor.uuid);
-    if (!runner) return;
-    await this.runtimeService.refreshRunner(runner.id);
-    await publishAllProjections(this.store);
-    this.render(false);
-  }
+  async _openAttachment(uuid) { const doc = await fromUuid(uuid); if (!doc) throw new Error("Linked document unavailable."); doc.sheet?.render(true); }
+  async _toggleAttachment(nodeId, attachmentId) { if (!game.user.isGM || this.preview || this.mode !== "build") return; const runtime = await this.store.getRuntime(); await this.store.mutateNode(runtime.activeArchitectureId, nodeId, (node) => { const a = (node.attachments || []).find((x) => x.id === attachmentId); if (!a) throw new Error("Attachment not found."); a.visible = !a.visible; }); await publishAllProjections(this.store); }
+  async _removeAttachment(nodeId, attachmentId) { if (!game.user.isGM || this.preview || this.mode !== "build") return; const runtime = await this.store.getRuntime(); await this.store.mutateNode(runtime.activeArchitectureId, nodeId, (node) => { node.attachments = (node.attachments || []).filter((a) => a.id !== attachmentId); }); await publishAllProjections(this.store); }
+  async _bindSelected(nodeId) { if (!game.user.isGM || this.preview || this.mode !== "build") return; const doc = selectedSceneDocument(); if (!doc) throw new Error("Select a door, Token, Tile, Light, or Sound first."); const actions = controlActions(doc.documentName); if (!actions.length) throw new Error(`Unsupported: ${doc.documentName}.`); const runtime = await this.store.getRuntime(); await this.store.mutateNode(runtime.activeArchitectureId, nodeId, (node) => { node.controls ||= []; node.controls.push({ id: uid("ctl"), uuid: doc.uuid, label: doc.name || `${doc.documentName} control`, documentType: doc.documentName, action: actions[0], visible: true }); }); await publishAllProjections(this.store); }
+  async _changeControlAction(controlId, action) { if (!game.user.isGM || this.preview || this.mode !== "build") return; const runtime = await this.store.getRuntime(); await this.store.mutateNode(runtime.activeArchitectureId, this.selectedNodeId, (node) => { const control = (node.controls || []).find((c) => c.id === controlId); if (!control) throw new Error("Control not found."); if (!controlActions(control.documentType).includes(action)) throw new Error("Unsupported action."); control.action = action; }); await publishAllProjections(this.store); this.render(false); }
+  async _removeControl(nodeId, controlId) { if (!game.user.isGM || this.preview || this.mode !== "build") return; const runtime = await this.store.getRuntime(); await this.store.mutateNode(runtime.activeArchitectureId, nodeId, (node) => { node.controls = (node.controls || []).filter((c) => c.id !== controlId); }); await publishAllProjections(this.store); }
+  async onActorUpdated(actor) { if (!game.user.isGM) return; const runtime = await this.store.getRuntime(); const runner = Object.values(runtime.runners || {}).find((r) => r.actorUuid === actor.uuid); if (!runner) return; await this.runtimeService.refreshRunner(runner.id); await publishAllProjections(this.store); this.render(false); }
 }

@@ -1,0 +1,49 @@
+{
+  "id": "cpr-netrunning-next",
+  "title": "Cyberpunk RED: Netrunning Lab",
+  "description": "Experimental sidecar UI and Foundry integration laboratory for cpr-netrunning. Uses isolated storage and never writes production cpr-netrunning settings.",
+  "version": "0.1.0",
+  "compatibility": {
+    "minimum": "12",
+    "verified": "12.343",
+    "maximum": "12"
+  },
+  "authors": [
+    {
+      "name": "Horusian"
+    }
+  ],
+  "socket": false,
+  "esmodules": [
+    "scripts/main.js"
+  ],
+  "styles": [
+    "styles/lab.css"
+  ],
+  "languages": [
+    {
+      "lang": "en",
+      "name": "English",
+      "path": "lang/en.json"
+    },
+    {
+      "lang": "ru",
+      "name": "Русский",
+      "path": "lang/ru.json"
+    }
+  ],
+  "relationships": {
+    "systems": [
+      {
+        "id": "cyberpunk-red-core",
+        "type": "system",
+        "compatibility": {
+          "minimum": "v0.92.4",
+          "maximum": "v0.92.4"
+        }
+      }
+    ]
+  },
+  "license": "LICENSE",
+  "readme": "README.md"
+}

@@ -1,6 +1,6 @@
 /* Pure Cyberpunk RED NET rules used by the UX lab.
- * No Foundry calls live here. This file deliberately automates only rules that
- * are mechanically unambiguous; contested combat remains in the production engine.
+ * No Foundry calls live here. The lab automates only deterministic state changes;
+ * contested rolls are exposed to the CPR roll layer instead of being invented here.
  */
 
 export const INTERFACE_ABILITIES = Object.freeze([
@@ -49,8 +49,8 @@ export function isDownward(nodes, fromId, toId) {
   return childIds(nodes, fromId).includes(toId);
 }
 
-/* A Password/GM gate is an obstruction on its floor. The runner may arrive on
- * that floor, but cannot move farther down that route until it is breached.
+/* Virtual movement between adjacent NET floors is free. The only stop is an
+ * unresolved obstruction on the floor the runner is leaving toward deeper NET.
  */
 export function canMove(nodes, fromId, toId, floorState = {}) {
   if (!neighborIds(nodes, fromId).includes(toId)) return { ok: false, reason: "notAdjacent" };
@@ -77,31 +77,31 @@ export function abilityAvailability({ nodes = [], node = null, floorState = {}, 
   };
 }
 
-/* Pathfinder: reveal general contents but never DVs. Branches are traversed
- * independently. A route stops at the first obstruction whose DV is greater
- * than the Pathfinder Check; the obstructing floor itself is still learned.
- * The Check also caps how many floor-steps can be learned from the current floor.
+/* Pathfinder follows the Corebook's "roll total levels down, or to the first
+ * Password you could not beat" rule. Every branch is walked independently;
+ * the blocking Password itself is revealed, but nothing beyond it is.
  */
-export function pathfinderReveal(nodes, startId, check) {
+export function pathfinderReveal(nodes, startId, check, floorState = {}) {
   const limit = Math.max(0, Math.trunc(Number(check) || 0));
   if (!limit || !(nodes || []).some((n) => n.id === startId)) return [];
   const byId = new Map(nodes.map((n) => [n.id, n]));
   const seen = new Set([startId]);
-  const queue = [{ id: startId, depth: 0 }];
+  let frontier = childIds(nodes, startId);
   const revealed = [];
 
-  while (queue.length) {
-    const { id, depth } = queue.shift();
-    if (depth >= limit) continue;
-    for (const childId of childIds(nodes, id)) {
-      if (seen.has(childId)) continue;
-      seen.add(childId);
-      const child = byId.get(childId);
-      if (!child) continue;
-      revealed.push(childId);
-      const blocked = !!child.gate && Number(child.dv || 0) > limit;
-      if (!blocked) queue.push({ id: childId, depth: depth + 1 });
+  for (let step = 1; step <= limit && frontier.length; step += 1) {
+    const next = [];
+    for (const id of frontier) {
+      if (seen.has(id)) continue;
+      seen.add(id);
+      const node = byId.get(id);
+      if (!node) continue;
+      revealed.push(id);
+      const fx = floorState?.[id] || {};
+      const blocks = node.kind === "password" && !fx.breached && Number(node.dv || 0) > limit;
+      if (!blocks) next.push(...childIds(nodes, id));
     }
+    frontier = next;
   }
   return revealed;
 }
@@ -117,15 +117,41 @@ export function controlCanActivate(fx = {}, turnSerial = 0) {
   return Number(fx.activatedTurnSerial ?? -1) !== Number(turnSerial);
 }
 
-export function resetDefenses(floorState = {}) {
+export function resetArchitectureState(floorState = {}) {
   const out = {};
   for (const [id, value] of Object.entries(floorState || {})) {
     out[id] = {
       ...value,
       breached: false,
       control: null,
+      eyedee: [],
+      viruses: [],
       activatedTurnSerial: -1
     };
   }
   return out;
+}
+
+/* Going Quiet (2025) -------------------------------------------------- */
+
+export function quietJackInActionCost() {
+  return 2; // ordinary Jack In + one additional NET Action for Quiet Jack In
+}
+
+export function stealthBreaksOn({ action = "", targetKind = "" } = {}) {
+  if (action === "control-take") return true;
+  if (["zap", "program-attack", "blackice-interact", "watcher-interact"].includes(action)) return true;
+  if (["blackice", "demon", "watcher", "enemy-runner"].includes(targetKind) && action === "direct-interact") return true;
+  return false;
+}
+
+export function quietEncounterMode({ stealthed = false, entityKind = "" } = {}) {
+  if (!stealthed) return entityKind === "blackice" ? "speed" : "normal";
+  if (entityKind === "blackice") return "cloak-vs-perception";
+  if (["demon", "watcher", "enemy-runner"].includes(entityKind)) return "cloak-vs-pathfinder";
+  return "normal";
+}
+
+export function watcherSearchAllowed(watcherState = {}, turnSerial = 0) {
+  return Number(watcherState?.stealthSearchTurnSerial ?? -1) !== Number(turnSerial);
 }

@@ -67,6 +67,7 @@ export class LabRequestController {
         return { ok: true };
 
       case "startTurn":
+        if (!user?.isGM) throw new Error("Only the GM can manually reset a NET Turn. Combat turns reset automatically.");
         await this.runtime.startTurn(runner.id);
         await publishAllProjections(this.store);
         return { ok: true };
@@ -176,13 +177,7 @@ export class LabRequestController {
 
   async _completeAbility(user, request) {
     const { grant, total } = await this._verifyCompletion(user, request, "ability");
-    const result = await this.runtime.applyAbilityResult(
-      grant.runnerId,
-      grant.data.ability,
-      grant.data.nodeId,
-      total,
-      { virusText: grant.data.virusText }
-    );
+    const result = await this.runtime.applyAbilityResult(grant.runnerId, grant.data.ability, grant.data.nodeId, total, { virusText: grant.data.virusText });
     await publishAllProjections(this.store);
     return result;
   }

@@ -1,0 +1,21 @@
+name: Netrunning Lab Checks
+
+on:
+  push:
+    branches:
+      - experiment/netrunning-next
+  pull_request:
+    paths:
+      - 'experimental/cpr-netrunning-next/**'
+      - '.github/workflows/lab-check.yml'
+
+jobs:
+  lab-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run lab integrity checks
+        run: node experimental/cpr-netrunning-next/tools/check.mjs

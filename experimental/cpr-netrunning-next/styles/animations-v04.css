@@ -1,0 +1,68 @@
+/* Netrunning Lab 0.4 — Foundry VTT v12 motion layer.
+ * Event-driven only: no requestAnimationFrame loops, no timers that simulate game state.
+ */
+
+.crnsl-root.v04-motion-off *,
+.crnsl-root.reduced-motion *{animation-duration:0s!important;transition-duration:0s!important;scroll-behavior:auto!important}
+
+/* Ambient motion is intentionally exclusive to the Cinematic preset. */
+@keyframes crnsl-v04-flow{to{stroke-dashoffset:-28}}
+@keyframes crnsl-v04-gridscan{0%{transform:translateY(-120%);opacity:0}20%{opacity:.18}75%{opacity:.08}100%{transform:translateY(520%);opacity:0}}
+@keyframes crnsl-v04-decrypt{0%{filter:brightness(1.9) contrast(1.3);clip-path:inset(46% 0 46% 0);transform:scale(.985)}28%{clip-path:inset(18% 0 22% 0)}52%{filter:brightness(1.35) contrast(1.15);clip-path:inset(4% 0 8% 0)}100%{filter:none;clip-path:inset(0);transform:none}}
+@keyframes crnsl-v04-arrival{0%{box-shadow:0 0 0 1px rgba(82,221,162,.1),0 0 0 rgba(82,221,162,0)}35%{box-shadow:0 0 0 1px rgba(82,221,162,.7),0 0 34px rgba(82,221,162,.28)}100%{box-shadow:0 0 0 1px rgba(82,221,162,.18),0 0 12px rgba(82,221,162,.08)}}
+@keyframes crnsl-v04-status{0%{background-color:rgba(86,199,232,.22)}100%{background-color:transparent}}
+@keyframes crnsl-v04-pip-spent{0%{transform:scale(1);background:var(--accent)}35%{transform:scale(1.35);background:var(--hot);box-shadow:0 0 12px var(--hot-soft)}100%{transform:scale(1);background:#3b363c;box-shadow:none}}
+@keyframes crnsl-v04-pip-ready{0%{transform:scale(.8);opacity:.45}55%{transform:scale(1.28);opacity:1;box-shadow:0 0 12px var(--accent-soft)}100%{transform:scale(1);box-shadow:none}}
+@keyframes crnsl-v04-program-rez{0%{background:rgba(82,221,162,.22);box-shadow:inset 3px 0 var(--good)}100%{background:transparent;box-shadow:none}}
+@keyframes crnsl-v04-program-derez{0%{background:rgba(255,82,104,.2);filter:saturate(1.4)}100%{background:transparent;filter:none}}
+@keyframes crnsl-v04-current-breathe{0%,100%{box-shadow:0 0 0 1px rgba(82,221,162,.16),0 0 16px rgba(82,221,162,.07),0 14px 28px rgba(0,0,0,.34)}50%{box-shadow:0 0 0 1px rgba(82,221,162,.3),0 0 25px rgba(82,221,162,.13),0 14px 28px rgba(0,0,0,.34)}}
+
+.crnsl-root.v04-motion-cinematic .crnsl-connections line{
+  stroke-dasharray:5 9;
+  animation:crnsl-v04-flow 3.1s linear infinite;
+}
+.crnsl-root.v04-motion-cinematic .crnsl-connections line.secondary{animation-duration:4.6s;opacity:.7}
+.crnsl-root.v04-motion-cinematic .crnsl-node.current{animation:crnsl-v04-current-breathe 2.8s ease-in-out infinite}
+.crnsl-root.v04-motion-cinematic .crnsl-map-scroll::after{
+  content:"";position:absolute;z-index:1;left:0;right:0;top:0;height:22%;pointer-events:none;
+  background:linear-gradient(180deg,transparent,rgba(86,199,232,.055),transparent);
+  animation:crnsl-v04-gridscan 6.5s linear infinite;
+  mix-blend-mode:screen;
+}
+
+/* Short animations follow real state transitions only. */
+.crnsl-node.v04-decrypted{animation:crnsl-v04-decrypt .68s cubic-bezier(.2,.72,.2,1) both}
+.crnsl-root.v04-motion-cinematic .crnsl-node.v04-decrypted{animation-duration:.96s}
+.crnsl-node.v04-arrival{animation:crnsl-v04-arrival .56s ease-out both}
+.crnsl-root.v04-motion-cinematic .crnsl-node.v04-arrival{animation-duration:.82s}
+.crnsl-node.v04-status-change .crnsl-node-statuses{animation:crnsl-v04-status .62s ease-out}
+.crnsl-action-pips .pip.v04-pip-spent{animation:crnsl-v04-pip-spent .54s ease-out}
+.crnsl-action-pips .pip.v04-pip-ready{animation:crnsl-v04-pip-ready .54s ease-out}
+.crnsl-program-row.v04-program-rez{animation:crnsl-v04-program-rez .72s ease-out}
+.crnsl-program-row.v04-program-derez{animation:crnsl-v04-program-derez .72s ease-out}
+
+/* A transient route packet is viewport-fixed so it survives the Foundry window's
+ * own scrolling and map zoom. It never carries rules meaning beyond a confirmed
+ * change of currentNodeId. */
+.crnsl-v04-packet{
+  position:fixed;z-index:100000;width:8px;height:8px;border-radius:50%;pointer-events:none;
+  background:var(--good,#52dda2);box-shadow:0 0 10px rgba(82,221,162,.95),0 0 24px rgba(82,221,162,.5);
+}
+.crnsl-v04-packet.cinematic{width:10px;height:10px;box-shadow:0 0 12px rgba(82,221,162,1),0 0 30px rgba(82,221,162,.65),0 0 50px rgba(86,199,232,.25)}
+
+/* Make motion choices discoverable without adding another permanent panel. */
+.crnsl-root[data-v04-motion="off"] .crnsl-v03-maptools::after,
+.crnsl-root[data-v04-motion="subtle"] .crnsl-v03-maptools::after,
+.crnsl-root[data-v04-motion="cinematic"] .crnsl-v03-maptools::after{
+  align-self:center;margin:0 4px 0 2px;color:var(--muted);font:650 7px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;opacity:.72
+}
+.crnsl-root[data-v04-motion="off"] .crnsl-v03-maptools::after{content:"motion off"}
+.crnsl-root[data-v04-motion="subtle"] .crnsl-v03-maptools::after{content:"motion subtle"}
+.crnsl-root[data-v04-motion="cinematic"] .crnsl-v03-maptools::after{content:"motion cinematic"}
+
+@media(prefers-reduced-motion:reduce){
+  .crnsl-root .crnsl-connections line,.crnsl-root .crnsl-node.current,.crnsl-root .crnsl-map-scroll::after,
+  .crnsl-node.v04-decrypted,.crnsl-node.v04-arrival,.crnsl-node.v04-status-change .crnsl-node-statuses,
+  .crnsl-action-pips .pip,.crnsl-program-row{animation:none!important}
+  .crnsl-v04-packet{display:none!important}
+}

@@ -10,7 +10,7 @@ const ok = (msg) => console.log(`OK: ${msg}`);
 const moduleJson = JSON.parse(fs.readFileSync(path.join(ROOT, "module.json"), "utf8"));
 if (moduleJson.id !== "cpr-netrunning-next") fail("module id must stay isolated"); else ok("isolated module id");
 if (moduleJson.socket !== true) fail("rules-aware multiplayer lab must declare socket:true"); else ok("module socket enabled");
-if (moduleJson.version !== "0.3.0") fail("experimental module version should be 0.3.0"); else ok("module version 0.3.0");
+if (moduleJson.version !== "0.4.0") fail("experimental module version should be 0.4.0"); else ok("module version 0.4.0");
 
 const scripts = fs.readdirSync(path.join(ROOT, "scripts")).filter((f) => f.endsWith(".js")).map((f) => path.join(ROOT, "scripts", f));
 for (const file of scripts) {
@@ -72,6 +72,14 @@ const rules = spawnSync(process.execPath, [path.join(ROOT, "tools", "test-rules.
 process.stdout.write(rules.stdout || "");
 process.stderr.write(rules.stderr || "");
 if (rules.status !== 0) fail("pure RED rules regression suite"); else ok("pure RED rules regression suite");
+
+const v03 = spawnSync(process.execPath, [path.join(ROOT, "tools", "test-v03.mjs")], { encoding: "utf8" });
+process.stdout.write(v03.stdout || ""); process.stderr.write(v03.stderr || "");
+if (v03.status !== 0) fail("0.3 UX/rules regression suite"); else ok("0.3 UX/rules regression suite");
+
+const v04 = spawnSync(process.execPath, [path.join(ROOT, "tools", "test-v04.mjs")], { encoding: "utf8" });
+process.stdout.write(v04.stdout || ""); process.stderr.write(v04.stderr || "");
+if (v04.status !== 0) fail("0.4 motion/rules regression suite"); else ok("0.4 motion/rules regression suite");
 
 console.log(`\nFailures: ${failures}`);
 process.exit(failures ? 1 : 0);

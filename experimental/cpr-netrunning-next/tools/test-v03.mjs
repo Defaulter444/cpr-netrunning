@@ -10,7 +10,7 @@ const read = (p) => fs.readFileSync(path.join(root, p), "utf8");
 
 const moduleJson = JSON.parse(read("module.json"));
 expect(moduleJson.id === "cpr-netrunning-next", "experimental module id changed");
-expect(moduleJson.version === "0.3.0", "module version is not 0.3.0");
+expect(["0.3.0","0.4.0"].includes(moduleJson.version), "module is older than the 0.3 cockpit baseline");
 for (const m of ["scripts/rules-v03-runtime.js","scripts/request-v03.js","scripts/ux-v03.js"]) expect(moduleJson.esmodules.includes(m), `${m} is not loaded`);
 expect(moduleJson.styles.includes("styles/v03.css"), "v03 CSS is not loaded after base CSS");
 
@@ -53,5 +53,5 @@ for (const file of newFiles) {
   expect(!/game\.settings\.set\(\s*["']cpr-netrunning["']/.test(source), `${file} writes to production namespace`);
 }
 
-console.log(`Lab 0.3 checks: ${checks}, failures: ${failures}`);
+console.log(`Lab 0.3 baseline checks: ${checks}, failures: ${failures}`);
 process.exit(failures ? 1 : 0);

@@ -1,8 +1,8 @@
 {
   "id": "cpr-netrunning-next",
   "title": "Cyberpunk RED: Netrunning Lab",
-  "description": "Experimental rules-first Netrunning cockpit for Cyberpunk RED. Isolated from production cpr-netrunning data, with per-user projections and native CPR rolls.",
-  "version": "0.3.0",
+  "description": "Experimental rules-first Netrunning cockpit for Cyberpunk RED. Isolated from production cpr-netrunning data, with per-user projections, native CPR rolls, and Foundry-safe motion.",
+  "version": "0.4.0",
   "compatibility": {
     "minimum": "12",
     "verified": "12.343",
@@ -16,11 +16,15 @@
     "scripts/main.js",
     "scripts/rules-v03-runtime.js",
     "scripts/request-v03.js",
-    "scripts/ux-v03.js"
+    "scripts/ux-v03.js",
+    "scripts/rules-v04-runtime.js",
+    "scripts/request-v04.js",
+    "scripts/animations-v04.js"
   ],
   "styles": [
     "styles/lab.css",
-    "styles/v03.css"
+    "styles/v03.css",
+    "styles/animations-v04.css"
   ],
   "languages": [
     { "lang": "en", "name": "English", "path": "lang/en.json" },

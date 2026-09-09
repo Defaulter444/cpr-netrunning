@@ -1,3 +1,4 @@
+import { ID } from "./store.js";
 import { netActionsMax } from "./rules.js";
 
 export function activeNetRole(actor) {
@@ -68,7 +69,30 @@ function clickEvent(event) {
   return event ?? { type: "click", ctrlKey: false, metaKey: false };
 }
 
-export async function rollInterface(actor, ability, event = null) {
+async function postRoll(actor, item, roll, grantToken = "") {
+  roll.entityData = { actor: actor.id, ...(item ? { item: item.id } : {}) };
+  if (!grantToken) {
+    await (await nativeChat()).RenderRollCard(roll);
+    return null;
+  }
+  const chat = await nativeChat();
+  const data = chat.ChatDataSetup(await renderTemplate(roll.rollCard, roll));
+  data.speaker = ChatMessage.getSpeaker({ actor });
+  data.flags = {
+    ...(data.flags || {}),
+    [ID]: {
+      playerRoll: {
+        token: grantToken,
+        actorUuid: actor.uuid,
+        total: Number(roll.resultTotal ?? 0)
+      }
+    }
+  };
+  const message = await ChatMessage.create(data);
+  return message?.id || null;
+}
+
+export async function rollInterface(actor, ability, event = null, { grantToken = "" } = {}) {
   const deck = equippedDeck(actor);
   const role = activeNetRole(actor);
   if (!deck || !role) throw new Error("Runner needs an active NET Role and equipped Cyberdeck.");
@@ -80,18 +104,28 @@ export async function rollInterface(actor, ability, event = null) {
   if (!roll) return null;
   if (!(await roll.handleRollDialog(clickEvent(event), actor, deck))) return null;
   await roll.roll();
-  roll.entityData = { actor: actor.id, item: deck.id };
-  await (await nativeChat()).RenderRollCard(roll);
+  const messageId = await postRoll(actor, deck, roll, grantToken);
   return {
     total: Number(roll.resultTotal ?? 0),
     die: Number(roll.initialRoll ?? 0),
     criticalSuccess: !!roll.wasCritSuccess?.(),
     criticalFailure: !!roll.wasCritFail?.(),
+    messageId,
     roll
   };
 }
 
-export async function rollProgram(actor, programId, executionType, event = null) {
+/* Going Quiet needs a plain Interface Check rather than a named Interface
+ * Ability. cyberpunk-red-core exposes its modifier/LUCK dialog through the
+ * Cyberdeck Interface roll. Scanner has no core Program bonus, so it is used as
+ * the system-side carrier while the module labels the resulting request as a
+ * plain Interface Check. The total and critical/LUCK pipeline remain native.
+ */
+export async function rollPlainInterface(actor, event = null, { grantToken = "" } = {}) {
+  return rollInterface(actor, "scanner", event, { grantToken });
+}
+
+export async function rollProgram(actor, programId, executionType, event = null, { grantToken = "" } = {}) {
   const deck = equippedDeck(actor);
   const role = activeNetRole(actor);
   const program = installedProgramDocs(actor, deck).find((p) => p.id === programId);
@@ -106,13 +140,13 @@ export async function rollProgram(actor, programId, executionType, event = null)
   if (!roll) return null;
   if (!(await roll.handleRollDialog(clickEvent(event), actor, deck))) return null;
   await roll.roll();
-  roll.entityData = { actor: actor.id, item: deck.id };
-  await (await nativeChat()).RenderRollCard(roll);
+  const messageId = await postRoll(actor, deck, roll, grantToken);
   return {
     total: Number(roll.resultTotal ?? 0),
     die: Number(roll.initialRoll ?? 0),
     criticalSuccess: !!roll.wasCritSuccess?.(),
     criticalFailure: !!roll.wasCritFail?.(),
+    messageId,
     roll
   };
 }

@@ -1,8 +1,6 @@
 import { profileFor, eligibleRunner } from "./runner-profile.js";
 import * as rules from "./rules.js";
 
-const clone = (v) => foundry.utils.deepClone(v);
-
 function rootId(arch) {
   return arch?.nodes?.find((n) => !n.parent)?.id || arch?.nodes?.[0]?.id || "";
 }
@@ -64,6 +62,7 @@ export class LabRuntimeService {
         id,
         actorUuid: actor.uuid,
         userId: owner?.id || previous.userId || "",
+        watcher: !!previous.watcher,
         name: profile.name,
         img: profile.img,
         rank: profile.rank,
@@ -101,6 +100,22 @@ export class LabRuntimeService {
     });
   }
 
+  async setWatcher(runnerId, value) {
+    await this.store.mutateRuntime((runtime) => {
+      const runner = runtime.runners?.[runnerId];
+      if (!runner) throw new Error("Runner not found.");
+      runner.watcher = !!value;
+    });
+  }
+
+  async setTarget(runnerId, ref) {
+    await this.store.mutateRuntime((runtime) => {
+      const runner = runtime.runners?.[runnerId];
+      if (!runner) throw new Error("Runner not found.");
+      runner.targetRef = String(ref || "");
+    });
+  }
+
   async refreshRunner(runnerId) {
     const runtime = await this.store.getRuntime();
     const runner = runtime.runners?.[runnerId];
@@ -118,6 +133,14 @@ export class LabRuntimeService {
       runner.actionsUsed = 0;
       runner.slideUsed = false;
       runtime.turnSerial = Number(runtime.turnSerial || 0) + 1;
+    });
+  }
+
+  async spendAction(runnerId, amount = 1) {
+    await this.store.mutateRuntime((runtime) => {
+      const runner = runtime.runners?.[runnerId];
+      if (!runner) throw new Error("Runner not found.");
+      this._spend(runner, amount);
     });
   }
 
@@ -189,7 +212,7 @@ export class LabRuntimeService {
     const availability = rules.abilityAvailability({ nodes: arch.nodes, node, floorState: runtime.floorState, runnerId, slideUsed: runner.slideUsed });
     if (["backdoor", "control", "eyedee", "virus"].includes(ability) && !availability[ability]) throw new Error("That Interface Ability has no valid target here.");
 
-    let result = { ability, total: Number(total) || 0, success: false };
+    const result = { ability, total: Number(total) || 0, success: false };
     await this.store.mutateRuntime((next) => {
       const r = next.runners[runnerId];
       this._spend(r, 1);

@@ -1,4 +1,5 @@
 import { ID } from "./store.js";
+import * as rules from "./rules.js";
 
 const PROJECTION_FLAG = "projectionFor";
 
@@ -10,11 +11,6 @@ function childrenOf(nodes, id) {
   return (nodes || []).filter((n) => n.parent === id || (n.alsoFrom || []).includes(id));
 }
 
-/* A runner standing on / having physically visited a floor can perceive that a
- * route continues, but an unknown frontier placeholder contains no secret data.
- * Pathfinder knowledge is added explicitly to knownNodeIds and does not, by
- * itself, leak another floor beyond the Check.
- */
 function frontierIds(arch, runner) {
   const anchors = new Set([...(runner?.visitedNodeIds || []), runner?.currentNodeId].filter(Boolean));
   const known = new Set(runner?.knownNodeIds || []);
@@ -26,6 +22,14 @@ function frontierIds(arch, runner) {
     for (const extra of node?.alsoFrom || []) if (!known.has(extra)) frontier.add(extra);
   }
   return frontier;
+}
+
+function sanitizedEntity(entity) {
+  return {
+    id: entity.id,
+    kind: entity.kind,
+    label: entity.label || (entity.kind === "demon" ? "Demon" : "Black ICE")
+  };
 }
 
 function sanitizedNode(node, runner, runtime, visibleIds) {
@@ -46,7 +50,7 @@ function sanitizedNode(node, runner, runtime, visibleIds) {
 
   const physicallyKnown = visited.has(node.id) || runner.currentNodeId === node.id;
   const dataUnlocked = physicallyKnown && identified;
-  const isData = node.kind === "file" || !!node.contents || !!node.contentsImage || (node.attachments || []).some((a) => ["JournalEntry", "JournalEntryPage"].includes(a.documentType));
+  const isData = rules.floorHoldsData(node);
 
   return {
     id: node.id,
@@ -78,7 +82,8 @@ function sanitizedNode(node, runner, runtime, visibleIds) {
       : [],
     controls: controlledByMe
       ? (node.controls || []).filter((c) => c.visible !== false).map((c) => ({ id: c.id, label: c.label || "CONTROL" }))
-      : []
+      : [],
+    entities: physicallyKnown ? (node.entities || []).filter((e) => e.visible !== false).map(sanitizedEntity) : []
   };
 }
 
@@ -91,9 +96,24 @@ export function sanitizeArchitecture(arch, runtime = {}, runnerId = "") {
   const frontier = frontierIds(arch, runner);
   const visibleIds = new Set([...known, ...frontier]);
   const nodes = arch.nodes.filter((n) => visibleIds.has(n.id)).map((n) => sanitizedNode(n, runner, runtime, visibleIds));
+  const current = arch.nodes.find((n) => n.id === runner.currentNodeId) || null;
+  const context = current
+    ? rules.primaryContext({
+        nodes: arch.nodes,
+        node: current,
+        floorState: runtime.floorState || {},
+        runnerId: runner.id,
+        hasIceTarget: String(runner.targetRef || "").startsWith("ice:"),
+        hasZapTarget: !!runner.targetRef,
+        slideUsed: !!runner.slideUsed
+      })
+    : [];
+  const moves = current
+    ? rules.neighborIds(arch.nodes, current.id).filter((id) => visibleIds.has(id)).map((id) => ({ id, ...rules.canMove(arch.nodes, current.id, id, runtime.floorState || {}) }))
+    : [];
 
   return {
-    schema: 2,
+    schema: 3,
     architectureId: arch.id,
     name: arch.name,
     runner: {
@@ -102,13 +122,31 @@ export function sanitizeArchitecture(arch, runtime = {}, runnerId = "") {
       name: runner.name,
       img: runner.img,
       rank: runner.rank,
+      deckName: runner.deckName,
       actionsMax: runner.actionsMax,
       actionsUsed: runner.actionsUsed,
-      jackedIn: !!runner.jackedIn
+      jackedIn: !!runner.jackedIn,
+      stealthed: !!runner.stealthed,
+      quietMode: !!runner.quietMode,
+      targetRef: runner.targetRef || "",
+      programs: (runner.programs || []).map((p) => ({
+        id: p.id,
+        name: p.name,
+        img: p.img,
+        class: p.class,
+        rezzed: !!p.rezzed,
+        rez: p.rez,
+        rezMax: p.rezMax,
+        atk: p.atk,
+        def: p.def,
+        hasDamage: !!p.hasDamage
+      }))
     },
     currentNodeId: runner.currentNodeId || "",
     knownNodeIds: [...known],
     visitedNodeIds: [...(runner.visitedNodeIds || [])],
+    actionContext: context,
+    moves,
     turnSerial: Number(runtime.turnSerial || 0),
     nodes
   };

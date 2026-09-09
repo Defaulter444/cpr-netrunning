@@ -2,10 +2,8 @@ import { ID } from "./store.js";
 import * as rules from "./rules.js";
 
 const PROJECTION_FLAG = "projectionFor";
-
-function clone(v) {
-  return foundry.utils.deepClone(v);
-}
+const EXPOSED_ABILITIES = new Set(["backdoor", "cloak", "control", "eyedee", "pathfinder", "virus"]);
+const clone = (v) => foundry.utils.deepClone(v);
 
 function childrenOf(nodes, id) {
   return (nodes || []).filter((n) => n.parent === id || (n.alsoFrom || []).includes(id));
@@ -25,18 +23,14 @@ function frontierIds(arch, runner) {
 }
 
 function sanitizedEntity(entity) {
-  return {
-    id: entity.id,
-    kind: entity.kind,
-    label: entity.label || (entity.kind === "demon" ? "Demon" : "Black ICE")
-  };
+  return { id: entity.id, kind: entity.kind, label: entity.label || (entity.kind === "demon" ? "Demon" : "Black ICE") };
 }
 
 function sanitizedNode(node, runner, runtime, visibleIds) {
   const known = new Set(runner?.knownNodeIds || []);
   const visited = new Set(runner?.visitedNodeIds || []);
   const fx = runtime.floorState?.[node.id] || {};
-  const identified = Array.isArray(fx.eyedee) && fx.eyedee.includes(runner.id);
+  const identified = (fx.eyedee || []).includes(runner.id);
   const controlledByMe = fx.control?.runnerId === runner.id;
 
   if (!known.has(node.id)) {
@@ -51,7 +45,6 @@ function sanitizedNode(node, runner, runtime, visibleIds) {
   const physicallyKnown = visited.has(node.id) || runner.currentNodeId === node.id;
   const dataUnlocked = physicallyKnown && identified;
   const isData = rules.floorHoldsData(node);
-
   return {
     id: node.id,
     parent: visibleIds.has(node.parent) ? node.parent : "",
@@ -73,12 +66,7 @@ function sanitizedNode(node, runner, runtime, visibleIds) {
     contentsImage: dataUnlocked ? (node.contentsImage || "") : "",
     hasLockedData: !!isData && !dataUnlocked,
     attachments: physicallyKnown && (!isData || dataUnlocked)
-      ? (node.attachments || []).filter((a) => a.visible).map((a) => ({
-          id: a.id,
-          uuid: a.uuid,
-          label: a.label || "Linked document",
-          documentType: a.documentType || ""
-        }))
+      ? (node.attachments || []).filter((a) => a.visible).map((a) => ({ id: a.id, uuid: a.uuid, label: a.label || "Linked document", documentType: a.documentType || "" }))
       : [],
     controls: controlledByMe
       ? (node.controls || []).filter((c) => c.visible !== false).map((c) => ({ id: c.id, label: c.label || "CONTROL" }))
@@ -93,8 +81,7 @@ export function sanitizeArchitecture(arch, runtime = {}, runnerId = "") {
   if (!runner) return null;
 
   const known = new Set(runner.knownNodeIds || []);
-  const frontier = frontierIds(arch, runner);
-  const visibleIds = new Set([...known, ...frontier]);
+  const visibleIds = new Set([...known, ...frontierIds(arch, runner)]);
   const nodes = arch.nodes.filter((n) => visibleIds.has(n.id)).map((n) => sanitizedNode(n, runner, runtime, visibleIds));
   const current = arch.nodes.find((n) => n.id === runner.currentNodeId) || null;
   const context = current
@@ -106,14 +93,14 @@ export function sanitizeArchitecture(arch, runtime = {}, runnerId = "") {
         hasIceTarget: String(runner.targetRef || "").startsWith("ice:"),
         hasZapTarget: !!runner.targetRef,
         slideUsed: !!runner.slideUsed
-      })
+      }).filter((a) => EXPOSED_ABILITIES.has(a.key))
     : [];
   const moves = current
     ? rules.neighborIds(arch.nodes, current.id).filter((id) => visibleIds.has(id)).map((id) => ({ id, ...rules.canMove(arch.nodes, current.id, id, runtime.floorState || {}) }))
     : [];
 
   return {
-    schema: 3,
+    schema: 4,
     architectureId: arch.id,
     name: arch.name,
     runner: {
@@ -129,18 +116,7 @@ export function sanitizeArchitecture(arch, runtime = {}, runnerId = "") {
       stealthed: !!runner.stealthed,
       quietMode: !!runner.quietMode,
       targetRef: runner.targetRef || "",
-      programs: (runner.programs || []).map((p) => ({
-        id: p.id,
-        name: p.name,
-        img: p.img,
-        class: p.class,
-        rezzed: !!p.rezzed,
-        rez: p.rez,
-        rezMax: p.rezMax,
-        atk: p.atk,
-        def: p.def,
-        hasDamage: !!p.hasDamage
-      }))
+      programs: (runner.programs || []).map((p) => ({ id:p.id,name:p.name,img:p.img,class:p.class,rezzed:!!p.rezzed,rez:p.rez,rezMax:p.rezMax,atk:p.atk,def:p.def,hasDamage:!!p.hasDamage }))
     },
     currentNodeId: runner.currentNodeId || "",
     knownNodeIds: [...known],
@@ -157,11 +133,7 @@ async function projectionDocument(userId) {
   if (existing) return existing;
   const ownership = { default: CONST.DOCUMENT_OWNERSHIP_LEVELS.NONE };
   ownership[userId] = CONST.DOCUMENT_OWNERSHIP_LEVELS.OBSERVER;
-  return JournalEntry.create({
-    name: `[CRNS LAB] Player Projection ${userId}`,
-    ownership,
-    flags: { [ID]: { [PROJECTION_FLAG]: userId, payload: {} } }
-  });
+  return JournalEntry.create({ name: `[CRNS LAB] Player Projection ${userId}`, ownership, flags: { [ID]: { [PROJECTION_FLAG]: userId, payload: {} } } });
 }
 
 export async function publishProjection(store, runnerId = "") {
@@ -179,9 +151,7 @@ export async function publishProjection(store, runnerId = "") {
 export async function publishAllProjections(store) {
   if (!game.user.isGM) return;
   const runtime = await store.getRuntime();
-  for (const runner of Object.values(runtime.runners || {})) {
-    if (runner.userId) await publishProjection(store, runner.id);
-  }
+  for (const runner of Object.values(runtime.runners || {})) if (runner.userId) await publishProjection(store, runner.id);
 }
 
 export function readMyProjection() {

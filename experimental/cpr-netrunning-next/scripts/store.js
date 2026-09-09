@@ -45,24 +45,43 @@ function normalizeFloors(rawFloors = []) {
   return floors;
 }
 
+function entityFromDef(def, kind) {
+  if (!def) return null;
+  const actor = def.actorId ? game.actors?.get(def.actorId) : null;
+  return {
+    id: String(def.id || uid(kind === "demon" ? "demon" : "ice")),
+    kind,
+    actorId: String(def.actorId || ""),
+    type: String(def.type || actor?.name || kind),
+    label: String(actor?.name || def.type || (kind === "demon" ? "Demon" : "Black ICE")),
+    visible: true
+  };
+}
+
 function convertProductionArchitecture(sourceId, source) {
   const floors = normalizeFloors(source?.floors);
-  const nodes = floors.map((f, index) => ({
-    id: f.id,
-    index,
-    label: String(f.label || f.name || "").trim() || `Floor ${index + 1}`,
-    kind: f.kind || "custom",
-    dv: Number(f.dv) || 0,
-    check: f.check || "",
-    gate: !!f.gate,
-    parent: f.parent || "",
-    alsoFrom: [...(f.alsoFrom || [])],
-    contents: String(f.contents || ""),
-    contentsImage: String(f.contentsImage || ""),
-    gmNotes: String(f.description || ""),
-    attachments: [],
-    controls: []
-  }));
+  const nodes = floors.map((f, index) => {
+    const entities = (f.ice || []).map((def) => entityFromDef(def, "blackice")).filter(Boolean);
+    const demon = entityFromDef(f.demon, "demon");
+    if (demon) entities.push(demon);
+    return {
+      id: f.id,
+      index,
+      label: String(f.label || f.name || "").trim() || `Floor ${index + 1}`,
+      kind: f.kind || "custom",
+      dv: Number(f.dv) || 0,
+      check: f.check || "",
+      gate: !!f.gate,
+      parent: f.parent || "",
+      alsoFrom: [...(f.alsoFrom || [])],
+      contents: String(f.contents || ""),
+      contentsImage: String(f.contentsImage || ""),
+      gmNotes: String(f.description || ""),
+      attachments: [],
+      controls: [],
+      entities
+    };
+  });
 
   return {
     id: uid("arch"),
@@ -92,23 +111,23 @@ function demoArchitecture() {
       {
         ...a, index: 0, label: "Access Point", kind: "custom", dv: 0, check: "",
         gate: false, contents: "", contentsImage: "", gmNotes: "Entry point",
-        attachments: [], controls: []
+        attachments: [], controls: [], entities: []
       },
       {
         ...b, index: 1, label: "Security Gate", kind: "password", dv: 8, check: "backdoor",
         gate: true, contents: "", contentsImage: "", gmNotes: "Blocks the left branch",
-        attachments: [], controls: []
+        attachments: [], controls: [], entities: []
       },
       {
         ...c, index: 2, label: "Camera Router", kind: "controlnode", dv: 7, check: "control",
         gate: false, contents: "", contentsImage: "", gmNotes: "Meatspace test node",
-        attachments: [], controls: []
+        attachments: [], controls: [], entities: []
       },
       {
         ...d, index: 3, label: "Shipping Manifest", kind: "file", dv: 8, check: "eyedee",
         gate: false, contents: "Prototype cargo manifest. Player-visible only after Eye-Dee.",
         contentsImage: "", gmNotes: "Both branches converge here",
-        attachments: [], controls: []
+        attachments: [], controls: [], entities: []
       }
     ]
   };
@@ -121,7 +140,6 @@ export class LabStore {
 
   async ensure() {
     if (!game.user.isGM) return null;
-
     const existing = game.journal?.find((j) => j.getFlag(ID, STORE_FLAG) === true);
     if (existing) {
       this.doc = existing;
@@ -132,13 +150,7 @@ export class LabStore {
     this.doc = await JournalEntry.create({
       name: "[CRNS LAB] Private Store",
       ownership: { default: CONST.DOCUMENT_OWNERSHIP_LEVELS.NONE },
-      flags: {
-        [ID]: {
-          [STORE_FLAG]: true,
-          architectures: {},
-          runtime: defaultRuntime()
-        }
-      }
+      flags: { [ID]: { [STORE_FLAG]: true, architectures: {}, runtime: defaultRuntime() } }
     });
     return this.doc;
   }
@@ -195,14 +207,12 @@ export class LabStore {
 
   async importProduction() {
     if (!game.user.isGM) throw new Error("GM only.");
-
     let production;
     try {
       production = game.settings.get(PROD_ID, "netArchs");
     } catch (_error) {
       throw new Error("cpr-netrunning is not available or its netArchs setting is missing.");
     }
-
     const values = Object.entries(production || {});
     if (!values.length) throw new Error("No production architectures found.");
 
@@ -213,7 +223,6 @@ export class LabStore {
       current[copy.id] = copy;
       imported.push(copy);
     }
-
     const doc = await this.ensure();
     await doc.setFlag(ID, "architectures", current);
     return imported;

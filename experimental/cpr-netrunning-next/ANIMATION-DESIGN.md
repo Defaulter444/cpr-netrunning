@@ -4,7 +4,7 @@ The Lab is a Foundry **Application window**, not a PIXI effect package. Motion t
 
 ## Design rules
 
-1. **Animation follows state truth.** The runtime changes first; motion only explains what already happened.
+1. **Animation follows truth.** The runtime state changes first; motion only explains what already happened.
 2. **No fake combat.** A visual effect never stands in for an unresolved RED mechanic.
 3. **No permanent JS loop.** Continuous decorative motion is optional CSS; event motion is short-lived.
 4. **Foundry-window safe.** Effects tolerate resize, scroll, map zoom and window repositioning.

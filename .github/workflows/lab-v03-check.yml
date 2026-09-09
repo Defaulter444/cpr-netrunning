@@ -1,0 +1,27 @@
+name: Netrunning Lab 0.3 checks
+
+on:
+  push:
+    branches: [experiment/netrunning-next]
+    paths:
+      - "experimental/cpr-netrunning-next/**"
+      - ".github/workflows/lab-v03-check.yml"
+  pull_request:
+    paths:
+      - "experimental/cpr-netrunning-next/**"
+      - ".github/workflows/lab-v03-check.yml"
+
+jobs:
+  lab-v03:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Existing lab checks
+        run: node experimental/cpr-netrunning-next/tools/check.mjs
+      - name: Rules tests
+        run: node experimental/cpr-netrunning-next/tools/test-rules.mjs
+      - name: Lab 0.3 safety and UX checks
+        run: node experimental/cpr-netrunning-next/tools/test-v03.mjs

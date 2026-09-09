@@ -1,183 +1,145 @@
-# Cyberpunk RED: Netrunning Lab 0.2
+# Cyberpunk RED: Netrunning Lab 0.3
 
-Экспериментальный **sidecar-модуль** для `cpr-netrunning`. Он существует, чтобы
-проверять новый интерфейс и сетевую архитектуру, не ломая рабочий модуль и не
-переписывая его сохранения.
+Experimental **sidecar module** for `cpr-netrunning`. It is deliberately isolated from production saves so the UX and runtime can be tested without touching the working module.
 
 - module id: `cpr-netrunning-next`
 - Foundry VTT: 12.343
 - Cyberpunk RED - CORE: 0.92.4
-- production `cpr-netrunning`: только источник безопасной **копии** архитектуры
+- production `cpr-netrunning`: read-only source for an imported copy
 
-## Что изменилось в 0.2
+## 0.3 goal: rules-first cockpit
 
-Версия 0.1 была в основном UX-лабораторией. В 0.2 интерфейс перестроен в
-**контекстный cockpit Нетраннера** и получил отдельную rules-aware runtime-модель.
+0.2 proved the contextual RUN / BUILD / PLAYER VIEW structure. 0.3 refines it instead of adding another permanent panel.
 
-Главное правило UI: функция не занимает постоянное место на экране только
-потому, что она существует. Основная карта показывает состояние СЕТИ, нижний dock
-показывает только действия, которые имеют смысл сейчас, а редкие функции уходят
-в контекстные вкладки и сворачиваемую панель Программ.
+The permanent surface remains small:
 
-### Три режима
+- **map** = what exists in the NET and what the runner currently knows;
+- **session strip** = runner, equipped Cyberdeck, Interface, NET Action budget, Jack state;
+- **action dock** = only actions that make sense in the current context;
+- **inspector** = details for the selected node;
+- **program drawer** = collapsible, not always visible.
 
-**RUN** — оперативный интерфейс GM и Нетраннера. Карта, текущий этаж, NET Actions,
-контекстные Interface Abilities, кибердека, Программы и Control Nodes.
+New 0.3 map tools are floating and optional: Fit, zoom, inspector collapse, Focus Mode and Help. Mouse/keyboard navigation is intentionally closer to a tactical-map workflow than a form-heavy admin panel.
 
-**BUILD** — подготовка лабораторной копии: Foundry Documents и привязки к
-физической Scene. Эти настройки не торчат в игровом интерфейсе.
+Keyboard shortcuts while the Lab has focus:
 
-**PLAYER VIEW** — GM видит именно ту очищенную проекцию, которая предназначена
-игроку: без скрытых DV, GM notes и неразведанного содержимого.
+- `F` — fit the NET Architecture;
+- `[` / `]` — zoom;
+- `P` — Programs drawer;
+- `I` — inspector;
+- `?` — rules/controls help;
+- `Space + drag` or middle mouse drag — pan;
+- `Alt+1 / Alt+2 / Alt+3` — GM RUN / BUILD / PLAYER VIEW.
 
-## Правила Cyberpunk RED
+## Design policy
 
-Лаборатория не вводит собственную математику бросков. Interface и Program rolls
-проходят через нативный pipeline `cyberpunk-red-core`, включая его диалог,
-модификаторы, LUCK, критические результаты и chat cards.
+**More capability must not mean more permanent chrome.**
 
-В чистом rules-layer зафиксированы и тестируются:
+- Foundry Document configuration lives in BUILD.
+- Scene bindings live in BUILD and appear in RUN only after the runner owns that Control Node.
+- DV is a GM-intel overlay, not ordinary player information.
+- unavailable combat mechanics are hidden instead of disabled-but-mysterious buttons.
+- small windows can collapse the inspector or enter Focus Mode without losing the action dock.
+- themes use original SVG/CSS assets: REDLINE, NEON and MONO.
+- visible keyboard focus and reduced-motion modes are first-class behavior.
 
-- NET Actions от ранга Interface: 1–3 → 2, 4–6 → 3, 7–9 → 4, 10 → 5;
-- ничья не побеждает DV;
-- Jack In и безопасный Jack Out стоят по одному NET Action;
-- виртуальное движение между соседними этажами бесплатно;
-- невскрытое препятствие не даёт пройти глубже, но не мешает отступить;
-- Backdoor, Eye-Dee и Control используют строгую проверку `total > DV/opposed`;
-- Control Node можно активировать снова, каждый раз за отдельный NET Action;
-- Pathfinder проходит каждую ветку независимо и останавливает только конкретный
-  путь на первом Пароле, который результат не способен превзойти;
-- Virus оставляется только на дне ветки, а его DV равен результату установки;
-- Slide остаётся действием один раз за Turn и относится только к Black ICE;
-- автоматический reset NET Actions привязан к Turn в Foundry Combat; ручной reset
-  оставлен GM как резерв для сцен без Combat.
+## Rules policy
 
-### Going Quiet
+The module does not copy game math into random UI handlers. Native Cyberpunk RED rolls go through `cyberpunk-red-core`; state rules are isolated and tested.
 
-В 0.2 заложены правила официального DLC **Going Quiet v1.1**:
+Important 0.3 hardening:
 
-- Quiet Jack In стоит дополнительный NET Action, то есть два суммарно;
-- исходный Check идёт против всех Watchers;
-- захват Control Node ломает stealth;
-- атака/прямое взаимодействие с Black ICE или Watcher ломает stealth;
-- Virus и кража File сами по себе stealth не ломают;
-- при скрытном столкновении с Black ICE используется Cloak против PER вместо
-  обычного Speed Check;
-- при скрытном столкновении с Watcher используется Cloak против Pathfinder;
-- после потери stealth вернуть его можно только Jack Out → Quiet Jack In.
+1. **Control Node use is once per Turn.** Taking the node and activating its connected system remain separate NET Actions, and a second activation of the same node in the same Turn is rejected before an action is spent.
+2. **Going Quiet plain Interface Check is truly plain.** 0.2 used Scanner as a technical carrier. 0.3 builds CPR's native `CPRInterfaceRoll` directly so Scanner-specific modifiers cannot contaminate the check. If the exact CPR internals are unavailable, it fails closed and asks for manual adjudication instead of inventing a result.
+3. **Scanner stays meatspace-only.** It is not presented as an action inside a NET Architecture.
+4. **Slide / Zap / unfinished Black ICE combat remain hidden** until their complete opposed resolver, destination/damage flow and lifecycle are implemented. The Lab does not pretend that a partial implementation is rules-correct.
 
-Низкоуровневые primitives для этих проверок уже находятся в `scripts/rules.js`.
-Полная автоматизация очереди Black ICE/Watcher combat остаётся следующим этапом;
-до этого неподдержанный боевой эффект не должен подменяться выдуманным правилом.
+See [RULES-MATRIX.md](RULES-MATRIX.md) for the automation status of each relevant rule.
 
-## Приватность и multiplayer
+## Current rules-aware runtime
 
-Полная архитектура и runtime находятся в GM-only JournalEntry:
+Implemented now:
+
+- Interface action bands 2 / 3 / 4 / 5 from rank;
+- strict `total > DV` checks;
+- native CPR Interface dialogs, modifiers, LUCK, crits and chat cards;
+- Jack In / safe Jack Out costs;
+- Quiet Jack In cost and Watcher contest model from Going Quiet;
+- free adjacent virtual movement;
+- branch-aware topology and blocked descent through unresolved obstructions;
+- Pathfinder branch reveal without leaking DV;
+- Backdoor, Eye-Dee, Control, Cloak and Virus state;
+- Virus only at a branch bottom;
+- per-Turn NET Action reset from Foundry Combat;
+- Control Node physical actions as separate NET Actions and once-per-Turn activation;
+- multiple runner records in one Architecture;
+- architecture reset only after no connected friendly runner remains Jacked In;
+- player-specific sanitized projections.
+
+Not falsely automated yet:
+
+- complete Black ICE Speed / encounter / follow lifecycle;
+- full Slide opposed flow and destination picker;
+- Zap opposed flow + damage;
+- Program combat end-to-end;
+- unsafe Jack Out effects;
+- full Watcher active-search lifecycle.
+
+## Privacy model
+
+Full Architecture and live runtime remain in a GM-only JournalEntry:
 
 `[CRNS LAB] Private Store`
 
-Игроку создаётся отдельный JournalEntry-проектор с ownership только этому
-пользователю. Unknown node содержит лишь минимальную топологию. Скрытые DV,
-GM notes, содержимое, невидимые attachments и конфигурация Scene controls туда не
-попадают.
+Each player receives a separate projection document. Unknown nodes contain only minimum topology. Hidden DV, GM notes, hidden content, private attachments and Scene-control configuration never enter that projection.
 
-Изменения игрока отправляются authoritative GM через module socket. Когда
-доступен WebCrypto, транспорт использует ECDH P-256 + AES-GCM, timestamp и replay
-protection. В отличие от старого прототипа, отсутствие HTTPS не убивает весь
-модуль: GM продолжает работать локально, а небезопасные player mutations просто
-не разрешаются.
+Player mutations are validated by the authoritative GM. Secure transport uses ECDH P-256 + AES-GCM when WebCrypto is available. Without secure transport, the module does not silently downgrade player write trust: unsafe remote mutations remain unavailable while the GM can continue local testing.
 
 ## Foundry integration
 
-В BUILD mode можно перетащить на этаж:
+BUILD supports real Foundry Documents:
 
 - JournalEntry;
 - JournalEntryPage;
-- Item.
+- Item;
+- Wall door;
+- Token;
+- Tile;
+- AmbientLight;
+- AmbientSound.
 
-Также можно привязать выбранный объект Scene:
+RUN shows only contextual actions. For example, a door binding does not appear just because it exists: the selected runner must control the corresponding Control Node.
 
-- Wall door: open / close / lock / unlock;
-- Token: show / hide;
-- Tile: show / hide;
-- AmbientLight: enable / disable;
-- AmbientSound: enable / disable.
+## Installation
 
-В RUN mode эти команды появляются только когда конкретный Netrunner уже взял
-соответствующий Control Node. Выполнение команды стоит отдельный NET Action.
-
-## Иконки и темы
-
-`assets/icons.svg` — собственный SVG sprite. Он не копирует графику RTG/CDPR и
-использует `currentColor`, поэтому один набор работает во всех темах.
-
-Темы:
-
-- REDLINE — основная чёрно-красная;
-- NEON — холодная cyan/magenta;
-- MONO — нейтральная высококонтрастная.
-
-Есть `prefers-reduced-motion`, отдельная настройка Reduce Motion, видимый keyboard
-focus и responsive layout.
-
-## Установка
-
-Из ветки `experiment/netrunning-next` скопируйте:
+From branch `experiment/netrunning-next`, copy:
 
 `experimental/cpr-netrunning-next`
 
-в:
+into:
 
 `Data/modules/cpr-netrunning-next`
 
-После перезапуска Foundry включите **Cyberpunk RED: Netrunning Lab**. Основной
-`cpr-netrunning` можно оставить включённым — id и хранилища различаются.
+Restart Foundry and enable **Cyberpunk RED: Netrunning Lab**. Production `cpr-netrunning` can remain enabled; module ids and stores are separate.
 
-## Первый тест
+## Test sequence
 
-1. Откройте Token Controls → **Netrunning Lab**.
-2. BUILD → **IMPORT COPY** или **DEMO**.
-3. Добавьте подходящего Netrunner Actor.
-4. Переключитесь RUN и сделайте Jack In.
-5. Проверьте бесплатное движение по соседним этажам и блокировку глубины
-   невскрытым Password.
-6. Выполните Backdoor / Eye-Dee / Pathfinder и сравните native CPR chat cards.
-7. Переключите PLAYER VIEW и проверьте отсутствие секретных данных.
-8. В BUILD добавьте Journal/Item и Scene binding к Control Node; в RUN возьмите
-   Control и выполните действие.
-9. При активном Foundry Combat переключите Turn на Netrunner: NET Actions должны
-   обновиться автоматически.
+1. BUILD → Import Copy or Demo.
+2. Add an Actor with active Interface Role and equipped Cyberdeck.
+3. RUN → Jack In.
+4. Check free adjacent movement and blocked descent through an undefeated obstruction.
+5. Use Backdoor / Eye-Dee / Pathfinder and verify native CPR chat cards.
+6. PLAYER VIEW → confirm hidden DV/notes/content are absent, not merely CSS-hidden.
+7. BUILD → attach a Journal/Item and bind a Scene door to a Control Node.
+8. RUN → take Control, operate the device once, then confirm a second activation in the same Turn is rejected without spending an action.
+9. Advance Foundry Combat to the Netrunner and confirm the NET Action pool refreshes.
+10. Try Fit/zoom/pan, inspector collapse, Focus Mode and keyboard navigation at both 1240px and the 860px minimum window.
 
-## Проверки
+## Checks
 
 ```bash
 node experimental/cpr-netrunning-next/tools/check.mjs
+node experimental/cpr-netrunning-next/tools/test-v03.mjs
 ```
 
-Checker проверяет:
-
-- JS syntax;
-- отдельный module id и отсутствие записи в production namespace;
-- отсутствие секретного runtime в world settings;
-- EN/RU parity;
-- SVG references;
-- наличие secure transport;
-- accessibility hooks CSS;
-- чистые тесты правил (action bands, strict DV, movement, Pathfinder,
-  Going Quiet, Slide limit, Virus leaf).
-
-## Что ещё НЕ считаю готовым
-
-Эксперимент 0.2 уже намного ближе к реальному модулю, но я не буду выдавать
-незавершённую механику за корректную автоматизацию. До кандидата на перенос в
-production нужно закончить и live-test:
-
-- полный Black ICE encounter lifecycle и Speed/free-effect handling;
-- follow/initiative lifecycle Black ICE;
-- Slide с выбором соседнего этажа и opposed PER;
-- Zap + damage и все варианты Program combat;
-- unsafe Jack Out effects;
-- Watcher search once per Turn из Going Quiet;
-- live multiplayer acceptance test на Foundry 12.343.
-
-Пока эти пункты не закрыты, `master` не трогаем и draft PR не сливаем.
+The experiment stays in a draft PR until real Foundry 12.343 multiplayer acceptance testing passes. `master` is not the test bench.

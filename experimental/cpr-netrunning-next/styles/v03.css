@@ -1,0 +1,81 @@
+/* Netrunning Lab 0.3 — UX refinement layer.
+ * Loaded after lab.css. The goal is more capability with LESS permanent UI.
+ */
+
+.crnsl-v03{--v03-glass:rgba(13,13,17,.82);--v03-maptools:rgba(8,8,11,.88);--v03-focus:rgba(86,199,232,.78)}
+.crnsl-v03 .crnsl-workspace{grid-template-columns:minmax(0,1fr) 304px;transition:grid-template-columns .18s ease}
+.crnsl-v03 .crnsl-inspector{min-width:0;transition:opacity .16s ease,transform .16s ease,border-color .16s ease}
+.crnsl-v03 .crnsl-commandbar,.crnsl-v03 .crnsl-sessionbar{backdrop-filter:blur(12px) saturate(1.08)}
+.crnsl-v03 .crnsl-map-scroll{position:relative;background-color:#09090c;background-image:radial-gradient(circle at 50% 44%,rgba(255,62,73,.035),transparent 28rem),linear-gradient(rgba(255,255,255,.027) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.027) 1px,transparent 1px);background-size:auto,32px 32px,32px 32px}
+.crnsl-v03 .crnsl-map{transform-origin:0 0}
+
+/* Floating map controls: compact and transient, no extra permanent sidebar. */
+.crnsl-v03-maptools{position:sticky;top:10px;left:calc(100% - 306px);z-index:25;width:max-content;display:flex;align-items:center;gap:4px;padding:4px;border:1px solid var(--line);border-radius:7px;background:var(--v03-maptools);box-shadow:0 10px 28px rgba(0,0,0,.35);backdrop-filter:blur(12px);margin:10px 10px -46px auto}
+.crnsl-v03-maptools button{width:32px;height:30px;min-height:30px;padding:6px;border-color:transparent;background:transparent;color:var(--muted)}
+.crnsl-v03-maptools button:hover:not(:disabled){color:var(--text);border-color:var(--line);background:rgba(255,255,255,.055);box-shadow:none}
+.crnsl-v03-maptools button svg{width:15px;height:15px}
+.crnsl-v03-maptools .v03-zoom-group{display:flex;align-items:center;border-left:1px solid var(--line-soft);border-right:1px solid var(--line-soft);padding:0 2px}
+.crnsl-v03-maptools .zoom-label{width:48px;font:650 9px/1 var(--mono);letter-spacing:.03em;color:var(--text)}
+
+/* Strict rules status. Deliberately looks like status telemetry, not marketing. */
+.crnsl-v03-rules-chip{min-height:32px!important;padding:4px 8px!important;border-color:rgba(82,221,162,.25)!important;background:rgba(82,221,162,.045)!important;color:var(--good)!important;white-space:nowrap}
+.crnsl-v03-rules-chip>svg{width:15px!important;height:15px!important}
+.crnsl-v03-rules-chip>span{display:grid;text-align:left;gap:1px}.crnsl-v03-rules-chip strong{font:700 8px/1 var(--mono);letter-spacing:.1em}.crnsl-v03-rules-chip small{font:500 7px/1.15 var(--mono);color:var(--muted);max-width:168px;overflow:hidden;text-overflow:ellipsis}
+
+/* Node hierarchy --------------------------------------------------- */
+.crnsl-v03 .crnsl-node{border-radius:5px;box-shadow:0 12px 24px rgba(0,0,0,.28);transition:border-color .14s ease,box-shadow .14s ease,transform .14s ease,background .14s ease}
+.crnsl-v03 .crnsl-node::before{content:"";position:absolute;inset:0;pointer-events:none;border-radius:4px;background:linear-gradient(135deg,rgba(255,255,255,.035),transparent 28%,transparent 76%,rgba(255,255,255,.02))}
+.crnsl-v03 .crnsl-node:hover{transform:translateY(-2px);box-shadow:0 16px 30px rgba(0,0,0,.36)}
+.crnsl-v03 .crnsl-node.current{border-color:rgba(82,221,162,.68)!important;box-shadow:0 0 0 1px rgba(82,221,162,.18),0 0 22px rgba(82,221,162,.11),0 14px 28px rgba(0,0,0,.34)}
+.crnsl-v03 .crnsl-node.can-move{border-color:rgba(86,199,232,.46)}
+.crnsl-v03 .crnsl-node.can-move .crnsl-node-accent{background:var(--cyan)}
+.crnsl-v03 .crnsl-node.blocked{border-color:rgba(255,179,0,.36)}
+.crnsl-v03 .crnsl-node.unknown{border-style:solid;background:linear-gradient(180deg,rgba(24,22,20,.96),rgba(12,12,15,.98))}
+.crnsl-v03 .crnsl-node.unknown .node-icon{color:var(--hot)}
+.crnsl-v03 .crnsl-node.selected:not(.current){box-shadow:0 0 0 1px var(--accent-line),0 14px 28px rgba(0,0,0,.34)}
+.crnsl-v03 .crnsl-move-button{min-height:27px;font-size:9px;background:rgba(86,199,232,.07);border-color:rgba(86,199,232,.3);color:var(--cyan)}
+.crnsl-v03 .crnsl-blocked-label{color:var(--hot)}
+.crnsl-v03 .crnsl-connections line{filter:drop-shadow(0 0 3px rgba(255,62,73,.16))}
+.crnsl-v03 .crnsl-connections line.secondary{filter:none}
+
+/* Subtle encrypted telemetry only when motion is allowed. */
+@keyframes crnsl-v03-scan{0%{transform:translateX(-28%);opacity:.15}40%{opacity:.72}100%{transform:translateX(128%);opacity:.08}}
+.crnsl-v03 .crnsl-node.unknown .crnsl-encrypted-signal{position:relative;overflow:hidden}
+.crnsl-v03 .crnsl-node.unknown .crnsl-encrypted-signal::after{content:"";position:absolute;top:0;bottom:0;width:30%;background:linear-gradient(90deg,transparent,rgba(255,179,0,.36),transparent);animation:crnsl-v03-scan 2.6s linear infinite;pointer-events:none}
+.crnsl-v03.reduced-motion .crnsl-node.unknown .crnsl-encrypted-signal::after{display:none}
+@media(prefers-reduced-motion:reduce){.crnsl-v03 .crnsl-node.unknown .crnsl-encrypted-signal::after{display:none!important}.crnsl-v03 *{scroll-behavior:auto!important;transition-duration:0s!important;animation-duration:0s!important}}
+
+/* Inspector -------------------------------------------------------- */
+.crnsl-v03 .crnsl-inspector-head{min-height:60px;background:linear-gradient(180deg,rgba(19,19,24,.98),rgba(14,14,18,.98));border-bottom:1px solid var(--line)}
+.crnsl-v03 .crnsl-inspector-tabs{position:sticky;top:60px;z-index:4;background:rgba(13,13,17,.96);backdrop-filter:blur(10px)}
+.crnsl-v03 .crnsl-inspector-tabs button{min-height:36px}
+.crnsl-v03 .crnsl-inspector-body{scrollbar-gutter:stable}
+.crnsl-v03 .crnsl-facts>div{min-height:32px}
+.crnsl-v03 .crnsl-entity,.crnsl-v03 .crnsl-doc-row,.crnsl-v03 .crnsl-control-row{min-height:42px}
+.crnsl-v03 .crnsl-entity:focus-visible,.crnsl-v03 .crnsl-doc-row button:focus-visible,.crnsl-v03 .crnsl-control-row button:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+.crnsl-v03 .crnsl-program-row{min-height:40px;border-left:2px solid transparent;transition:background .12s ease,border-color .12s ease}
+.crnsl-v03 .crnsl-program-row.attacker{border-left-color:rgba(255,82,104,.52)}.crnsl-v03 .crnsl-program-row.defender{border-left-color:rgba(86,199,232,.52)}.crnsl-v03 .crnsl-program-row.booster{border-left-color:rgba(82,221,162,.52)}.crnsl-v03 .crnsl-program-row.blackice{border-left-color:rgba(174,133,255,.58)}
+.crnsl-v03 .crnsl-program-row:hover{background:rgba(255,255,255,.035)}
+
+/* Inspector collapse and focus mode. */
+.crnsl-v03.v03-inspector-collapsed .crnsl-workspace{grid-template-columns:minmax(0,1fr) 0}
+.crnsl-v03.v03-inspector-collapsed .crnsl-inspector{opacity:0;transform:translateX(18px);pointer-events:none;border-left:0;overflow:hidden}
+.crnsl-v03.v03-focus{grid-template-rows:0 0 minmax(0,1fr) 0}
+.crnsl-v03.v03-focus .crnsl-commandbar,.crnsl-v03.v03-focus .crnsl-sessionbar,.crnsl-v03.v03-focus .crnsl-footer{opacity:0;pointer-events:none;overflow:hidden;border:0;padding-top:0;padding-bottom:0;min-height:0}
+.crnsl-v03.v03-focus .crnsl-workspace{grid-template-columns:minmax(0,1fr) 0}
+.crnsl-v03.v03-focus .crnsl-inspector{opacity:0;pointer-events:none;overflow:hidden;border:0}
+.crnsl-v03.v03-focus .crnsl-map-head{height:38px}
+.crnsl-v03.v03-panning,.crnsl-v03.v03-panning *{cursor:grabbing!important;user-select:none!important}
+
+/* Help overlay ----------------------------------------------------- */
+.crnsl-v03-help{position:absolute;inset:0;z-index:1000;display:grid;place-items:center;padding:24px;background:rgba(0,0,0,.68);backdrop-filter:blur(8px)}
+.v03-help-card{width:min(680px,94%);max-height:min(720px,92%);overflow:auto;border:1px solid var(--accent-line);background:linear-gradient(180deg,#17171d,#0d0d11);box-shadow:0 28px 70px rgba(0,0,0,.62);clip-path:polygon(0 0,calc(100% - 16px) 0,100% 16px,100% 100%,16px 100%,0 calc(100% - 16px))}
+.v03-help-card>header{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line);background:linear-gradient(90deg,var(--accent-soft),transparent 45%)}
+.v03-help-mark{width:38px;height:38px;display:grid;place-items:center;border:1px solid var(--accent-line);color:var(--accent);background:var(--accent-soft)}.v03-help-mark svg{width:21px;height:21px}
+.v03-help-card header>div{flex:1}.v03-help-card header small{font:650 8px/1 var(--mono);letter-spacing:.14em;color:var(--muted)}.v03-help-card header h3{margin:4px 0 0;border:0;font-size:17px}.v03-help-card header button{width:32px;height:32px;padding:7px}.v03-help-card header button svg{width:15px;height:15px}
+.v03-help-rules{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:14px}.v03-help-rules p{margin:0;min-height:70px;display:flex;align-items:flex-start;gap:10px;padding:11px;border:1px solid var(--line-soft);background:rgba(255,255,255,.025);line-height:1.42;color:#d9d4d7}.v03-help-rules p>b{min-width:27px;height:27px;display:grid;place-items:center;border:1px solid var(--accent-line);color:var(--accent);font:750 14px/1 var(--mono)}.v03-help-rules p>svg{min-width:22px;width:22px;height:22px;color:var(--cyan)}.v03-help-rules p.warning{grid-column:1/-1;border-color:rgba(255,179,0,.22);background:var(--hot-soft)}.v03-help-rules p.warning>svg{color:var(--hot)}
+.v03-help-card>footer{padding:11px 14px;border-top:1px solid var(--line);color:var(--muted);font:600 9px/1.45 var(--mono);letter-spacing:.03em}
+
+/* Better affordance on small laptop/tablet windows. */
+@media(max-width:1080px){.crnsl-v03 .crnsl-workspace{grid-template-columns:minmax(0,1fr) 286px}.crnsl-v03-rules-chip small{display:none}.crnsl-v03-rules-chip{width:34px!important;padding:6px!important}.crnsl-v03-rules-chip span{display:none}.crnsl-v03-maptools{margin-right:7px}}
+@media(max-width:920px){.crnsl-v03 .crnsl-map-legend{display:none}.crnsl-v03 .crnsl-architecture-picker>span{display:none}.crnsl-v03 .crnsl-workspace{grid-template-columns:minmax(0,1fr) 270px}.crnsl-v03 .crnsl-brand{min-width:160px}.crnsl-v03 .crnsl-brand-copy .crnsl-kicker{display:none}.crnsl-v03 .crnsl-brand h2{font-size:14px}.crnsl-v03-maptools{left:auto}.v03-help-rules{grid-template-columns:1fr}}

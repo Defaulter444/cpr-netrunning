@@ -1,11 +1,10 @@
-/* Pure Cyberpunk RED NET rules used by the UX lab.
- * No Foundry calls live here. The lab automates only deterministic state changes;
- * contested rolls are exposed to the CPR roll layer instead of being invented here.
- */
+/* Pure Cyberpunk RED NET rules used by the UX lab. */
 
 export const INTERFACE_ABILITIES = Object.freeze([
   "backdoor", "cloak", "control", "eyedee", "pathfinder", "slide", "virus", "zap"
 ]);
+
+export const beatsDV = (total, dv) => Number(total || 0) > Number(dv || 0);
 
 export function netActionsMax(rank) {
   const r = Math.trunc(Number(rank) || 0);
@@ -18,7 +17,7 @@ export function netActionsMax(rank) {
 
 export function floorHoldsData(node) {
   if (!node) return false;
-  return node.kind === "file" || !!String(node.contents || "").trim() || !!String(node.contentsImage || "").trim() || (node.attachments || []).some((a) => a.documentType === "JournalEntry" || a.documentType === "JournalEntryPage");
+  return node.kind === "file" || !!String(node.contents || "").trim() || !!String(node.contentsImage || "").trim() || (node.attachments || []).some((a) => ["JournalEntry", "JournalEntryPage"].includes(a.documentType));
 }
 
 export function parentIds(node) {
@@ -27,12 +26,7 @@ export function parentIds(node) {
 }
 
 export function childIds(nodes, id) {
-  const out = [];
-  for (const node of nodes || []) {
-    if (!node?.id) continue;
-    if (node.parent === id || (node.alsoFrom || []).includes(id)) out.push(node.id);
-  }
-  return out;
+  return (nodes || []).filter((node) => node?.id && (node.parent === id || (node.alsoFrom || []).includes(id))).map((node) => node.id);
 }
 
 export function neighborIds(nodes, id) {
@@ -41,35 +35,26 @@ export function neighborIds(nodes, id) {
   return [...new Set([...parentIds(node), ...childIds(nodes, id)])];
 }
 
-export function isLeaf(nodes, id) {
-  return childIds(nodes, id).length === 0;
-}
+export const isLeaf = (nodes, id) => childIds(nodes, id).length === 0;
+export const isDownward = (nodes, fromId, toId) => childIds(nodes, fromId).includes(toId);
 
-export function isDownward(nodes, fromId, toId) {
-  return childIds(nodes, fromId).includes(toId);
-}
-
-/* Virtual movement between adjacent NET floors is free. The only stop is an
- * unresolved obstruction on the floor the runner is leaving toward deeper NET.
+/* Virtual movement between adjacent NET floors is free. An unresolved gate on
+ * the current floor stops movement deeper into that route, but not retreat.
  */
 export function canMove(nodes, fromId, toId, floorState = {}) {
   if (!neighborIds(nodes, fromId).includes(toId)) return { ok: false, reason: "notAdjacent" };
   const from = (nodes || []).find((n) => n.id === fromId);
-  if (isDownward(nodes, fromId, toId) && from?.gate && !floorState?.[fromId]?.breached) {
-    return { ok: false, reason: "obstruction" };
-  }
+  if (isDownward(nodes, fromId, toId) && from?.gate && !floorState?.[fromId]?.breached) return { ok: false, reason: "obstruction" };
   return { ok: true, reason: "freeMovement" };
 }
 
 export function abilityAvailability({ nodes = [], node = null, floorState = {}, runnerId = "", hasIceTarget = false, hasZapTarget = false, slideUsed = false } = {}) {
   const fx = node ? (floorState[node.id] || {}) : {};
-  const controlledByMe = fx.control?.runnerId === runnerId;
-  const identified = Array.isArray(fx.eyedee) && fx.eyedee.includes(runnerId);
   return {
     backdoor: !!node?.gate && !fx.breached,
     cloak: true,
-    control: node?.kind === "controlnode" && !controlledByMe,
-    eyedee: floorHoldsData(node) && !identified,
+    control: node?.kind === "controlnode" && fx.control?.runnerId !== runnerId,
+    eyedee: floorHoldsData(node) && !(fx.eyedee || []).includes(runnerId),
     pathfinder: true,
     slide: !!hasIceTarget && !slideUsed,
     virus: !!node && isLeaf(nodes, node.id),
@@ -77,9 +62,9 @@ export function abilityAvailability({ nodes = [], node = null, floorState = {}, 
   };
 }
 
-/* Pathfinder follows the Corebook's "roll total levels down, or to the first
- * Password you could not beat" rule. Every branch is walked independently;
- * the blocking Password itself is revealed, but nothing beyond it is.
+/* Pathfinder reveals one floor-depth per point of the Check, branch by branch.
+ * The first unbeaten Password on each branch is revealed inclusively and stops
+ * only that branch.
  */
 export function pathfinderReveal(nodes, startId, check, floorState = {}) {
   const limit = Math.max(0, Math.trunc(Number(check) || 0));
@@ -88,8 +73,7 @@ export function pathfinderReveal(nodes, startId, check, floorState = {}) {
   const seen = new Set([startId]);
   let frontier = childIds(nodes, startId);
   const revealed = [];
-
-  for (let step = 1; step <= limit && frontier.length; step += 1) {
+  for (let step = 1; step <= limit && frontier.length; step++) {
     const next = [];
     for (const id of frontier) {
       if (seen.has(id)) continue;
@@ -97,7 +81,7 @@ export function pathfinderReveal(nodes, startId, check, floorState = {}) {
       const node = byId.get(id);
       if (!node) continue;
       revealed.push(id);
-      const fx = floorState?.[id] || {};
+      const fx = floorState[id] || {};
       const blocks = node.kind === "password" && !fx.breached && Number(node.dv || 0) > limit;
       if (!blocks) next.push(...childIds(nodes, id));
     }
@@ -106,43 +90,24 @@ export function pathfinderReveal(nodes, startId, check, floorState = {}) {
   return revealed;
 }
 
-export function primaryContext({ nodes = [], node = null, floorState = {}, runnerId = "", hasIceTarget = false, hasZapTarget = false, slideUsed = false } = {}) {
-  if (!node) return [];
-  const available = abilityAvailability({ nodes, node, floorState, runnerId, hasIceTarget, hasZapTarget, slideUsed });
+export function primaryContext(args = {}) {
+  if (!args.node) return [];
+  const available = abilityAvailability(args);
   const order = ["backdoor", "eyedee", "control", "pathfinder", "virus", "slide", "zap", "cloak"];
   return order.map((key) => ({ key, available: !!available[key], cost: 1 }));
 }
 
-export function controlCanActivate(fx = {}, turnSerial = 0) {
-  return Number(fx.activatedTurnSerial ?? -1) !== Number(turnSerial);
-}
-
 export function resetArchitectureState(floorState = {}) {
-  const out = {};
-  for (const [id, value] of Object.entries(floorState || {})) {
-    out[id] = {
-      ...value,
-      breached: false,
-      control: null,
-      eyedee: [],
-      viruses: [],
-      activatedTurnSerial: -1
-    };
-  }
-  return out;
+  return Object.fromEntries(Object.entries(floorState || {}).map(([id, value]) => [id, { ...value, breached: false, control: null, eyedee: [], viruses: [] }]));
 }
 
-/* Going Quiet (2025) -------------------------------------------------- */
-
-export function quietJackInActionCost() {
-  return 2; // ordinary Jack In + one additional NET Action for Quiet Jack In
-}
+/* Going Quiet ------------------------------------------------------ */
+export const quietJackInActionCost = () => 2;
 
 export function stealthBreaksOn({ action = "", targetKind = "" } = {}) {
   if (action === "control-take") return true;
   if (["zap", "program-attack", "blackice-interact", "watcher-interact"].includes(action)) return true;
-  if (["blackice", "demon", "watcher", "enemy-runner"].includes(targetKind) && action === "direct-interact") return true;
-  return false;
+  return ["blackice", "demon", "watcher", "enemy-runner"].includes(targetKind) && action === "direct-interact";
 }
 
 export function quietEncounterMode({ stealthed = false, entityKind = "" } = {}) {
@@ -152,6 +117,4 @@ export function quietEncounterMode({ stealthed = false, entityKind = "" } = {}) 
   return "normal";
 }
 
-export function watcherSearchAllowed(watcherState = {}, turnSerial = 0) {
-  return Number(watcherState?.stealthSearchTurnSerial ?? -1) !== Number(turnSerial);
-}
+export const watcherSearchAllowed = (watcherState = {}, turnSerial = 0) => Number(watcherState?.stealthSearchTurnSerial ?? -1) !== Number(turnSerial);

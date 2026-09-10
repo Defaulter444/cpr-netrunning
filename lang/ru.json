@@ -70,8 +70,7 @@
       "ImagePlaceholder": "путь/к/картинке.webp",
       "ImagePick": "Выбрать картинку",
       "VirusPlan": "План вируса (назначает мастер)",
-      "VirusActions": "СЕТевых действий",
-      "VirusEffect": "Что изменит вирус"
+      "VirusActions": "СЕТевых действий"
     },
     "Floor": {
       "password": "Пароль",
@@ -120,7 +119,6 @@
       "ViewImage": "Щёлкните, чтобы открыть целиком",
       "SlidClear": "Проскользнул мимо — нажмите, чтобы снять метку",
       "Note": "Заметка этажа",
-      "VirusChange": "изменит: {effect}",
       "VirusRolled": "внедрён броском {total} против СЗ {dv}"
     },
     "Runners": {

@@ -61,9 +61,14 @@ export const FLOOR_KINDS = ["password", "file", "controlnode", "custom"];
  *
  * Scanner is absent on purpose — it is a MEAT action taken outside the
  * architecture, so it can never be what a floor asks of you (Corebook p. 200).
+ *
+ * Virus is absent for the same kind of reason. It does not open a floor: it is
+ * planted at the bottom of a branch against the DV in that floor's virus plan,
+ * which is a separate box in the editor. Offering it here promised a second,
+ * parallel way to roll a virus that no code ever honoured.
  */
 export const CHECK_ABILITIES = [
-  "backdoor", "cloak", "control", "eyedee", "pathfinder", "slide", "virus", "zap",
+  "backdoor", "cloak", "control", "eyedee", "pathfinder", "slide", "zap",
 ];
 export const THEMES = ["red", "yellow", "blue", "green"];
 

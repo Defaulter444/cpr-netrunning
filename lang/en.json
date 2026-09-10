@@ -70,8 +70,7 @@
       "ImagePlaceholder": "path/to/picture.webp",
       "ImagePick": "Choose a picture",
       "VirusPlan": "Virus plan (GM adjudication)",
-      "VirusActions": "NET action cost",
-      "VirusEffect": "Virus effect"
+      "VirusActions": "NET action cost"
     },
     "Floor": {
       "password": "Password",
@@ -120,7 +119,6 @@
       "ViewImage": "Click to open full size",
       "SlidClear": "Slipped past — click to clear the mark",
       "Note": "Floor note",
-      "VirusChange": "changes: {effect}",
       "VirusRolled": "planted on {total} against DV {dv}"
     },
     "Runners": {

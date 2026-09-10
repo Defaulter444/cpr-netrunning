@@ -337,10 +337,8 @@ export function getData(app) {
     const viruses = (fx?.viruses || []).map((v) => {
       const parts = [loc("CRNS.Canvas.Virus")];
       const declared = String(v.intent || "").trim();
-      const change = String(v.effect || "").trim();
       if (declared) parts.push(declared);
-      // The GM's own note and the numbers stay on his side of the screen.
-      if (isGM && change) parts.push(loc("CRNS.Canvas.VirusChange", { effect: change }));
+      // The numbers stay on the GM's side of the screen.
       if (isGM && Number.isFinite(Number(v.dv))) {
         parts.push(loc("CRNS.Canvas.VirusRolled", { total: Number(v.dv), dv: Number(v.target ?? 0) }));
       }

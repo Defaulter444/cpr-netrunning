@@ -1310,6 +1310,15 @@ const OPS = {
     // bottom — nothing to descend to and nowhere to leave a Virus.
     archTree.normalizeFloors(newArch.floors || []);
 
+    // Two fields the editor no longer offers. Left alone they would be invisible
+    // and immortal — nothing reads them and nothing clears them — and the stored
+    // architecture would keep a "what the virus changes" text competing with the
+    // runner's own declaration. Saving the architecture is where they go.
+    for (const floor of newArch.floors || []) {
+      if (floor?.virusPlan && "effect" in floor.virusPlan) delete floor.virusPlan.effect;
+      if (floor?.check === "virus") floor.check = "";
+    }
+
     // If the arch was renamed via the editor, rename the actor folder too.
     if (newArch.name !== oldArch.name) await bridge.renameEntityFolder(oldArch.name, newArch.name);
 
@@ -2275,7 +2284,7 @@ const OPS = {
         if (t > plan.dv) {
           // `target` is the DV the roll had to beat. Kept on the record because
           // the marker is the only place anyone can look afterwards.
-          fx.viruses.push({ id: uid("fx"), pid, dv: t, target: plan.dv, effect: plan.effect || "", intent: declared });
+          fx.viruses.push({ id: uid("fx"), pid, dv: t, target: plan.dv, intent: declared });
           applied = true;
         }
         // The verdict on its own told nobody anything: the roll belongs to the

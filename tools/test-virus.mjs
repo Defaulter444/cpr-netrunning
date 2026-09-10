@@ -5,9 +5,12 @@
  * Three things about this path were wrong at once, and none of them could be
  * seen by reading it.
  *
- * The runner never declared anything. The editor has a "what the virus changes"
- * field, the GM fills it in, and that was the only text in the whole feature —
- * the player, whose virus it is, had nowhere to say what he was trying to do.
+ * The runner never declared anything. The editor had a "what the virus changes"
+ * field the GM filled in, and that was the only text in the whole feature — the
+ * player, whose virus it is, had nowhere to say what he was trying to do. Asked
+ * for one text and shown another, the two ended up writing each other's half:
+ * the GM described the effect, the runner named the virus. That field is gone;
+ * the declaration is the runner's and there is only one of it.
  *
  * Nothing was ever displayed. The GM's text, the roll and the DV were all
  * written into the world and then read by nobody: the marker on the map is
@@ -127,7 +130,7 @@ const D = await import(pathToFileURL(path.join(scripts, "data.js")).href);
 
 const RUNNER = { id: "act1", uuid: "Actor.act1", name: "Runner", img: "", isOwner: true };
 const PID = "actor:Actor_act1";
-const PLAN = { dv: 12, actions: 3, effect: "the door logic" };
+const PLAN = { dv: 12, actions: 3 };
 const INTENT = "open every door on this floor and hold them open";
 
 /** A world with the runner standing on the bottom floor, which carries `plan`. */
@@ -152,6 +155,51 @@ async function world({ leaf = true, plan = PLAN, actions = 9 } = {}) {
 
 const fxNow = () => settings.get("session").floorState["a1:f2"] || {};
 const actionsLeft = () => settings.get("session").participants[PID].actions.value;
+
+console.log("One virus, one text, written by the runner");
+{
+  const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf-8");
+  const constants = read("scripts/constants.js");
+  const editorTpl = read("templates/editor.hbs");
+  const editorJs = read("scripts/apps/editor.js");
+  const ru = JSON.parse(read("lang/ru.json"));
+  const en = JSON.parse(read("lang/en.json"));
+
+  // The plan used to carry "what the virus changes" alongside the two numbers.
+  // Two texts about one virus, written by two people, and the player was asked
+  // for the one nobody could see — so the GM ended up describing the effect and
+  // the runner naming the virus, which is the wrong way round for both.
+  expect(!editorTpl.includes("virus-effect"), "the retired field is still in the editor");
+  expect(!editorJs.includes('changeVirusPlan("effect")'), "the retired field still has a handler");
+  expect(!("VirusEffect" in (ru.CRNS.Editor || {})), "the retired field still has a Russian label");
+  expect(!("VirusEffect" in (en.CRNS.Editor || {})), "the retired field still has an English label");
+
+  // Virus is not something a floor can ask of you. It is planted at the bottom
+  // of a branch against the plan's own DV, so offering it as a floor check
+  // promised a second way to roll it that nothing honoured.
+  const list = constants.slice(constants.indexOf("CHECK_ABILITIES = ["), constants.indexOf("];", constants.indexOf("CHECK_ABILITIES = [")));
+  expect(!/"virus"/.test(list), "virus is still offered as a floor check");
+  expect(/"backdoor"/.test(list) && /"zap"/.test(list), "the floor-check list lost something it needed");
+}
+
+console.log("Saving an architecture drops what the editor no longer offers");
+{
+  await world();
+  const arch = {
+    id: "a1", name: "Net", floors: [
+      { id: "f1", parent: "", kind: "custom", dv: 0, ice: [], demon: null, check: "virus" },
+      { id: "f2", parent: "f1", kind: "custom", dv: 0, ice: [], demon: null,
+        virusPlan: { dv: 12, actions: 3, effect: "left over from before" } },
+    ],
+  };
+  const saved = await D.applyOp("arch.update", { archId: "a1", arch }, "gm");
+  expect(saved !== false && !saved?.error, `saving refused: ${JSON.stringify(saved)}`);
+  const stored = settings.get("netArchs").a1.floors;
+  expect(!("effect" in (stored[1].virusPlan || {})), "the retired text survived the save");
+  eq(stored[1].virusPlan.dv, 12, "the save ate the DV along with it");
+  eq(stored[1].virusPlan.actions, 3, "the save ate the action count");
+  eq(stored[0].check, "", "a floor still asks for a virus check");
+}
 
 /* ------------------------------------------------------------------ */
 
@@ -228,7 +276,7 @@ console.log("The roll, the DV and the declaration all reach the table");
   const planted = fxNow().viruses;
   eq(planted.length, 1, "the virus was not recorded");
   eq(planted[0].intent, INTENT, "the runner's declaration is not on the record");
-  eq(planted[0].effect, PLAN.effect, "the GM's note is not on the record");
+  expect(!("effect" in planted[0]), "the retired GM text came back on the record");
   eq(planted[0].dv, 15, "the roll is not on the record");
   eq(planted[0].target, 12, "the DV it had to beat is not on the record");
   // The marker on the map is the only place anyone can look afterwards.
@@ -272,7 +320,6 @@ console.log("The map marker is built from what was recorded, not from a constant
   // It used to read `title: loc("CRNS.Canvas.Virus")` and nothing else, so every
   // marker on every floor said the same word.
   expect(/v\.intent/.test(canvas), "the marker ignores the runner's declaration");
-  expect(/v\.effect/.test(canvas), "the marker ignores the GM's note");
   expect(/CRNS\.Canvas\.VirusRolled/.test(canvas), "the marker never shows the roll it was planted on");
 }
 

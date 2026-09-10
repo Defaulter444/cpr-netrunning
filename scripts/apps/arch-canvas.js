@@ -18,8 +18,7 @@ const ZOOM_MAX = 2.5;
 function escapeNote(text) {
   const safe = String(text).replace(/[&<>"']/g, (c) =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-  return safe.replace(/?
-/g, "<br />");
+  return safe.replace(/\r?\n/g, "<br />");
 }
 
 /* ------------------------------------------------------------------ */

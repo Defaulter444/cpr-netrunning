@@ -1223,6 +1223,15 @@ body.crns-resizing { cursor: ns-resize !important; -webkit-user-select: none !im
 .crns-forge-item-stats { flex: 1 1 auto; font-size: 10px; color: var(--crns-dim); text-align: right; }
 .crns-forge-empty { color: var(--crns-dim); text-align: center; padding: 12px 0; }
 
+/* ---- the runner's virus declaration ---- */
+.crns-virus-intent { display: flex; flex-direction: column; gap: 8px; }
+.crns-virus-intent p { margin: 0; color: var(--crns-dim); font-size: 11px; line-height: 1.5; }
+.crns-virus-intent textarea {
+  width: 100%; box-sizing: border-box; resize: vertical;
+  background: transparent; border: 1px solid var(--crns-border);
+  color: var(--crns-text); padding: 4px 6px;
+}
+
 /* ---- reduced motion ---- */
 @media (prefers-reduced-motion: reduce) {
   .crns-root *, .crns-root *::before, .crns-root *::after {

@@ -330,7 +330,22 @@ export function getData(app) {
     const breached = !!(fx && fx.breached);
 
     // Cloaks are ARCH-level now (Addendum 6) — rendered as a strip, not per floor.
-    const viruses = (fx?.viruses || []).map((v) => ({ id: v.id, title: loc("CRNS.Canvas.Virus"), gm: isGM }));
+    // The marker used to be captioned with the bare word "Virus". What the
+    // runner declared the virus would do, what the GM said it changes, and the
+    // roll it was planted on were all written to the world and then read by
+    // nobody — the one place anyone would look told them nothing.
+    const viruses = (fx?.viruses || []).map((v) => {
+      const parts = [loc("CRNS.Canvas.Virus")];
+      const declared = String(v.intent || "").trim();
+      const change = String(v.effect || "").trim();
+      if (declared) parts.push(declared);
+      // The GM's own note and the numbers stay on his side of the screen.
+      if (isGM && change) parts.push(loc("CRNS.Canvas.VirusChange", { effect: change }));
+      if (isGM && Number.isFinite(Number(v.dv))) {
+        parts.push(loc("CRNS.Canvas.VirusRolled", { total: Number(v.dv), dv: Number(v.target ?? 0) }));
+      }
+      return { id: v.id, title: parts.join(" — "), gm: isGM };
+    });
 
     // Control tint: controlled floor gets the controller's user-colour + chip.
     let control = null;

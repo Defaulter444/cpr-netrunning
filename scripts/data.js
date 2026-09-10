@@ -318,6 +318,8 @@ async function endRunnerRun(session, pid) {
     if (fx.control?.pid === pid) fx.control = null;
     fx.eyedee = (fx.eyedee || []).filter(id => id !== pid);
     if (fx.virusWork) delete fx.virusWork[pid];
+    // The declaration goes with the unfinished work it belonged to.
+    if (fx.virusIntent) delete fx.virusIntent[pid];
     if (last) fx.breached = false;
   }
 }
@@ -2092,26 +2094,55 @@ const OPS = {
   /** Resolve an interface-ability roll's effect on the floor state. The DV is
    *  never revealed in the (public) chat card — only a neutral verdict.
    *  owner-or-GM for the acting pid. Returns { ok, applied }. */
-  async "run.virusWork"({ pid } = {}, callerId) {
+  async "run.virusWork"({ pid, intent = "" } = {}, callerId) {
     const session = getWorld("session") || {};
     const acting = resolveActingRunner(session, pid, callerId);
     if (!acting) return { error: "CRNS.Errors.VirusPlan" };
     const { part } = acting;
     const floors = (getWorld("netArchs") || {})[part.archId]?.floors || [];
     const floor = floors[part.floorIndex || 0];
+    // Two different problems used to answer with the same message. A floor that
+    // is not the bottom of its branch reported "no virus plan" — a lie when the
+    // plan is sitting right there in the editor, and one that sent the GM
+    // looking for a field he had already filled in.
+    if (!archTree.isLeaf(floors, part.floorIndex || 0)) return { error: "CRNS.Errors.VirusFloor" };
     const plan = floor?.virusPlan;
-    if (!archTree.isLeaf(floors, part.floorIndex || 0) || !plan ||
-        !Number.isFinite(plan.dv) || !Number.isInteger(plan.actions) || plan.actions < 1)
+    if (!plan || !Number.isFinite(plan.dv) || !Number.isInteger(plan.actions) || plan.actions < 1)
       return { error: "CRNS.Errors.VirusPlan" };
+
     const fx = getFloorFx(session, part.archId, floor.id);
     fx.virusWork ||= {};
+    fx.virusIntent ||= {};
     const progress = fx.virusWork[pid] || 0;
-    if (progress >= plan.actions) return { ready: true };
+
+    // What the virus is FOR belongs to the runner. The plan in the editor is the
+    // GM's answer to that declaration — how hard it is and how long it takes —
+    // not a substitute for it. Nothing used to record the runner's half at all.
+    const said = String(intent ?? "").trim().slice(0, 300);
+    if (said) fx.virusIntent[pid] = said;
+    const declared = fx.virusIntent[pid] || "";
+
+    if (progress >= plan.actions) {
+      if (said) await setWorld("session", session);
+      return { ready: true, progress, required: plan.actions, intent: declared };
+    }
+    if (!declared) return { error: "CRNS.Errors.VirusIntent" };
     if ((part.actions?.value || 0) < 1) return { error: "CRNS.Errors.NoActions" };
+
     part.actions.value -= 1;
     fx.virusWork[pid] = progress + 1;
+    if (progress === 0) {
+      const who = fromUuidSync?.(part.actorUuid)?.name || loc("CRNS.Runners.NPC");
+      postChatCard(loc("CRNS.Chat.Virus"),
+        loc("CRNS.Chat.VirusDeclared", { name: who, intent: declared }));
+    }
     await setWorld("session", session);
-    return { ready: progress + 1 >= plan.actions, progress: progress + 1, required: plan.actions };
+    return {
+      ready: progress + 1 >= plan.actions,
+      progress: progress + 1,
+      required: plan.actions,
+      intent: declared,
+    };
   },
 
   async "run.abilityResult"({ pid, ability, total, extra } = {}, callerId) {
@@ -2226,20 +2257,35 @@ const OPS = {
         // Only at the bottom of a branch. On a tree there are several
         // bottoms — one per branch — and "last element of the array" stopped
         // meaning anything the moment architectures could fork.
-        const isLast = archTree.isLeaf(floors, part.floorIndex || 0);
         const fx = getFloorFx(session, part.archId, floor.id);
         const plan = floor.virusPlan;
+        // Each refusal now says which one it is. All three used to end in the
+        // same "failed" card, so a runner standing on the wrong floor, or one
+        // who had not put the work in, was told his roll had lost.
+        if (!archTree.isLeaf(floors, part.floorIndex || 0))
+          return { ok: false, applied: false, error: "CRNS.Errors.VirusFloor" };
         if (!plan || !Number.isFinite(plan.dv) || !Number.isInteger(plan.actions) || plan.actions < 1)
           return { ok: false, applied: false, error: "CRNS.Errors.VirusPlan" };
-        if (isLast && (fx.virusWork?.[pid] || 0) >= plan.actions) {
-          delete fx.virusWork[pid];
-          if (t > plan.dv) {
-          fx.viruses.push({ id: uid("fx"), pid, dv: t, effect: plan.effect || "" });
+        if ((fx.virusWork?.[pid] || 0) < plan.actions)
+          return { ok: false, applied: false, error: "CRNS.Errors.VirusWork" };
+
+        const declared = String(fx.virusIntent?.[pid] || "").trim();
+        delete fx.virusWork[pid];
+        if (fx.virusIntent) delete fx.virusIntent[pid];
+        if (t > plan.dv) {
+          // `target` is the DV the roll had to beat. Kept on the record because
+          // the marker is the only place anyone can look afterwards.
+          fx.viruses.push({ id: uid("fx"), pid, dv: t, target: plan.dv, effect: plan.effect || "", intent: declared });
           applied = true;
         }
-        }
-        postChatCard(loc("CRNS.Chat.Virus"),
-          loc(applied ? "CRNS.Chat.VirusPlanted" : "CRNS.Chat.VirusFailed", { name }));
+        // The verdict on its own told nobody anything: the roll belongs to the
+        // player, the DV was the GM's, and the card named neither. Once the
+        // attempt is over there is nothing left to keep back.
+        postChatCard(loc("CRNS.Chat.Virus"), [
+          loc(applied ? "CRNS.Chat.VirusPlanted" : "CRNS.Chat.VirusFailed", { name }),
+          loc("CRNS.Chat.VirusRoll", { total: t, dv: plan.dv }),
+          declared ? loc("CRNS.Chat.VirusIntent", { intent: declared }) : "",
+        ].filter(Boolean).join(" "));
         break;
       }
       case "pathfinder": {

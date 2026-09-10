@@ -119,7 +119,9 @@
       "ClearAccess": "Take this runner's access away",
       "ViewImage": "Click to open full size",
       "SlidClear": "Slipped past — click to clear the mark",
-      "Note": "Floor note"
+      "Note": "Floor note",
+      "VirusChange": "changes: {effect}",
+      "VirusRolled": "planted on {total} against DV {dv}"
     },
     "Runners": {
       "Title": "Netrunners",
@@ -187,7 +189,10 @@
       "CustomReserved": "That key belongs to a core-book type.",
       "CustomNameTaken": "Another forged type already answers to that name.",
       "CustomMissing": "No such forged type.",
-      "CustomInUse": "Still placed in an architecture — remove it there first:"
+      "CustomInUse": "Still placed in an architecture — remove it there first:",
+      "VirusFloor": "A virus can only be planted at the bottom of a branch.",
+      "VirusIntent": "Say what the virus is meant to do first.",
+      "VirusWork": "The work on the virus is not finished yet."
     },
     "Hints": {
       "FreeRoll": "Hold Shift to roll without spending a NET action (e.g. defending against an attack).",
@@ -295,7 +300,11 @@
       "PipToggle": "Click: spend a filled pip / restore an empty one",
       "ControlRelease": "Let go",
       "ControlReleasePick": "Let go of which node?",
-      "VirusProgress": "Virus: {progress} of {required} NET actions spent."
+      "VirusProgress": "Virus: {progress} of {required} NET actions spent.",
+      "VirusIntentTitle": "What should the virus do",
+      "VirusIntentHint": "Describe in your own words what the virus changes in the system. The GM answers that with a DV and a number of actions.",
+      "VirusIntentPlaceholder": "For example: open every door on this floor and hold them open",
+      "VirusIntentSave": "Set to work"
     },
     "ProgramClass": {
       "booster": "Booster",
@@ -335,7 +344,10 @@
       "Destroyed": "«{name}» derezzed.",
       "FileEmpty": "Opened — and empty. Somebody wiped it, or it never held anything.",
       "NodeRelease": "Node released",
-      "NodeReleaseBody": "{name} lets go of {floor}."
+      "NodeReleaseBody": "{name} lets go of {floor}.",
+      "VirusDeclared": "{name} sets to work on a virus. Intent: {intent}",
+      "VirusRoll": "Rolled {total} against DV {dv}.",
+      "VirusIntent": "Intent: {intent}"
     },
     "Ice": {
       "Asp": {

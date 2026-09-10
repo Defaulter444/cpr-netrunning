@@ -13,7 +13,7 @@
  * All state mutations go through mutate(); all rolls go through the bridge. The
  * last damage total this client rolled is stashed on app._lastDamage. */
 
-import { MODULE_ID, loc, esc, BLACK_ICE, DEMONS, ENTITY_ICONS, abbrFor, blackIceTypeForName, iceEffectText } from "../constants.js";
+import { MODULE_ID, loc, esc, BLACK_ICE, DEMONS, ENTITY_ICONS, abbrFor, blackIceTypeForName, iceEffectText, dialogClasses } from "../constants.js";
 import * as archTree from "../rules/tree.js";
 import * as archAbilities from "../rules/abilities.js";
 import { getWorld, mutate, notifyClients, canDerezTrap } from "../data.js";
@@ -701,7 +701,15 @@ export function activateListeners(app, html) {
     }
 
     if (ability === "virus") {
-      const work = await mutate("run.virusWork", { pid });
+      // Ask before anything is spent. What the virus is for is the runner's to
+      // say; the plan in the editor is the GM's answer to that — how hard and
+      // how long — and it was standing in for a declaration nobody ever made.
+      let intent = "";
+      if (!declaredVirusIntent(pid)) {
+        intent = await askVirusIntent();
+        if (intent === null) return;
+      }
+      const work = await mutate("run.virusWork", { pid, intent });
       if (work?.error) { ui.notifications.warn(loc(work.error)); return; }
       if (!work?.ready) {
         ui.notifications.info(loc("CRNS.Actions.VirusProgress", { progress: work?.progress, required: work?.required }));
@@ -1164,6 +1172,56 @@ function applyTargetDamage(ref, amount) {
     const pid = ref.slice("runner:".length);
     if (pid) mutate("runner.damage", { pid, amount });
   }
+}
+
+/** What this runner has already declared the virus on his floor will do. Read
+ *  from the world rather than remembered locally: the declaration belongs to the
+ *  floor and outlives any one click. */
+function declaredVirusIntent(pid) {
+  const session = getWorld("session") || {};
+  const part = (session.participants || {})[pid];
+  if (!part) return "";
+  const arch = (getWorld("netArchs") || {})[part.archId];
+  const floor = (arch?.floors || [])[part.floorIndex || 0];
+  if (!floor) return "";
+  const fx = (session.floorState || {})[`${part.archId}:${floor.id}`] || {};
+  return String(fx.virusIntent?.[pid] || "").trim();
+}
+
+/** Ask the runner what the virus should do. Resolves with the text, or null if
+ *  he backed out — an empty answer is not an answer. */
+function askVirusIntent() {
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (value) => { if (!settled) { settled = true; resolve(value); } };
+    const dlg = new Dialog({
+      title: loc("CRNS.Actions.VirusIntentTitle"),
+      content: `<div class="crns-virus-intent">
+        <p>${esc(loc("CRNS.Actions.VirusIntentHint"))}</p>
+        <textarea data-f="intent" rows="3" placeholder="${esc(loc("CRNS.Actions.VirusIntentPlaceholder"))}"></textarea>
+      </div>`,
+      buttons: {
+        ok: {
+          icon: '<i class="fas fa-check"></i>',
+          label: loc("CRNS.Actions.VirusIntentSave"),
+          callback: (html) => {
+            const root = html[0] ?? html;
+            const text = String(root.querySelector('[data-f="intent"]')?.value || "").trim();
+            if (!text) { ui.notifications.warn(loc("CRNS.Errors.VirusIntent")); finish(null); return; }
+            finish(text);
+          },
+        },
+        cancel: {
+          icon: '<i class="fas fa-xmark"></i>',
+          label: loc("CRNS.Tree.Cancel"),
+          callback: () => finish(null),
+        },
+      },
+      default: "ok",
+      close: () => finish(null),
+    }, { classes: dialogClasses() });
+    dlg.render(true);
+  });
 }
 
 /** Post a styled effect chat card for an ICE actor. `text` is display text —

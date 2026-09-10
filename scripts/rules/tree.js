@@ -407,6 +407,21 @@ function centreMergeFloors(floors, row, col, placed) {
   }
 }
 
+/* Distance between neighbouring leaves, in card widths.
+ *
+ * One would be enough to lay out a plain tree, and that is what this was. But a
+ * packed row has no slack anywhere, and a floor two branches join wants to sit
+ * at the MIDPOINT between them — half a step, which in a packed row is always
+ * somebody else's cell. Every join in a real architecture was refused for want
+ * of a gap that only ever measured half a card.
+ *
+ * Two gives every midpoint a cell of its own. It does not cost width: the grid
+ * scales fractional columns up to whole tracks afterwards, and coarser columns
+ * need less of that — on the architectures this was measured against the finished
+ * map came out NARROWER than with a step of one, not wider.
+ */
+const LEAF_STEP = 2;
+
 /**
  * Place the tree on a grid: row = depth, column = horizontal slot.
  *
@@ -447,7 +462,7 @@ export function layoutTree(floors) {
     row[at] = depthOf(floors, at);
     if (!kids.length) {
       col[at] = nextLeaf;
-      nextLeaf += 1;
+      nextLeaf += LEAF_STEP;
     } else {
       const first = col[kids[0]];
       const last = col[kids[kids.length - 1]];

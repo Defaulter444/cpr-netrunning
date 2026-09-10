@@ -5,7 +5,7 @@
  * Cancel/close discards. GM only, shown when state.editorArchId is a tab-open
  * arch. */
 
-import { loc, esc, uid, BLACK_ICE, DEMONS, FLOOR_KINDS, FLOOR_ICONS, ENTITY_ICONS, MAX_ICE_PER_FLOOR, maxDemons, CHECK_ABILITIES,
+import { loc, esc, uid, dialogClasses, BLACK_ICE, DEMONS, FLOOR_KINDS, FLOOR_ICONS, ENTITY_ICONS, MAX_ICE_PER_FLOOR, maxDemons, CHECK_ABILITIES,
          iceName, demonName, DEFAULT_ICE_IMG, DEFAULT_DEMON_IMG, isCustomIce, isCustomDemon } from "../constants.js";
 import { openForgeForm, openForgeManager } from "./entity-forge.js";
 import * as archTree from "../rules/tree.js";
@@ -466,7 +466,7 @@ function openEntityPicker(app, kind, place) {
         });
       });
     },
-  });
+  }, { classes: dialogClasses() });
   dlg.render(true);
 }
 

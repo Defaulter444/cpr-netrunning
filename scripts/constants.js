@@ -9,6 +9,18 @@ export const loc = (key, data) => (data ? game.i18n.format(key, data) : game.i18
 export const esc = (str) => String(str ?? "").replace(/[&<>"']/g, (c) =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
+/** Window classes that let a standalone Dialog wear the suite's palette.
+ *  A Dialog is its own application window, outside the suite's DOM, so none of
+ *  the `--crns-*` variables reach it and every `var()` in a rule resolves to
+ *  nothing — which makes the whole declaration invalid, not merely default. That
+ *  is why the forge's inputs had no borders. `crns-vars` carries the colours;
+ *  `crns-root` would also drag in the suite's three-column grid. */
+export function dialogClasses() {
+  let theme = "green";
+  try { theme = globalThis.game?.settings?.get?.(MODULE_ID, "theme") || "green"; } catch (e) { theme = "green"; }
+  return ["dialog", "crns-vars", `theme-${theme}`];
+}
+
 /* ------------------------------------------------------------------ */
 /* Game data tables (values from the Cyberpunk RED core book)          */
 /* ------------------------------------------------------------------ */

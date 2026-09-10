@@ -11,7 +11,7 @@
  */
 
 import {
-  loc, esc, ENTITY_ICONS, iceName, demonName,
+  loc, esc, ENTITY_ICONS, iceName, demonName, dialogClasses,
   readCustomEntities, DEFAULT_ICE_IMG, DEFAULT_DEMON_IMG,
 } from "../constants.js";
 import { mutate } from "../data.js";
@@ -158,7 +158,7 @@ export function openForgeForm(kind, { key = "", def = null } = {}) {
           }).render(true);
         });
       },
-    });
+    }, { classes: dialogClasses() });
     dlg.render(true);
   });
 }
@@ -221,6 +221,6 @@ export function openForgeManager(kind) {
         });
       });
     },
-  });
+  }, { classes: dialogClasses() });
   dlg.render(true);
 }

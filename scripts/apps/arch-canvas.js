@@ -5,7 +5,7 @@
  * wireMapViewport) WITHOUT the chassis CSS-zoom correction — this app uses no
  * CSS `zoom`, so the screen↔local scale divisor is always 1. */
 
-import { MODULE_ID, FLOOR_ICONS, ENTITY_ICONS, loc, abbrFor } from "../constants.js";
+import { MODULE_ID, FLOOR_ICONS, ENTITY_ICONS, loc, abbrFor, dialogClasses } from "../constants.js";
 import * as archTree from "../rules/tree.js";
 import { getWorld, mutate } from "../data.js";
 import { getDeck, installedPrograms } from "../cpr-bridge.js";
@@ -1055,7 +1055,7 @@ export function activateListeners(app, html) {
         content: `<div class="crns-note-body">${escapeNote(text)}</div>`,
         buttons: { close: { label: loc("CRNS.Tree.Cancel") } },
         default: "close",
-      }).render(true);
+      }, { classes: dialogClasses() }).render(true);
     });
 
     html.find('[data-action="shape-unlink"]').on("click", async (ev) => {

@@ -14,7 +14,16 @@
 }
 
 /* ---- Theme variable contract (SPEC §9.1) ---- */
-.crns-root {
+/* The palette lives on two hooks, not one. `.crns-root` is the suite window's
+   own element and also carries the three-column grid, so a dialog cannot borrow
+   it without becoming a three-column grid. `.crns-vars` carries the colours and
+   nothing else, which is what a Dialog — a separate application window, outside
+   the suite's DOM entirely — actually needs. Without it every `var(--crns-*)`
+   inside a dialog resolved to nothing, and `border: 1px solid var(--crns-border)`
+   is an invalid declaration rather than a default border: the forge's fields had
+   no edges at all. */
+.crns-root,
+.crns-vars {
   --crns-accent: #00ff6a;
   --crns-accent-2: #00c853;
   --crns-warn: #ff2b4e;
@@ -27,28 +36,32 @@
   --crns-text: #d7ffe6;
   --crns-dim: #6f8f7d;
 }
-.crns-root.theme-green {
+.crns-root.theme-green,
+.crns-vars.theme-green {
   --crns-accent: #00ff6a; --crns-accent-2: #00c853;
   --crns-bg: #020d06; --crns-panel: #0a1014;
   --crns-glass: rgba(0, 255, 106, 0.06); --crns-border: rgba(0, 255, 106, 0.35);
   --crns-glow: rgba(0, 255, 106, 0.45); --crns-text: #d7ffe6; --crns-dim: #6f8f7d;
   --crns-warn: #ff2b4e; --crns-good: #2fe6ff;
 }
-.crns-root.theme-red {
+.crns-root.theme-red,
+.crns-vars.theme-red {
   --crns-accent: #ff2b4e; --crns-accent-2: #c8102e;
   --crns-bg: #0d0205; --crns-panel: #140a0c;
   --crns-glass: rgba(255, 43, 78, 0.07); --crns-border: rgba(255, 43, 78, 0.35);
   --crns-glow: rgba(255, 43, 78, 0.5); --crns-text: #ffd7de; --crns-dim: #8f6f75;
   --crns-warn: #ff8a3c; --crns-good: #00ff6a;
 }
-.crns-root.theme-yellow {
+.crns-root.theme-yellow,
+.crns-vars.theme-yellow {
   --crns-accent: #ffd23f; --crns-accent-2: #c8a400;
   --crns-bg: #0d0a02; --crns-panel: #14120a;
   --crns-glass: rgba(255, 210, 63, 0.07); --crns-border: rgba(255, 210, 63, 0.35);
   --crns-glow: rgba(255, 210, 63, 0.5); --crns-text: #fff4d7; --crns-dim: #8f886f;
   --crns-warn: #ff2b4e; --crns-good: #00ff6a;
 }
-.crns-root.theme-blue {
+.crns-root.theme-blue,
+.crns-vars.theme-blue {
   --crns-accent: #38b6ff; --crns-accent-2: #0088cc;
   --crns-bg: #020710; --crns-panel: #0a1014;
   --crns-glass: rgba(56, 182, 255, 0.07); --crns-border: rgba(56, 182, 255, 0.35);
@@ -97,7 +110,9 @@
 .crns-actionbar { border-top: 1px solid var(--crns-border); }
 
 /* ---- shared small icon button ---- */
-.crns-root .crns-icon-btn {
+.crns-root .crns-icon-btn,
+/
+.crns-vars .crns-icon-btn {
   background: transparent;
   border: 1px solid var(--crns-border);
   color: var(--crns-text);
@@ -110,7 +125,8 @@
   margin: 0;
   flex: 0 0 auto;
 }
-.crns-root .crns-btn {
+.crns-root .crns-btn,
+.crns-vars .crns-btn {
   background: var(--crns-glass);
   border: 1px solid var(--crns-border);
   color: var(--crns-text);
@@ -701,7 +717,12 @@ body.crns-resizing { cursor: ns-resize !important; -webkit-user-select: none !im
 .crns-root .crns-icon-btn,
 .crns-root .crns-btn,
 .crns-root .crns-mini,
-.crns-root .crns-chip-btn {
+.crns-root .crns-chip-btn,
+/
+.crns-vars .crns-icon-btn,
+.crns-vars .crns-btn,
+.crns-vars .crns-mini,
+.crns-vars .crns-chip-btn {
   border-radius: 0;
   transition: background 150ms ease-out, border-color 150ms ease-out, color 150ms ease-out, box-shadow 150ms ease-out, transform 150ms ease-out;
   clip-path: polygon(0 0, calc(100% - 9px) 0, 100% 9px, 100% 100%, 9px 100%, 0 calc(100% - 9px));
@@ -709,7 +730,11 @@ body.crns-resizing { cursor: ns-resize !important; -webkit-user-select: none !im
 .crns-root .crns-icon-btn:hover,
 .crns-root .crns-btn:hover,
 .crns-root .crns-mini:hover,
-.crns-root .crns-chip-btn:hover {
+.crns-root .crns-chip-btn:hover,
+.crns-vars .crns-icon-btn:hover,
+.crns-vars .crns-btn:hover,
+.crns-vars .crns-mini:hover,
+.crns-vars .crns-chip-btn:hover {
   background: color-mix(in srgb, var(--crns-accent) 16%, var(--crns-glass));
   border-color: var(--crns-accent);
   color: var(--crns-text);
@@ -718,8 +743,13 @@ body.crns-resizing { cursor: ns-resize !important; -webkit-user-select: none !im
 .crns-root .crns-icon-btn:active,
 .crns-root .crns-btn:active,
 .crns-root .crns-mini:active,
-.crns-root .crns-chip-btn:active { transform: translateY(1px) scale(0.98); }
-.crns-root .crns-btn-warn:hover { background: color-mix(in srgb, var(--crns-warn) 18%, var(--crns-glass)); box-shadow: 0 0 8px -1px var(--crns-warn); }
+.crns-root .crns-chip-btn:active,
+.crns-vars .crns-icon-btn:active,
+.crns-vars .crns-btn:active,
+.crns-vars .crns-mini:active,
+.crns-vars .crns-chip-btn:active { transform: translateY(1px) scale(0.98); }
+.crns-root .crns-btn-warn:hover,
+.crns-vars .crns-btn-warn:hover { background: color-mix(in srgb, var(--crns-warn) 18%, var(--crns-glass)); box-shadow: 0 0 8px -1px var(--crns-warn); }
 
 /* ---- tree ---- */
 .crns-tree-row { position: relative; transition: background 150ms ease-out; }
@@ -1227,7 +1257,8 @@ body.crns-resizing { cursor: ns-resize !important; -webkit-user-select: none !im
 }
 .crns-root button i { margin: 0 !important; }
 
-.crns-root .crns-icon-btn {
+.crns-root .crns-icon-btn,
+.crns-vars .crns-icon-btn {
   background: transparent !important;
   border: 1px solid var(--crns-border) !important;
   width: auto !important;
@@ -1236,13 +1267,15 @@ body.crns-resizing { cursor: ns-resize !important; -webkit-user-select: none !im
   padding: 2px 5px !important;
   margin: 0 !important;
 }
-.crns-root .crns-icon-btn:hover {
+.crns-root .crns-icon-btn:hover,
+.crns-vars .crns-icon-btn:hover {
   background: color-mix(in srgb, var(--crns-accent) 16%, var(--crns-glass)) !important;
   border-color: var(--crns-accent) !important;
   box-shadow: 0 0 8px -1px var(--crns-glow) !important;
 }
 
-.crns-root .crns-btn {
+.crns-root .crns-btn,
+.crns-vars .crns-btn {
   background: var(--crns-glass) !important;
   border: 1px solid var(--crns-border) !important;
   color: var(--crns-text) !important;
@@ -1251,20 +1284,24 @@ body.crns-resizing { cursor: ns-resize !important; -webkit-user-select: none !im
   width: auto !important;
   margin: 0 !important;
 }
-.crns-root .crns-btn:hover {
+.crns-root .crns-btn:hover,
+.crns-vars .crns-btn:hover {
   background: color-mix(in srgb, var(--crns-accent) 16%, var(--crns-glass)) !important;
   border-color: var(--crns-accent) !important;
   box-shadow: 0 0 8px -1px var(--crns-glow) !important;
 }
-.crns-root .crns-btn-warn {
+.crns-root .crns-btn-warn,
+.crns-vars .crns-btn-warn {
   border-color: var(--crns-warn) !important;
   color: var(--crns-warn) !important;
 }
-.crns-root .crns-btn-warn:hover {
+.crns-root .crns-btn-warn:hover,
+.crns-vars .crns-btn-warn:hover {
   background: color-mix(in srgb, var(--crns-warn) 18%, var(--crns-glass)) !important;
   box-shadow: 0 0 8px -1px var(--crns-warn) !important;
 }
-.crns-root .crns-btn[disabled] { opacity: 0.4 !important; cursor: not-allowed !important; }
+.crns-root .crns-btn[disabled],
+.crns-vars .crns-btn[disabled] { opacity: 0.4 !important; cursor: not-allowed !important; }
 /* Save button (primary): accent-forward. */
 .crns-root .crns-editor-savebtn {
   background: linear-gradient(150deg, color-mix(in srgb, var(--crns-accent) 30%, var(--crns-glass)), var(--crns-glass)) !important;
@@ -1349,10 +1386,13 @@ body.crns-resizing { cursor: ns-resize !important; -webkit-user-select: none !im
 .crns-root .crns-tab-close:hover { color: var(--crns-warn) !important; }
 
 /* Tree row buttons: no border until hovered, keep compact. */
-.crns-root .crns-tree-row-btns .crns-icon-btn {
+.crns-root .crns-tree-row-btns .crns-icon-btn,
+/
+.crns-vars .crns-tree-row-btns .crns-icon-btn {
   border-color: transparent !important;
 }
-.crns-root .crns-tree-row-btns .crns-icon-btn:hover {
+.crns-root .crns-tree-row-btns .crns-icon-btn:hover,
+.crns-vars .crns-tree-row-btns .crns-icon-btn:hover {
   border-color: var(--crns-accent) !important;
 }
 
@@ -1692,7 +1732,8 @@ body.crns-resizing { cursor: ns-resize !important; -webkit-user-select: none !im
 .crns-root .crns-floor-contents-edit textarea { width: 100%; resize: vertical; }
 .crns-root .crns-floor-image-pick { display: flex; align-items: center; gap: 6px; }
 .crns-root .crns-floor-image-pick input { flex: 1 1 auto; min-width: 0; }
-.crns-root .crns-floor-image-pick .crns-icon-btn { flex: 0 0 auto; }
+.crns-root .crns-floor-image-pick .crns-icon-btn,
+.crns-vars .crns-floor-image-pick .crns-icon-btn { flex: 0 0 auto; }
 /* Proof that the path resolves: a broken one simply shows nothing. */
 .crns-root .crns-floor-image-thumb {
   width: 100%;

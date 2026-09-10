@@ -369,6 +369,49 @@ console.log("The two dead controls now have a caller, and the name has room to w
   expect(/line-clamp/.test(titleBlock), "the floor name has no line budget to wrap into");
 }
 
+console.log("Every dialog carries the palette, and carries it without the grid");
+{
+  const read = (rel) => fs.readFileSync(path.join(ROOT, rel), "utf-8");
+  const css = read("styles/netrunning.css");
+  const forge = read("scripts/apps/entity-forge.js");
+  const editor = read("scripts/apps/editor.js");
+  const canvas = read("scripts/apps/arch-canvas.js");
+  const constants = read("scripts/constants.js");
+
+  // A Dialog is its own application window. None of the --crns-* variables
+  // reach it, so `border: 1px solid var(--crns-border)` is not a default border
+  // — it is an invalid declaration, and the forge's fields had no edges at all.
+  expect(/\.crns-vars\s*\{/.test(css), "the palette has no layout-free hook to hang on a dialog");
+  expect(constants.includes("export function dialogClasses"), "no helper builds the dialog's classes");
+  // crns-root would bring the suite's three-column grid along with the colours.
+  expect(!/dialogClasses[\s\S]{0,200}"crns-root"/.test(constants),
+    "the dialog classes drag in the suite grid");
+
+  for (const [name, src, want] of [["entity-forge", forge, 2], ["editor", editor, 1], ["arch-canvas", canvas, 1]]) {
+    const uses = (src.match(/classes: dialogClasses\(\)/g) || []).length;
+    expect(uses >= want, `${name}: ${uses} of ${want} dialogs wear the palette`);
+  }
+  // FilePicker is Foundry's own window; it must not be dressed as our dialog.
+  // Line-based on purpose: a regex window wide enough to span one constructor
+  // also spans the next one, and then it reports the neighbour's options.
+  for (const [name, src] of [["entity-forge", forge], ["editor", editor]]) {
+    const lines = src.split(String.fromCharCode(10));
+    let dressed = 0;
+    lines.forEach((line, i) => {
+      if (!line.includes("new FilePicker(")) return;
+      const body = lines.slice(i, i + 10);
+      const end = body.findIndex((l, k) => k > 0 && l.includes(").render(true)"));
+      if (end < 0) return;
+      if (body.slice(0, end + 1).some((l) => l.includes("dialogClasses"))) dressed += 1;
+    });
+    expect(dressed === 0, `${name}: a FilePicker was given the module's dialog classes`);
+  }
+
+  // The buttons the dialogs draw are styled under .crns-root; without a twin
+  // selector they are unstyled the moment they appear outside the suite window.
+  expect(/\.crns-vars \.crns-icon-btn/.test(css), "icon buttons are styled only inside the suite window");
+}
+
 /* ------------------------------------------------------------------ */
 
 console.log(`\nChecks: ${checks}, failures: ${failures}`);

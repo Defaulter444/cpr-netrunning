@@ -353,6 +353,61 @@ export function revealFrom(floors, from, total, blocks) {
 /* ------------------------------------------------------------------ */
 
 /**
+ * Slide a floor that several branches join to the midpoint between them.
+ *
+ * The post-order pass centres a parent over its children, which is the right
+ * rule going down. It says nothing about going back UP: a floor reachable from
+ * two parents is the child of exactly one of them, so it is placed under that
+ * branch and the second entrance reaches it sideways. On screen the join looks
+ * like an afterthought hanging off the left-hand branch rather than the seam
+ * between the two.
+ *
+ * So move it, and everything under it, to the average of its entrances — but
+ * only while the move keeps every card in the affected rows a full column
+ * apart. A tidy tree whose cards overlap is worse than one merely off-centre,
+ * and refusing the slide is always safe: the layout stays exactly as the
+ * post-order left it.
+ *
+ * @param {Array<Object>} floors - normalised floors
+ * @param {Array<Number>} row - depth per floor, filled by the caller
+ * @param {Array<Number>} col - fractional column per floor, mutated in place
+ * @param {Set<Number>} placed - floors the post-order actually reached
+ */
+function centreMergeFloors(floors, row, col, placed) {
+  const merges = [];
+  for (let i = 0; i < floors.length; i += 1) {
+    if (!floors[i] || !placed.has(i)) continue;
+    if (entrancesOf(floors, i).length > 1) merges.push(i);
+  }
+  if (!merges.length) return;
+  // Shallowest first: moving an upper join changes where the lower ones want to
+  // sit, and the deeper pass then measures against the settled position.
+  merges.sort((a, b) => row[a] - row[b]);
+
+  for (const at of merges) {
+    const parents = entrancesOf(floors, at).filter((p) => placed.has(p));
+    if (parents.length < 2) continue;
+    const target = parents.reduce((sum, p) => sum + col[p], 0) / parents.length;
+    const delta = target - col[at];
+    if (Math.abs(delta) < 1e-6) continue;
+
+    const moving = new Set([at, ...descendantsOf(floors, at)]);
+    let clear = true;
+    for (const i of moving) {
+      if (!clear) break;
+      const want = col[i] + delta;
+      for (let j = 0; j < floors.length; j += 1) {
+        if (moving.has(j) || !placed.has(j) || !floors[j]) continue;
+        if (row[j] !== row[i]) continue;
+        if (Math.abs(col[j] - want) < 1 - 1e-6) { clear = false; break; }
+      }
+    }
+    if (!clear) continue;
+    for (const i of moving) col[i] += delta;
+  }
+}
+
+/**
  * Place the tree on a grid: row = depth, column = horizontal slot.
  *
  * A tidy-tree pass. Leaves take the next free column left to right; a parent
@@ -399,6 +454,8 @@ export function layoutTree(floors) {
       col[at] = (first + last) / 2;
     }
   }
+
+  centreMergeFloors(floors, row, col, placed);
 
   // Floors that never got placed are orphans normalisation could not save.
   // Park them in their own columns rather than stacking them all at zero.

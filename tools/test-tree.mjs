@@ -321,6 +321,70 @@ console.log("Layout columns land on whole grid lines");
   eq(at.get(0).col, mid(1, 2), "the entry lost its centring after scaling");
 }
 
+console.log("A floor two branches join sits between them");
+{
+  //        f1
+  //      /      f2        f3
+  //      |         |
+  //     f4        f5
+  //        \    /
+  //         f6          f6 hangs from f4 and is ALSO entered from f5
+  const floors = build([
+    ["f1", ""], ["f2", "f1"], ["f3", "f1"],
+    ["f4", "f2"], ["f5", "f3"],
+    ["f6", "f4", { alsoFrom: ["f5"] }],
+  ]);
+  T.normalizeFloors(floors);
+  const at = (layout, i) => layout.cells.find((c) => c.index === i);
+  const layout = T.layoutTree(floors);
+
+  const left = at(layout, 3);   // f4
+  const right = at(layout, 4);  // f5
+  const join = at(layout, 5);   // f6
+  // The post-order rule centres a parent over its children and says nothing
+  // about going back up, so the join used to hang under f4 — the branch that
+  // happens to own it — with the second entrance reaching it sideways.
+  eq(join.col, (left.col + right.col) / 2, "the join is not centred between the branches it joins");
+  eq(join.row, left.row + 1, "the join left its row");
+  expect(left.col !== right.col, "the two branches collapsed into one column");
+}
+
+console.log("Centring a join never puts two cards on top of each other");
+{
+  //         f1
+  //     /    |    //    fa   fb   fc
+  //    |    |    |
+  //   fa1  fb1  fc1
+  //    |    |
+  //    |   fb2        fb2 already occupies the middle of that row
+  //     \        //       fm            fm joins fa1 and fc1 — its midpoint is taken
+  const floors = build([
+    ["f1", ""], ["fa", "f1"], ["fb", "f1"], ["fc", "f1"],
+    ["fa1", "fa"], ["fb1", "fb"], ["fc1", "fc"],
+    ["fb2", "fb1"],
+    ["fm", "fa1", { alsoFrom: ["fc1"] }],
+  ]);
+  T.normalizeFloors(floors);
+  const layout = T.layoutTree(floors);
+  const at = (i) => layout.cells.find((c) => c.index === i);
+
+  const fb2 = at(7);
+  const fm = at(8);
+  expect(fm.row === fb2.row, "the fixture no longer puts the two cards in one row");
+  // Refusing the slide is always safe; overlapping cards are not.
+  expect(!(fm.col === fb2.col), "the join was slid on top of an existing card");
+
+  // No two cards share a cell anywhere in the layout.
+  const seen = new Set();
+  let clashes = 0;
+  for (const c of layout.cells) {
+    const key = `${c.row}:${c.col}`;
+    if (seen.has(key)) clashes += 1;
+    seen.add(key);
+  }
+  eq(clashes, 0, "the layout stacked cards in the same cell");
+}
+
 console.log("A single floor is a valid architecture");
 {
   const one = build([["a", ""]]);

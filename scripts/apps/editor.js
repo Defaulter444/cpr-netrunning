@@ -201,7 +201,19 @@ export function activateListeners(app, html) {
   if (focusId) {
     app.state.focusFloorId = "";
     const card = html.find(`.crns-floor-card[data-floor-id="${focusId}"]`)[0];
-    if (card) requestAnimationFrame(() => card.scrollIntoView({ block: "center", behavior: "smooth" }));
+    if (card) requestAnimationFrame(() => {
+      // Instant, not smooth. Core restores the saved scroll position at the end
+      // of EVERY render (Application._restoreScrollPositions), and a smooth
+      // scroll is still animating when the next render lands: core saves the
+      // half-finished position and puts the list back where it was, while
+      // focusFloorId has already been consumed so nothing scrolls again. Short
+      // architectures hid this — with a dozen floors or fewer the target sits
+      // near the top and the animation is over before anything re-renders.
+      card.scrollIntoView({ block: "center", behavior: "auto" });
+      // And tell core where we landed, so the next restore honours THIS
+      // position instead of the one captured before the jump.
+      app._saveScrollPositions?.(app.element ?? html);
+    });
   }
 
   if (!game.user.isGM) return;

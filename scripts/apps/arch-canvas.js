@@ -14,6 +14,14 @@ import { getDeck, installedPrograms } from "../cpr-bridge.js";
 const ZOOM_MIN = 0.3;
 const ZOOM_MAX = 2.5;
 
+/** Note text as safe HTML with the GM's own line breaks kept. */
+function escapeNote(text) {
+  const safe = String(text).replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  return safe.replace(/?
+/g, "<br />");
+}
+
 /* ------------------------------------------------------------------ */
 /* View-model                                                          */
 /* ------------------------------------------------------------------ */
@@ -279,10 +287,17 @@ export function getData(app) {
       }
     }
     // Slid badge (SPEC §14.7): a crossed-eye visible to the runner who slid + GM.
-    let slidHere = false;
+    //
+    // The mark clears itself only when that runner walks back into this ICE. If
+    // he never does — the usual case, since sliding is how you leave — it stayed
+    // on the chip for the rest of the session with nothing anywhere able to
+    // remove it. `run.clearSlid` could always do it; nothing ever called it. The
+    // GM gets that call here.
+    let slidHere = null;
     if (kind === "ice") {
-      slidHere = slid.some((s) => s.archId === archId && s.iceId === def.id
+      const marks = slid.filter((s) => s.archId === archId && s.iceId === def.id
         && (game.user.isGM || s.pid === myRunnerPid));
+      if (marks.length) slidHere = { count: marks.length, clearable: game.user.isGM };
     }
 
     return {
@@ -448,6 +463,11 @@ export function getData(app) {
       dv: isGM ? (floor.dv || 0) : 0,
       showDv: isGM && !!floor.dv,
       description: isGM ? (floor.description || "") : "",
+      // A note the GM cannot see he wrote is a note he does not have. The text
+      // used to reach the screen only as the floor div's `title`, and the chips,
+      // gear button and tokens sitting on top of that div each swallowed the
+      // hover. This flag draws a marker that is its own hover target.
+      hasNote: isGM && !!String(floor.description || "").trim(),
       // What the file holds. The GM always sees it; a runner only once he has
       // beaten its check. `description` stays GM-only — those are notes about
       // the floor, not something the fiction hands to the player.
@@ -1008,6 +1028,37 @@ export function activateListeners(app, html) {
       if (!fromId || !floorId) { app.render(false); return; }
       warnErr(await mutate("arch.linkFloor", { archId, floorId, fromId }));
     });
+    // Clear a "slid past" mark. The op has always existed and had no caller;
+    // the ref carries everything it needs — ice:<archId>:<floorId>:<iceId>.
+    html.find('[data-action="clear-slid"]').on("click", async (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      const ref = String(ev.currentTarget.dataset.slidRef || "");
+      const [kind, refArchId, , iceId] = ref.split(":");
+      if (kind !== "ice" || !refArchId || !iceId) return;
+      // pid omitted on purpose: the GM clears the mark for every runner that
+      // slid past this ICE, which is what "remove it" means from the map.
+      warnErr(await mutate("run.clearSlid", { archId: refArchId, iceId }));
+    });
+
+    // Read the floor note. The native tooltip is still there for a quick look,
+    // but a note worth writing is usually longer than a tooltip will show.
+    html.find('[data-action="floor-note"]').on("click", (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      const floorId = floorIdOf(ev);
+      const arch = (getWorld("netArchs") || {})[archId];
+      const floor = (arch?.floors || []).find((f) => f.id === floorId);
+      const text = String(floor?.description || "").trim();
+      if (!text) return;
+      new Dialog({
+        title: floor.label || loc("CRNS.Canvas.Note"),
+        content: `<div class="crns-note-body">${escapeNote(text)}</div>`,
+        buttons: { close: { label: loc("CRNS.Tree.Cancel") } },
+        default: "close",
+      }).render(true);
+    });
+
     html.find('[data-action="shape-unlink"]').on("click", async (ev) => {
       ev.stopPropagation();
       warnErr(await mutate("arch.unlinkFloor", {

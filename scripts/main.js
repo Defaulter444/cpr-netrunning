@@ -1,7 +1,7 @@
 /* Cyberpunk RED — Netrunning Suite: entry point.
  * Settings registration, Handlebars helpers, template preload, hooks. */
 
-import { MODULE_ID, TPL, THEMES, loc, esc, BLACK_ICE, blackIceTypeForName } from "./constants.js";
+import { MODULE_ID, TPL, THEMES, loc, esc, BLACK_ICE, blackIceTypeForName, iceEffectText } from "./constants.js";
 import { WORLD_OBJECTS, getWorld, setWorld, isPrimaryGM, mutate, hasOp, notifyClients } from "./data.js";
 import { initSocket } from "./socket.js";
 import * as bridge from "./cpr-bridge.js";
@@ -446,8 +446,8 @@ async function handleSpeedTest(data) {
   if (!avoided) {
     // The ICE's effect applies — post its effect text.
     const resolved = refToActor(test.ref);
-    const effectKey = resolved?.type ? BLACK_ICE[resolved.type]?.effectKey : "";
-    if (effectKey) postEffectCard(iceActor.id, `${effectKey}.effect`);
+    const effectText = resolved?.type ? iceEffectText(resolved.type) : "";
+    if (effectText) postEffectCard(iceActor.id, effectText);
   }
 
   await mutate("run.clearSpeedTest", { testId: data.testId });
@@ -461,13 +461,13 @@ function participantName(session, pid) {
 }
 
 /** Post a styled effect chat card for an ICE actor (shared with the action bar). */
-function postEffectCard(actorId, effectKey) {
+function postEffectCard(actorId, text) {
   const actor = game.actors?.get(actorId);
-  if (!actor || !effectKey) return;
+  if (!actor || !text) return;
   const content =
     `<div class="crns-chat-card"><div class="crns-chat-title">` +
     `<i class="fas fa-skull"></i> ${esc(actor.name)}</div>` +
-    `<div class="crns-chat-body">${loc(effectKey)}</div></div>`;
+    `<div class="crns-chat-body">${text}</div></div>`;
   ChatMessage.create({ user: game.user.id, speaker: ChatMessage.getSpeaker({ actor }), content });
 }
 

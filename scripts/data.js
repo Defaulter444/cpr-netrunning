@@ -7,7 +7,7 @@
  * on all clients — no manual refresh fan-out is needed for data changes.
  */
 
-import { MODULE_ID, SOCKET_NAME, uid, loc, BLACK_ICE, DEMONS, FLOOR_KINDS, MAX_ICE_PER_FLOOR, maxDemons } from "./constants.js";
+import { MODULE_ID, SOCKET_NAME, uid, loc, BLACK_ICE, DEMONS, FLOOR_KINDS, MAX_ICE_PER_FLOOR, maxDemons, BUILTIN_ICE_KEYS, BUILTIN_DEMON_KEYS } from "./constants.js";
 import * as bridge from "./cpr-bridge.js";
 import * as archTree from "./rules/tree.js";
 import { floorHoldsFile } from "./rules/abilities.js";
@@ -70,6 +70,9 @@ export const WORLD_OBJECTS = {
   netTree: [],
   treeState: {},
   netArchs: {},
+  // Black ICE and demons the GM built. Merged over the core-book tables by
+  // constants.js, so anything that reads BLACK_ICE/DEMONS sees them too.
+  customEntities: { ice: {}, demons: {} },
   // Current entity REZ lives on the backing blackIce/demon Actor, not here.
   session: {
     tabs: [], activeTab: "", participants: {}, targets: {}, demonPrograms: {},
@@ -965,6 +968,75 @@ async function reconcileArchActors(oldArch, newArch) {
  *   Phase C: session.* / ent.*
  *   Phase D: run.*
  */
+/* ------------------------------------------------------------------ */
+/* Custom entity validation                                            */
+/* ------------------------------------------------------------------ */
+
+/* A damage formula the system can actually roll: "2d6", "3d6+2". Anything
+ * else reaches Roll as garbage and throws mid-attack, which is exactly the
+ * class of failure the audit found on Victoria. */
+const CUSTOM_DAMAGE_RE = /^\d{1,2}d\d{1,2}([+-]\d{1,2})?$/i;
+
+/** An integer inside [lo, hi], or null when the value is neither. */
+function intIn(value, lo, hi) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return null;
+  const i = Math.round(n);
+  return i < lo || i > hi ? null : i;
+}
+
+/** Normalize one GM-authored type, or name the reason it cannot be stored.
+ *  Returns `{ def }` or `{ error }`. */
+function sanitizeCustom(kind, raw) {
+  const src = raw && typeof raw === "object" ? raw : {};
+  const name = String(src.name ?? "").trim().slice(0, 60);
+  if (!name) return { error: "CRNS.Errors.CustomName" };
+  const effect = String(src.effect ?? "").trim().slice(0, 600);
+  const img = String(src.img ?? "").trim().slice(0, 300);
+
+  if (kind === "ice") {
+    const per = intIn(src.per, 0, 20);
+    const spd = intIn(src.spd, 0, 20);
+    const atk = intIn(src.atk, 0, 20);
+    const dfn = intIn(src.def, 0, 20);
+    const rez = intIn(src.rez, 1, 100);
+    if ([per, spd, atk, dfn, rez].some((v) => v === null)) return { error: "CRNS.Errors.CustomStats" };
+    const damage = String(src.damage ?? "").trim();
+    if (damage && !CUSTOM_DAMAGE_RE.test(damage)) return { error: "CRNS.Errors.CustomDamage" };
+    return {
+      def: {
+        name, effect, img,
+        // "P" is anti-program, anything else anti-personnel (SPEC §5).
+        tgt: src.tgt === "P" ? "P" : "N",
+        per, spd, atk, def: dfn, rez,
+        damage: damage || null,
+      },
+    };
+  }
+
+  const rez = intIn(src.rez, 1, 100);
+  const iface = intIn(src.interface, 0, 10);
+  const actions = intIn(src.actions, 1, 10);
+  const cn = intIn(src.combatNumber, 0, 30);
+  if ([rez, iface, actions, cn].some((v) => v === null)) return { error: "CRNS.Errors.CustomStats" };
+  return { def: { name, effect, img, rez, interface: iface, actions, combatNumber: cn } };
+}
+
+/** Names of the architectures that place this custom type. Empty means the type
+ *  is free to delete. */
+function customTypeUsage(kind, key) {
+  const archs = getWorld("netArchs") || {};
+  const hits = [];
+  for (const [archId, arch] of Object.entries(archs)) {
+    const floors = arch?.floors || [];
+    const used = kind === "ice"
+      ? floors.some((f) => (f?.ice || []).some((i) => i?.type === key))
+      : floors.some((f) => f?.demon?.type === key);
+    if (used) hits.push(arch?.name || archId);
+  }
+  return hits;
+}
+
 const OPS = {
   /* ---- diagnostics ---- */
   async ping({ echo } = {}, userId) {
@@ -2314,6 +2386,56 @@ const OPS = {
     });
     if (session.slid.length !== before) await setWorld("session", session);
     return true;
+  },
+
+  /* ---- GM-authored Black ICE and demons ------------------------------ */
+
+  /** Create or update one custom type. Validation lives here rather than in the
+   *  dialog because a malformed entry does not just look wrong — an arch that
+   *  references an unknown or unusable type fails its own validation and cannot
+   *  be saved at all. The registry is the last place to catch that. */
+  async "custom.save"({ kind, key, def } = {}, callerId) {
+    if (!requesterIsGM(callerId)) return { error: "CRNS.Errors.GmOnly" };
+    if (kind !== "ice" && kind !== "demon") return { error: "CRNS.Errors.CustomKind" };
+    const clean = sanitizeCustom(kind, def);
+    if (clean.error) return { error: clean.error };
+
+    const store = getWorld("customEntities") || { ice: {}, demons: {} };
+    store.ice ||= {}; store.demons ||= {};
+    const bucket = kind === "ice" ? store.ice : store.demons;
+    const builtinKeys = kind === "ice" ? BUILTIN_ICE_KEYS : BUILTIN_DEMON_KEYS;
+
+    let id = String(key || "").trim();
+    if (id && builtinKeys.includes(id)) return { error: "CRNS.Errors.CustomReserved" };
+    if (!id) id = uid(kind === "ice" ? "ci" : "cd");
+    // Two types answering to the same name make the chat card and the
+    // name-based actor lookup ambiguous, so refuse the collision outright.
+    const taken = Object.entries(bucket)
+      .some(([k, v]) => k !== id && String(v?.name || "").trim().toLowerCase() === clean.def.name.toLowerCase());
+    if (taken) return { error: "CRNS.Errors.CustomNameTaken" };
+
+    bucket[id] = clean.def;
+    await setWorld("customEntities", store);
+    return { ok: true, key: id };
+  },
+
+  /** Remove a custom type. Refused while an architecture still places it:
+   *  dropping it would leave that arch referencing a type nothing can resolve,
+   *  and arch validation would then reject the whole architecture. */
+  async "custom.delete"({ kind, key } = {}, callerId) {
+    if (!requesterIsGM(callerId)) return { error: "CRNS.Errors.GmOnly" };
+    if (kind !== "ice" && kind !== "demon") return { error: "CRNS.Errors.CustomKind" };
+    const store = getWorld("customEntities") || { ice: {}, demons: {} };
+    store.ice ||= {}; store.demons ||= {};
+    const bucket = kind === "ice" ? store.ice : store.demons;
+    if (!Object.prototype.hasOwnProperty.call(bucket, key)) return { error: "CRNS.Errors.CustomMissing" };
+
+    const used = customTypeUsage(kind, key);
+    if (used.length) return { error: "CRNS.Errors.CustomInUse", archs: used };
+
+    delete bucket[key];
+    await setWorld("customEntities", store);
+    return { ok: true };
   },
 
   /** GM override of floor markers (SPEC §14.7). One flexible op:

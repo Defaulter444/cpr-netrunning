@@ -16,7 +16,7 @@ export const esc = (str) => String(str ?? "").replace(/[&<>"']/g, (c) =>
 /* Black ICE stat block. tgt "N" = anti-NETRUNNER (system class "antipersonnel":
  * Asp…Wisp), tgt "P" = anti-PROGRAM (system class "antiprogram": Dragon, Killer,
  * Sabertooth). See cpr-bridge.createIceActor: tgt "P" -> "antiprogram". */
-export const BLACK_ICE = {
+const BUILTIN_BLACK_ICE = {
   asp:        { tgt: "N", per: 4, spd: 6, atk: 2, def: 2, rez: 15, damage: null,  effectKey: "CRNS.Ice.Asp" },
   giant:      { tgt: "N", per: 2, spd: 2, atk: 8, def: 4, rez: 25, damage: "3d6", effectKey: "CRNS.Ice.Giant" },
   hellhound:  { tgt: "N", per: 6, spd: 6, atk: 6, def: 2, rez: 20, damage: "2d6", effectKey: "CRNS.Ice.Hellhound" },
@@ -31,7 +31,7 @@ export const BLACK_ICE = {
   sabertooth: { tgt: "P", per: 8, spd: 6, atk: 6, def: 2, rez: 25, damage: "6d6", effectKey: "CRNS.Ice.Sabertooth" },
 };
 
-export const DEMONS = {
+const BUILTIN_DEMONS = {
   imp:    { rez: 15, interface: 3, actions: 2, combatNumber: 14 },
   efreet: { rez: 25, interface: 4, actions: 3, combatNumber: 14 },
   balron: { rez: 30, interface: 7, actions: 4, combatNumber: 14 },
@@ -57,7 +57,7 @@ export const THEMES = ["red", "yellow", "blue", "green"];
 
 // Icons — reuse the system's own art (verified to exist).
 const SYS = "systems/cyberpunk-red-core/icons";
-export const ENTITY_ICONS = {
+const BUILTIN_ENTITY_ICONS = {
   // Black ICE actor portraits (webp) — used as Actor.img and canvas chips.
   asp: `${SYS}/compendium/blackice/asp.webp`, giant: `${SYS}/compendium/blackice/giant.webp`,
   hellhound: `${SYS}/compendium/blackice/hellhound.webp`, kraken: `${SYS}/compendium/blackice/kraken.webp`,
@@ -68,6 +68,130 @@ export const ENTITY_ICONS = {
   // Demons (netrunning PNG set).
   imp: `${SYS}/netrunning/Imp.png`, efreet: `${SYS}/netrunning/Efreet.png`, balron: `${SYS}/netrunning/Balron.png`,
 };
+/* ------------------------------------------------------------------ */
+/* GM-authored Black ICE and demons                                    */
+/* ------------------------------------------------------------------ */
+
+/* The core-book tables above are the game's own. A table cannot hold what a
+ * table was never given, so the GM's own creations live beside them in a world
+ * setting and are merged in on read.
+ *
+ * Merging happens through a Proxy rather than by copying, because every call
+ * site in the module already reads `BLACK_ICE[type]` / `Object.keys(DEMONS)`
+ * directly. A Proxy keeps all of them working and, more importantly, keeps them
+ * CURRENT: a type the GM adds mid-session is visible on the next read, with no
+ * cache to invalidate and no reload. */
+
+export const CUSTOM_SETTING = "customEntities";
+export const DEFAULT_ICE_IMG = `${SYS}/netrunning/Black_Ice.png`;
+export const DEFAULT_DEMON_IMG = `${SYS}/netrunning/Demon.png`;
+
+/** The GM-authored registry, always a well-formed `{ ice, demons }`.
+ *  Deliberately total: called before `game` exists (module evaluation, the Node
+ *  test harness) and before the setting is registered. Either way it answers
+ *  "nothing custom" instead of throwing, so a missing registry can never take
+ *  the built-in tables down with it. */
+export function readCustomEntities() {
+  try {
+    const raw = globalThis.game?.settings?.get?.(MODULE_ID, CUSTOM_SETTING);
+    if (!raw || typeof raw !== "object") return { ice: {}, demons: {} };
+    return {
+      ice: raw.ice && typeof raw.ice === "object" ? raw.ice : {},
+      demons: raw.demons && typeof raw.demons === "object" ? raw.demons : {},
+    };
+  } catch (e) {
+    return { ice: {}, demons: {} };
+  }
+}
+
+/** A read-only view of `builtin` with `overlay()` merged over it. Built-in keys
+ *  always win: a custom type can never quietly redefine Hellhound. */
+function mergedTable(builtin, overlay) {
+  const extra = () => {
+    try { return overlay() || {}; } catch (e) { return {}; }
+  };
+  const owns = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
+  return new Proxy(builtin, {
+    get(target, prop, recv) {
+      if (typeof prop === "string" && !owns(target, prop)) {
+        const c = extra();
+        if (owns(c, prop)) return c[prop];
+      }
+      return Reflect.get(target, prop, recv);
+    },
+    has(target, prop) {
+      if (Reflect.has(target, prop)) return true;
+      return typeof prop === "string" && owns(extra(), prop);
+    },
+    ownKeys(target) {
+      return Array.from(new Set([...Reflect.ownKeys(target), ...Object.keys(extra())]));
+    },
+    getOwnPropertyDescriptor(target, prop) {
+      const own = Reflect.getOwnPropertyDescriptor(target, prop);
+      if (own) return own;
+      const c = extra();
+      if (typeof prop === "string" && owns(c, prop)) {
+        return { value: c[prop], writable: false, enumerable: true, configurable: true };
+      }
+      return undefined;
+    },
+    set() { return false },
+    deleteProperty() { return false },
+  });
+}
+
+/* The core-book keys, frozen. Used to refuse a custom type that would shadow a
+ * built-in one, and to tell the two apart without consulting the registry. */
+export const BUILTIN_ICE_KEYS = Object.freeze(Object.keys(BUILTIN_BLACK_ICE));
+export const BUILTIN_DEMON_KEYS = Object.freeze(Object.keys(BUILTIN_DEMONS));
+
+export const BLACK_ICE = mergedTable(BUILTIN_BLACK_ICE, () => readCustomEntities().ice);
+export const DEMONS = mergedTable(BUILTIN_DEMONS, () => readCustomEntities().demons);
+export const ENTITY_ICONS = mergedTable(BUILTIN_ENTITY_ICONS, () => {
+  const c = readCustomEntities();
+  const out = {};
+  for (const [k, v] of Object.entries(c.ice)) if (v?.img) out[k] = v.img;
+  for (const [k, v] of Object.entries(c.demons)) if (v?.img) out[k] = v.img;
+  return out;
+});
+
+/** Is this a GM-authored type? Built-in types carry a lang key; custom ones
+ *  carry the literal strings the GM typed, so the two need different lookups. */
+export const isCustomIce = (type) => !!BLACK_ICE[type] && !BUILTIN_BLACK_ICE[type];
+export const isCustomDemon = (type) => !!DEMONS[type] && !BUILTIN_DEMONS[type];
+
+/** Display name of a Black ICE type — the GM's own text, or the localized
+ *  core-book name. "" for a type that does not exist. */
+export function iceName(type) {
+  const def = BLACK_ICE[type];
+  if (!def) return "";
+  if (!def.effectKey) return String(def.name || type);
+  return loc(`${def.effectKey}.name`);
+}
+
+/** Effect text of a Black ICE type, already resolved to display text. */
+export function iceEffectText(type) {
+  const def = BLACK_ICE[type];
+  if (!def) return "";
+  if (!def.effectKey) return String(def.effect || "");
+  return loc(`${def.effectKey}.effect`);
+}
+
+/** Display name of a demon type. */
+export function demonName(type) {
+  const def = DEMONS[type];
+  if (!def) return "";
+  if (BUILTIN_DEMONS[type]) return loc(`CRNS.Demon.${type}.name`);
+  return String(def.name || type);
+}
+
+/** Effect / notes text of a demon type ("" for the core-book three). */
+export function demonEffectText(type) {
+  const def = DEMONS[type];
+  if (!def || BUILTIN_DEMONS[type]) return "";
+  return String(def.effect || "");
+}
+
 export const FLOOR_ICONS = {
   password: `${SYS}/netrunning/Password.png`, file: `${SYS}/netrunning/File.png`,
   controlnode: `${SYS}/netrunning/Control_Node.png`, custom: `${SYS}/netrunning/Access.png`,
@@ -123,8 +247,10 @@ export function blackIceTypeForName(name) {
   if (!n) return "";
   for (const key of Object.keys(BLACK_ICE)) {
     if (key === n) return key;
+    // iceName() covers both spellings: the core-book lang key and a GM-authored
+    // literal name. Matching only the former left every custom type nameless.
     let locName = "";
-    try { locName = loc(`CRNS.Ice.${key.charAt(0).toUpperCase() + key.slice(1)}.name`); } catch (e) { locName = ""; }
+    try { locName = iceName(key); } catch (e) { locName = ""; }
     if (locName && locName.toLowerCase() === n) return key;
   }
   return "";

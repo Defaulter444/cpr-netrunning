@@ -13,7 +13,7 @@
  * All state mutations go through mutate(); all rolls go through the bridge. The
  * last damage total this client rolled is stashed on app._lastDamage. */
 
-import { MODULE_ID, loc, esc, BLACK_ICE, DEMONS, ENTITY_ICONS, abbrFor, blackIceTypeForName } from "../constants.js";
+import { MODULE_ID, loc, esc, BLACK_ICE, DEMONS, ENTITY_ICONS, abbrFor, blackIceTypeForName, iceEffectText } from "../constants.js";
 import * as archTree from "../rules/tree.js";
 import * as archAbilities from "../rules/abilities.js";
 import { getWorld, mutate, notifyClients, canDerezTrap } from "../data.js";
@@ -461,7 +461,8 @@ function buildEntityVM(app, ref, session) {
     rezPct: rezMax > 0 ? Math.round((rez / rezMax) * 100) : 0,
     hasDamage,
     damageFormula: table.damage || "",
-    effectKey: table.effectKey ? `${table.effectKey}.effect` : "",
+    // Resolved text, not a lang key: a GM-authored type has no key to resolve.
+    effectText: iceEffectText(def.type),
     showFollow: true,
     following,
     attachedTo,
@@ -519,7 +520,7 @@ function buildProgEntityVM(app, ref, session) {
     rezPct: rezMax > 0 ? Math.round((rez / rezMax) * 100) : 0,
     hasDamage: !!table.damage,
     damageFormula: table.damage || "",
-    effectKey: table.effectKey ? `${table.effectKey}.effect` : "",
+    effectText: iceEffectText(iceType),
     showFollow: false,   // player BI has no follow flag — it chases by attachment.
     following: false,
     attachedTo,
@@ -871,7 +872,7 @@ export function activateListeners(app, html) {
 
   html.find('[data-action="entity-effect"]').on("click", (ev) => {
     const el = ev.currentTarget;
-    postEffectCard(el.dataset.actorId, el.dataset.effectKey);
+    postEffectCard(el.dataset.actorId, el.dataset.effectText);
   });
 
   html.find('[data-action="demon-cn"]').on("click", async (ev) => {
@@ -1165,11 +1166,12 @@ function applyTargetDamage(ref, amount) {
   }
 }
 
-/** Post a styled effect chat card for an ICE actor. */
-function postEffectCard(actorId, effectKey) {
+/** Post a styled effect chat card for an ICE actor. `text` is display text —
+ *  the caller resolves it, because a custom type carries its own wording and
+ *  has no lang key to look up. */
+function postEffectCard(actorId, text) {
   const actor = game.actors?.get(actorId);
-  if (!actor || !effectKey) return;
-  const text = loc(effectKey);
+  if (!actor || !text) return;
   const content =
     `<div class="crns-chat-card"><div class="crns-chat-title">` +
     `<i class="fas fa-skull"></i> ${esc(actor.name)}</div>` +

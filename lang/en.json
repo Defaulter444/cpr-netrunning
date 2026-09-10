@@ -117,7 +117,9 @@
       "LockShut": "Breached — click to shut it again",
       "LockOpen": "Locked — click to open it",
       "ClearAccess": "Take this runner's access away",
-      "ViewImage": "Click to open full size"
+      "ViewImage": "Click to open full size",
+      "SlidClear": "Slipped past — click to clear the mark",
+      "Note": "Floor note"
     },
     "Runners": {
       "Title": "Netrunners",
@@ -176,7 +178,16 @@
       "BadParent": "A floor cannot hang below itself or its own branch.",
       "BadLink": "Those two floors cannot be linked.",
       "NodeReleaseFailed": "Nobody is holding that node.",
-      "VirusPlan": "GM must set a virus DV and action cost on a bottom floor."
+      "VirusPlan": "GM must set a virus DV and action cost on a bottom floor.",
+      "GmOnly": "Only the GM can do that.",
+      "CustomKind": "Unknown entity kind.",
+      "CustomName": "Give the type a name.",
+      "CustomStats": "Stats must be whole numbers within their allowed range.",
+      "CustomDamage": "Damage must read like 2d6 or 3d6+2, or be left empty.",
+      "CustomReserved": "That key belongs to a core-book type.",
+      "CustomNameTaken": "Another forged type already answers to that name.",
+      "CustomMissing": "No such forged type.",
+      "CustomInUse": "Still placed in an architecture — remove it there first:"
     },
     "Hints": {
       "FreeRoll": "Hold Shift to roll without spending a NET action (e.g. defending against an attack).",
@@ -397,6 +408,37 @@
       "PickTarget": "Now pick the floor it leads into",
       "Unlink": "Remove this way in",
       "Remove": "Delete this floor"
+    },
+    "Forge": {
+      "TitleNewIce": "New Black ICE",
+      "TitleNewDemon": "New demon",
+      "TitleEdit": "Edit type",
+      "ManagerIce": "Forged Black ICE",
+      "ManagerDemon": "Forged demons",
+      "Name": "Name",
+      "Per": "PER",
+      "Spd": "SPD",
+      "Atk": "ATK",
+      "Def": "DEF",
+      "Rez": "REZ",
+      "Interface": "INT",
+      "Actions": "NET actions",
+      "CombatNumber": "CN",
+      "Target": "Attacks",
+      "TargetRunner": "Netrunners",
+      "TargetProgram": "Programs",
+      "Damage": "Damage",
+      "Image": "Icon",
+      "Pick": "Browse",
+      "Effect": "Effect",
+      "EffectHint": "What happens when it lands. Shown on the effect card.",
+      "Save": "Save",
+      "Create": "Forge new",
+      "Manage": "Library",
+      "Edit": "Edit",
+      "Delete": "Delete",
+      "Empty": "Nothing forged yet.",
+      "CustomBadge": "Forged by the GM"
     }
   },
   "CRNS.Errors.NotConnected": "Jack into an architecture first.",

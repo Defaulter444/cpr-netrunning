@@ -26,7 +26,14 @@
   </span>
   {{/if}}
   {{#if ent.slid}}
+  {{#if ent.slid.clearable}}
+  {{!-- Own attribute name: the chip itself carries data-entity-ref and the
+        selection handler walks up to the nearest one. --}}
+  <button type="button" class="crns-ent-slid clearable" data-action="clear-slid" data-slid-ref="{{ent.ref}}"
+          title="{{localize "CRNS.Canvas.SlidClear"}}"><i class="fas fa-eye-slash"></i></button>
+  {{else}}
   <span class="crns-ent-slid" title="{{localize "CRNS.Canvas.Slid"}}"><i class="fas fa-eye-slash"></i></span>
+  {{/if}}
   {{/if}}
   {{#if ent.targets.length}}
   <div class="crns-chip-targets">

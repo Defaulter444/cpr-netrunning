@@ -245,7 +245,13 @@
   border: 1px solid var(--crns-border);
 }
 .crns-floor-glyph, .crns-floor-root { width: 22px; height: 22px; object-fit: contain; flex: 0 0 auto; }
-.crns-floor-title { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* A name longer than the card used to be clipped to nothing: `nowrap` forbade
+   the break and `hidden` ate the remainder, so the GM saw a floor with no name.
+   Two lines, then ellipsis — the card keeps its height and the name survives. */
+.crns-floor-title {
+  flex: 1 1 auto; min-width: 0; overflow: hidden; overflow-wrap: anywhere;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2;
+}
 .crns-floor-dv { font-size: 11px; color: var(--crns-dim); flex: 0 0 auto; }
 .crns-floor-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .crns-floor-runners { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -1136,6 +1142,56 @@ body.crns-resizing { cursor: ns-resize !important; -webkit-user-select: none !im
   font-family: "JetBrains Mono", "Consolas", monospace; font-weight: bold;
   font-size: 10px; letter-spacing: 0.4px; color: var(--crns-text);
 }
+
+/* ---- GM floor note (bug: notes reached the screen only as a title attr) ---- */
+.crns-floor-note { flex: 0 0 auto; color: var(--crns-accent); opacity: 0.85; }
+.crns-floor-note:hover { opacity: 1; text-shadow: 0 0 6px var(--crns-glow); }
+.crns-note-body { white-space: normal; line-height: 1.5; padding: 4px 2px; }
+
+/* ---- clearable slid badge ---- */
+.crns-ent-slid.clearable {
+  cursor: pointer; padding: 0; appearance: none;
+  border-color: var(--crns-accent); color: var(--crns-accent);
+}
+.crns-ent-slid.clearable:hover {
+  background: var(--crns-accent); color: var(--crns-bg);
+  box-shadow: 0 0 6px var(--crns-glow);
+}
+
+/* ---- forged types ---- */
+.crns-pick { position: relative; }
+.crns-pick.custom { border-style: dashed; }
+.crns-pick-badge {
+  position: absolute; top: 4px; right: 4px; font-size: 9px;
+  color: var(--crns-accent); opacity: 0.8;
+}
+.crns-forge { display: flex; flex-direction: column; gap: 8px; }
+.crns-forge-row { display: flex; align-items: center; gap: 8px; }
+.crns-forge-row > span { flex: 0 0 110px; color: var(--crns-dim); font-size: 11px; }
+.crns-forge-row input[type="text"], .crns-forge-row select, .crns-forge-row textarea {
+  flex: 1 1 auto; min-width: 0; background: transparent;
+  border: 1px solid var(--crns-border); color: var(--crns-text); padding: 3px 6px;
+}
+.crns-forge-effect { align-items: flex-start; }
+.crns-forge-effect textarea { resize: vertical; }
+.crns-forge-img { flex: 1 1 auto; display: flex; gap: 4px; min-width: 0; }
+.crns-forge-img input { flex: 1 1 auto; min-width: 0; }
+.crns-forge-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(84px, 1fr)); gap: 6px; }
+.crns-forge-num { display: flex; flex-direction: column; gap: 2px; }
+.crns-forge-num > span { color: var(--crns-dim); font-size: 10px; letter-spacing: 0.4px; }
+.crns-forge-num input {
+  width: 100%; box-sizing: border-box; background: transparent;
+  border: 1px solid var(--crns-border); color: var(--crns-text); padding: 3px 6px;
+}
+.crns-forge-list { display: flex; flex-direction: column; gap: 6px; max-height: 340px; overflow: auto; }
+.crns-forge-item {
+  display: flex; align-items: center; gap: 8px;
+  border: 1px solid var(--crns-border); padding: 5px 8px;
+}
+.crns-forge-item img { width: 32px; height: 32px; object-fit: contain; flex: 0 0 auto; }
+.crns-forge-item-name { font-weight: bold; flex: 0 0 auto; }
+.crns-forge-item-stats { flex: 1 1 auto; font-size: 10px; color: var(--crns-dim); text-align: right; }
+.crns-forge-empty { color: var(--crns-dim); text-align: center; padding: 12px 0; }
 
 /* ---- reduced motion ---- */
 @media (prefers-reduced-motion: reduce) {

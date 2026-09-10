@@ -237,8 +237,8 @@
       {{#if actions.hasDamage}}
       <button type="button" class="crns-btn" data-action="entity-damage" data-actor-id="{{actions.actorId}}" data-formula="{{actions.damageFormula}}">{{localize "CRNS.Actions.Damage"}}</button>
       {{/if}}
-      {{#if actions.effectKey}}
-      <button type="button" class="crns-btn" data-action="entity-effect" data-actor-id="{{actions.actorId}}" data-effect-key="{{actions.effectKey}}">{{localize "CRNS.Actions.Effect"}}</button>
+      {{#if actions.effectText}}
+      <button type="button" class="crns-btn" data-action="entity-effect" data-actor-id="{{actions.actorId}}" data-effect-text="{{actions.effectText}}">{{localize "CRNS.Actions.Effect"}}</button>
       {{/if}}
       <button type="button" class="crns-btn" data-action="ent-to-queue" data-actor-id="{{actions.actorId}}" data-demon="false">
         <i class="fas fa-forward-step"></i> {{localize "CRNS.Actions.ToQueue"}}

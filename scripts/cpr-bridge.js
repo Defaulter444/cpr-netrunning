@@ -5,7 +5,7 @@
  * degrades gracefully rather than breaking the whole app.
  */
 
-import { loc, esc, netActionsMax as _netActionsMax, MODULE_ID, BLACK_ICE, DEMONS, ENTITY_ICONS } from "./constants.js";
+import { loc, esc, netActionsMax as _netActionsMax, MODULE_ID, BLACK_ICE, DEMONS, ENTITY_ICONS, iceName, demonName, DEFAULT_ICE_IMG, DEFAULT_DEMON_IMG } from "./constants.js";
 
 // URL imports from the active system (legal in Foundry v12).
 // CPRRolls exposes named classes; CPRChat is the default export.
@@ -268,8 +268,8 @@ export async function createIceActor(type, archName) {
     const folder = await ensureEntityFolder(archName);
     const actor = await Actor.create({
       type: "blackIce",
-      name: loc(`${def.effectKey}.name`),
-      img: ENTITY_ICONS[type],
+      name: iceName(type),
+      img: ENTITY_ICONS[type] || DEFAULT_ICE_IMG,
       folder: folder?.id ?? null,
       system: {
         // Per SPEC §5: tgt "P" -> "antiprogram", else "antipersonnel".
@@ -325,8 +325,8 @@ export async function createDemonActor(type, archName) {
     const folder = await ensureEntityFolder(archName);
     const actor = await Actor.create({
       type: "demon",
-      name: loc(`CRNS.Demon.${type}.name`),
-      img: ENTITY_ICONS[type],
+      name: demonName(type),
+      img: ENTITY_ICONS[type] || DEFAULT_DEMON_IMG,
       folder: folder?.id ?? null,
       system: {
         stats: {
@@ -354,7 +354,7 @@ export function getDemonType(actor) {
     const name = String(actor?.name ?? "").trim().toLowerCase();
     if (!name) return null;
     for (const key of Object.keys(DEMONS)) {
-      if (loc(`CRNS.Demon.${key}.name`).toLowerCase() === name) return key;
+      if (demonName(key).toLowerCase() === name) return key;
       if (key === name) return key;
     }
     return null;

@@ -5,12 +5,16 @@
  * Cancel/close discards. GM only, shown when state.editorArchId is a tab-open
  * arch. */
 
-import { loc, uid, BLACK_ICE, DEMONS, FLOOR_KINDS, FLOOR_ICONS, ENTITY_ICONS, MAX_ICE_PER_FLOOR, maxDemons, CHECK_ABILITIES } from "../constants.js";
+import { loc, esc, uid, BLACK_ICE, DEMONS, FLOOR_KINDS, FLOOR_ICONS, ENTITY_ICONS, MAX_ICE_PER_FLOOR, maxDemons, CHECK_ABILITIES,
+         iceName, demonName, DEFAULT_ICE_IMG, DEFAULT_DEMON_IMG, isCustomIce, isCustomDemon } from "../constants.js";
+import { openForgeForm, openForgeManager } from "./entity-forge.js";
 import * as archTree from "../rules/tree.js";
 import { getWorld, mutate } from "../data.js";
 
-const ICE_TYPES = Object.keys(BLACK_ICE);
-const DEMON_TYPES = Object.keys(DEMONS);
+/* Read on every render, never cached: the GM can forge a new type while the
+ * editor is open, and a list captured at module load would never show it. */
+const iceTypes = () => Object.keys(BLACK_ICE);
+const demonTypes = () => Object.keys(DEMONS);
 
 /* The draft this editor works on, guaranteeing it matches editorArchId. */
 function currentDraft(app) {
@@ -116,11 +120,11 @@ export function getData(app) {
     for (let s = 0; s < MAX_ICE_PER_FLOOR; s++) {
       const def = f.ice?.[s] ?? null;
       iceSlots.push(def
-        ? { filled: true, uid: def.id, type: def.type, name: loc(`${BLACK_ICE[def.type].effectKey}.name`), img: ENTITY_ICONS[def.type] }
+        ? { filled: true, uid: def.id, type: def.type, name: iceName(def.type), img: ENTITY_ICONS[def.type] || DEFAULT_ICE_IMG, custom: isCustomIce(def.type) }
         : { filled: false });
     }
     const demon = f.demon
-      ? { uid: f.demon.id, type: f.demon.type, name: loc(`CRNS.Demon.${f.demon.type}.name`), img: ENTITY_ICONS[f.demon.type] }
+      ? { uid: f.demon.id, type: f.demon.type, name: demonName(f.demon.type), img: ENTITY_ICONS[f.demon.type] || DEFAULT_DEMON_IMG, custom: isCustomDemon(f.demon.type) }
       : null;
     const kids = archTree.childrenOf(draft.floors, idx);
     return {
@@ -158,12 +162,12 @@ export function getData(app) {
     };
   });
 
-  const icePicker = ICE_TYPES.map((t) => ({
-    type: t, name: loc(`${BLACK_ICE[t].effectKey}.name`), img: ENTITY_ICONS[t],
+  const icePicker = iceTypes().map((t) => ({
+    type: t, name: iceName(t), img: ENTITY_ICONS[t] || DEFAULT_ICE_IMG, custom: isCustomIce(t),
     per: BLACK_ICE[t].per, spd: BLACK_ICE[t].spd, atk: BLACK_ICE[t].atk, def: BLACK_ICE[t].def, rez: BLACK_ICE[t].rez,
   }));
-  const demonPicker = DEMON_TYPES.map((t) => ({
-    type: t, name: loc(`CRNS.Demon.${t}.name`), img: ENTITY_ICONS[t],
+  const demonPicker = demonTypes().map((t) => ({
+    type: t, name: demonName(t), img: ENTITY_ICONS[t] || DEFAULT_DEMON_IMG, custom: isCustomDemon(t),
     rez: DEMONS[t].rez, iface: DEMONS[t].interface, actions: DEMONS[t].actions, cn: DEMONS[t].combatNumber,
   }));
 
@@ -396,28 +400,56 @@ export function activateListeners(app, html) {
 }
 
 /* ---- pickers (Dialog with portrait grid + stats) ---- */
-function openIcePicker(app, floor) {
-  const rows = Object.keys(BLACK_ICE).map((t) => {
-    const d = BLACK_ICE[t];
-    const name = loc(`${d.effectKey}.name`);
-    return `<button type="button" class="crns-pick" data-type="${t}">
-      <img src="${ENTITY_ICONS[t]}" alt="${name}" />
-      <span class="crns-pick-name">${name}</span>
-      <span class="crns-pick-stats">PER ${d.per} · SPD ${d.spd} · ATK ${d.atk} · DEF ${d.def} · REZ ${d.rez}</span>
+function pickerRows(kind) {
+  const custom = kind === "ice" ? isCustomIce : isCustomDemon;
+  const keys = kind === "ice" ? Object.keys(BLACK_ICE) : Object.keys(DEMONS);
+  return keys.map((t) => {
+    const d = (kind === "ice" ? BLACK_ICE : DEMONS)[t];
+    const name = kind === "ice" ? iceName(t) : demonName(t);
+    const img = ENTITY_ICONS[t] || (kind === "ice" ? DEFAULT_ICE_IMG : DEFAULT_DEMON_IMG);
+    const stats = kind === "ice"
+      ? `PER ${d.per} · SPD ${d.spd} · ATK ${d.atk} · DEF ${d.def} · REZ ${d.rez}`
+      : `REZ ${d.rez} · INT ${d.interface} · NA ${d.actions} · CN ${d.combatNumber}`;
+    // The GM's own types are marked, otherwise a homebrew Hellhound-alike is
+    // indistinguishable from the printed one at the moment of choosing.
+    return `<button type="button" class="crns-pick${custom(t) ? " custom" : ""}" data-type="${esc(t)}">
+      <img src="${esc(img)}" alt="${esc(name)}" />
+      <span class="crns-pick-name">${esc(name)}</span>
+      <span class="crns-pick-stats">${esc(stats)}</span>
+      ${custom(t) ? `<span class="crns-pick-badge" title="${esc(loc("CRNS.Forge.CustomBadge"))}"><i class="fas fa-hammer"></i></span>` : ""}
     </button>`;
   }).join("");
+}
+
+/** One picker for both kinds. `place` puts the chosen type on the floor. */
+function openEntityPicker(app, kind, place) {
   const dlg = new Dialog({
-    title: loc("CRNS.Editor.PickIce"),
-    content: `<div class="crns-pick-grid">${rows}</div>`,
-    buttons: { close: { label: loc("CRNS.Tree.Cancel") } },
+    title: loc(kind === "ice" ? "CRNS.Editor.PickIce" : "CRNS.Editor.PickDemon"),
+    content: `<div class="crns-pick-grid">${pickerRows(kind)}</div>`,
+    buttons: {
+      create: {
+        icon: '<i class="fas fa-hammer"></i>',
+        label: loc("CRNS.Forge.Create"),
+        // Forging from inside the picker places the result immediately: the GM
+        // opened this to put something on the floor, not to fill a library.
+        callback: async () => {
+          const key = await openForgeForm(kind);
+          if (key) { place(key); app.render(false); }
+        },
+      },
+      manage: {
+        icon: '<i class="fas fa-list"></i>',
+        label: loc("CRNS.Forge.Manage"),
+        callback: () => openForgeManager(kind),
+      },
+      close: { label: loc("CRNS.Tree.Cancel") },
+    },
     default: "close",
     render: (html) => {
-      html[0].querySelectorAll(".crns-pick").forEach((btn) => {
+      (html[0] ?? html).querySelectorAll(".crns-pick").forEach((btn) => {
         btn.addEventListener("click", () => {
-          if ((floor.ice?.length ?? 0) < MAX_ICE_PER_FLOOR) {
-            (floor.ice ||= []).push({ id: uid("i"), type: btn.dataset.type, actorId: "" });
-            app.render(false);
-          }
+          place(btn.dataset.type);
+          app.render(false);
           dlg.close();
         });
       });
@@ -426,32 +458,16 @@ function openIcePicker(app, floor) {
   dlg.render(true);
 }
 
-function openDemonPicker(app, floor) {
-  const rows = Object.keys(DEMONS).map((t) => {
-    const d = DEMONS[t];
-    const name = loc(`CRNS.Demon.${t}.name`);
-    return `<button type="button" class="crns-pick" data-type="${t}">
-      <img src="${ENTITY_ICONS[t]}" alt="${name}" />
-      <span class="crns-pick-name">${name}</span>
-      <span class="crns-pick-stats">REZ ${d.rez} · INT ${d.interface} · NA ${d.actions} · CN ${d.combatNumber}</span>
-    </button>`;
-  }).join("");
-  const dlg = new Dialog({
-    title: loc("CRNS.Editor.PickDemon"),
-    content: `<div class="crns-pick-grid">${rows}</div>`,
-    buttons: { close: { label: loc("CRNS.Tree.Cancel") } },
-    default: "close",
-    render: (html) => {
-      html[0].querySelectorAll(".crns-pick").forEach((btn) => {
-        btn.addEventListener("click", () => {
-          if (!floor.demon) {
-            floor.demon = { id: uid("d"), type: btn.dataset.type, actorId: "" };
-            app.render(false);
-          }
-          dlg.close();
-        });
-      });
-    },
+function openIcePicker(app, floor) {
+  openEntityPicker(app, "ice", (type) => {
+    if ((floor.ice?.length ?? 0) < MAX_ICE_PER_FLOOR) {
+      (floor.ice ||= []).push({ id: uid("i"), type, actorId: "" });
+    }
   });
-  dlg.render(true);
+}
+
+function openDemonPicker(app, floor) {
+  openEntityPicker(app, "demon", (type) => {
+    if (!floor.demon) floor.demon = { id: uid("d"), type, actorId: "" };
+  });
 }

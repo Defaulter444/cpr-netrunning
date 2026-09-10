@@ -1232,6 +1232,44 @@ body.crns-resizing { cursor: ns-resize !important; -webkit-user-select: none !im
   color: var(--crns-text); padding: 4px 6px;
 }
 
+/* ---- ground for what we draw inside a Dialog ----
+   A Dialog is its own application window and nothing of ours paints behind it.
+   The palette is written for the suite's near-black ground, so `--crns-text`
+   — #ffd7de under the red theme, near-white — landed on Foundry's own light
+   dialog and vanished. Inside the suite the same rules read fine only because
+   .crns-root paints var(--crns-bg) behind everything.
+   So the containers we draw bring their own ground, and the fields stop being
+   transparent windows onto somebody else's background. */
+.crns-virus-intent,
+.crns-forge,
+.crns-forge-list {
+  background: var(--crns-bg);
+  color: var(--crns-text);
+  border: 1px solid var(--crns-border);
+  padding: 8px;
+}
+.crns-virus-intent textarea,
+.crns-forge-row input[type="text"],
+.crns-forge-row select,
+.crns-forge-row textarea,
+.crns-forge-num input {
+  background: var(--crns-panel);
+  color: var(--crns-text);
+}
+/* The browser's own placeholder grey is unreadable on this ground, and its
+   default opacity makes whatever colour it is fainter still. */
+.crns-virus-intent textarea::placeholder,
+.crns-forge-row input::placeholder,
+.crns-forge-row textarea::placeholder {
+  color: var(--crns-dim);
+  opacity: 1;
+}
+/* An open dropdown is drawn by the OS, which does not inherit any of this. */
+.crns-forge-row select option {
+  background: var(--crns-panel);
+  color: var(--crns-text);
+}
+
 /* ---- reduced motion ---- */
 @media (prefers-reduced-motion: reduce) {
   .crns-root *, .crns-root *::before, .crns-root *::after {

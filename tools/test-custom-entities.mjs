@@ -412,6 +412,38 @@ console.log("Every dialog carries the palette, and carries it without the grid")
   expect(/\.crns-vars \.crns-icon-btn/.test(css), "icon buttons are styled only inside the suite window");
 }
 
+console.log("What we draw inside a dialog brings its own ground");
+{
+  const css = fs.readFileSync(path.join(ROOT, "styles/netrunning.css"), "utf-8");
+
+  // The palette is written for the suite's near-black ground, which .crns-root
+  // paints. A Dialog is its own application window and nothing of ours paints
+  // behind it, so `--crns-text` — near-white under the red theme — sat on
+  // Foundry's own light dialog and could not be read at all.
+  const groundRule = css.indexOf(".crns-virus-intent,");
+  expect(groundRule > 0, "the dialog containers have no shared ground rule");
+  // Searching from -1 would search the whole file and find somebody else's
+  // background, so the rule has to be found before the colour is looked for.
+  expect(groundRule > 0 && css.indexOf("background: var(--crns-bg)", groundRule) > groundRule,
+    "the dialog containers paint no ground of their own");
+
+  // The fields used to be `background: transparent`, i.e. windows onto whatever
+  // the host window happened to be. The later rule has to win the cascade, so
+  // it has to come after — same specificity, source order decides.
+  const transparent = css.indexOf(".crns-virus-intent textarea {");
+  const opaque = css.lastIndexOf(".crns-virus-intent textarea,");
+  expect(transparent > 0 && opaque > transparent,
+    "the opaque field rule does not come after the transparent one, so it loses the cascade");
+  expect(css.indexOf("background: var(--crns-panel)", opaque) > opaque,
+    "the fields are still transparent");
+
+  // A browser's own placeholder grey is unreadable on this ground, and its
+  // default opacity fades whatever colour it is.
+  const ph = css.indexOf("::placeholder");
+  expect(ph > 0, "no placeholder colour is set anywhere");
+  expect(css.indexOf("opacity: 1", ph) > ph, "the placeholder keeps the browser's fade");
+}
+
 /* ------------------------------------------------------------------ */
 
 console.log(`\nChecks: ${checks}, failures: ${failures}`);

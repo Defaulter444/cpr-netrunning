@@ -430,11 +430,22 @@ console.log("What we draw inside a dialog brings its own ground");
   // paints. A Dialog is its own application window and nothing of ours paints
   // behind it, so `--crns-text` — near-white under the red theme — sat on
   // Foundry's own light dialog and could not be read at all.
-  // The picker is a dialog too. It was left out of the first pass, and its
-  // cards went white under Foundry's own light window while the names stayed
-  // near-white — the list of Black ICE read as a column of blank cards.
-  expect(css.indexOf(".crns-pick-grid,") >= 0, "the picker grid has no ground of its own");
-  const groundRule = css.indexOf(".crns-pick-grid,");
+  // The picker is a dialog too, and it was left out of the first pass: its cards
+  // went white under Foundry's own light window while the names stayed
+  // near-white, so the list of Black ICE read as a column of blank cards. It is
+  // now the one window that keeps a light ground on purpose, which means its
+  // colours cannot come from the palette — every foreground there is a light one.
+  const pickGrid = css.indexOf(".crns-pick-grid {");
+  expect(pickGrid > 0, "the picker grid has no ground of its own");
+  expect(css.indexOf("background:", pickGrid) > pickGrid, "the picker grid paints no ground");
+  const paletteName = css.indexOf(".crns-pick-name { color: var(--crns-text); }");
+  const litName = css.lastIndexOf(".crns-pick-name {");
+  expect(paletteName > 0 && litName > paletteName,
+    "the picker names still resolve to the palette's light colour");
+  expect(!/color: var\(--crns-text\)/.test(css.slice(litName, litName + 60)),
+    "the picker names are light again");
+
+  const groundRule = css.indexOf(".crns-virus-intent,");
   expect(groundRule > 0, "the dialog containers have no shared ground rule");
   // Searching from -1 would search the whole file and find somebody else's
   // background, so the rule has to be found before the colour is looked for.

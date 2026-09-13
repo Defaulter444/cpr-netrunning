@@ -1252,7 +1252,6 @@ body.crns-resizing { cursor: ns-resize !important; -webkit-user-select: none !im
    .crns-root paints var(--crns-bg) behind everything.
    So the containers we draw bring their own ground, and the fields stop being
    transparent windows onto somebody else's background. */
-.crns-pick-grid,
 .crns-virus-intent,
 .crns-forge,
 .crns-forge-list {
@@ -1282,6 +1281,33 @@ body.crns-resizing { cursor: ns-resize !important; -webkit-user-select: none !im
   background: var(--crns-panel);
   color: var(--crns-text);
 }
+
+/* ---- the ICE / demon picker: light list, dark names ----
+   Deliberately the one window that does not wear the module's dark card. The
+   colours here are literal rather than palette variables on purpose: every
+   foreground in the palette is a light one, written for the suite's near-black
+   ground, so there is no combination of them that reads on a light card.
+   Keeping the accent for hover and for the forged badge is what still ties the
+   window to the rest of the module. */
+.crns-pick-grid {
+  background: #d9dbdf;
+  border: 1px solid #b6b9bf;
+  padding: 8px;
+}
+.crns-pick {
+  background: #f7f8f9;
+  border-color: #bfc2c7;
+}
+.crns-pick:hover {
+  background: #ffffff;
+  border-color: var(--crns-accent);
+}
+.crns-pick-name { color: #14161a; }
+.crns-pick-stats { color: #4a4f57; opacity: 1; }
+/* The hammer that marks a forged type: the accent is tuned for a dark ground
+   and washes out here, so it gets a darker shade of itself. */
+.crns-pick-badge { color: color-mix(in srgb, var(--crns-accent) 70%, #000); opacity: 1; }
+.crns-pick.custom { border-color: color-mix(in srgb, var(--crns-accent) 55%, #6b6e74); }
 
 /* ---- reduced motion ---- */
 @media (prefers-reduced-motion: reduce) {

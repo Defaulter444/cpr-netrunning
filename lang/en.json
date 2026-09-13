@@ -457,5 +457,7 @@
   "CRNS.Errors.NodeUsed": "This Control Node has already been activated this turn.",
   "CRNS.Errors.SlideUsed": "Slide has already been attempted this turn.",
   "CRNS.Errors.SlideTarget": "Choose living Black ICE currently engaging this runner. Demons cannot be Slid.",
-  "CRNS.Actions.SlideExit": "Slide: choose the adjacent floor"
+  "CRNS.Actions.SlideExit": "Slide: choose the adjacent floor",
+  "CRNS.Errors.CustomImage": "Invalid image path. Choose an uploaded file with the file picker or enter a full https:// URL (up to 8192 characters).",
+  "CRNS.Errors.CustomSync": "The template was saved, but some placed actors could not be updated. Save again to retry."
 }

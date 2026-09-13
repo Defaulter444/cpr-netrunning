@@ -488,5 +488,99 @@ console.log("What we draw inside a dialog brings its own ground");
 
 /* ------------------------------------------------------------------ */
 
+console.log("Long and Cyrillic image paths survive saving; unsupported paths are refused");
+{
+  freshWorld();
+  const longPath = `worlds/test/art/${encodeURIComponent("Очень длинное имя чёрного льда ".repeat(5))}.webp`;
+  const made = await D.applyOp("custom.save", {kind:"ice", def:{...GOOD_ICE, img:longPath}}, "gm");
+  eq(K.ENTITY_ICONS[made.key], longPath, "the image URL was silently truncated");
+  for (const img of ["javascript:alert(1)", "file:///C:/private.png", "C:\\Images\\ice.png", "x".repeat(8193)]) {
+    const res = await D.applyOp("custom.save", {kind:"ice", key:made.key, def:{...GOOD_ICE, img}}, "gm");
+    eq(res?.error, "CRNS.Errors.CustomImage", "an unusable image path was silently saved");
+  }
+}
+
+console.log("Editing a placed template updates its actors without healing damage or reviving ICE");
+{
+  freshWorld();
+  const bridge = await import(pathToFileURL(path.join(scripts, "cpr-bridge.js")).href);
+  const made = await D.applyOp("custom.save", {kind:"ice", def:GOOD_ICE}, "gm");
+  let n = 0;
+  Actor.create = async data => {
+    const actor = {...deepClone(data), id:`actor${++n}`, async update(changes) {
+      for (const [key,value] of Object.entries(changes)) {
+        const parts=key.split('.'); let obj=this;
+        for (const part of parts.slice(0,-1)) obj=obj[part]??=( {} );
+        obj[parts.at(-1)]=deepClone(value);
+      }
+      return this;
+    }};
+    game.actors.push(actor);
+    return actor;
+  };
+  const actorId = await bridge.createIceActor(made.key, "Test");
+  const actor = game.actors.get(actorId);
+  eq(actor?.system?.stats?.rez?.max, 18, "creation lost the template REZ");
+  eq(actor?.img, GOOD_ICE.img, "creation lost the template portrait");
+  const deadId = await bridge.createIceActor(made.key, "Test");
+  const dead = game.actors.get(deadId);
+  actor.system.stats.rez.value = 11;
+  dead.system.stats.rez.value = 0;
+  settings.set("netArchs", {a:{floors:[{ice:[{type:made.key,actorId},{type:made.key,actorId:deadId}]}]}});
+  const edited = {...GOOD_ICE, rez:40, per:8, img:"art/new.webp"};
+  await D.applyOp("custom.save", {kind:"ice", key:made.key, def:edited}, "gm");
+  eq(actor.system.stats.rez.max, 40, "placed actor kept the old maximum REZ");
+  eq(actor.system.stats.rez.value, 33, "template edit did not preserve seven damage");
+  eq(dead.system.stats.rez.value, 0, "template edit revived derezzed ICE");
+  eq(actor.system.stats.per, 8, "placed actor kept old PER");
+  eq(actor.img, "art/new.webp", "placed actor kept the old portrait");
+  game.actors.splice(0);
+}
+
+console.log("The form resolves only after the async save, including Foundry's close callback");
+{
+  freshWorld();
+  const forge = await import(pathToFileURL(path.join(scripts,"apps/entity-forge.js")).href);
+  let dialog;
+  globalThis.Dialog = class { constructor(data) {this.data=data;dialog=this;} render(){} };
+  let release;
+  const oldSet = game.settings.set;
+  game.settings.set = async (...args) => { await new Promise(resolve=>{release=resolve;}); return oldSet(...args); };
+  const result=forge.openForgeForm("ice");
+  let outcome="pending"; result.then(value=>{outcome=value;});
+  const saving=dialog.data.buttons.save.callback([{querySelector:selector=>({value:GOOD_ICE[selector.match(/"([^"]+)"/)[1]]??""})}]);
+  dialog.data.close();
+  await Promise.resolve();
+  eq(outcome,"pending","closing the form discarded a save still in progress");
+  release(); await saving;
+  const key=await result;
+  expect(!!key,"a successful save resolved as cancellation");
+  eq(settings.get("customEntities").ice[key]?.rez,18,"the form lost its submitted REZ");
+  game.settings.set=oldSet;
+}
+
+console.log("All built-in REZ values and custom boundary values reach real creation payloads");
+{
+  freshWorld(); game.actors.splice(0);
+  const bridge = await import(pathToFileURL(path.join(scripts,"cpr-bridge.js")).href);
+  for (const type of K.BUILTIN_ICE_KEYS) {
+    const id=await bridge.createIceActor(type,"Builtin test");
+    const actor=game.actors.get(id);
+    eq(actor.system.stats.rez,{value:K.BLACK_ICE[type].rez,max:K.BLACK_ICE[type].rez},`wrong REZ for ${type}`);
+  }
+  for(const rez of [1,15,37,100]){
+    const made=await D.applyOp("custom.save",{kind:"demon",def:{...GOOD_DEMON,name:`Demon ${rez}`,rez}},"gm");
+    const id=await bridge.createDemonActor(made.key,"Demon test");
+    const actor=game.actors.get(id);
+    eq(actor.system.stats.rez,{value:rez,max:rez},`wrong custom demon REZ ${rez}`);
+    settings.set("netArchs",{a:{floors:[{ice:[],demon:{type:made.key,actorId:id}}]}});
+    const updated=await D.applyOp("custom.save",{kind:"demon",key:made.key,def:{...GOOD_DEMON,name:`Demon ${rez}`,rez:55,img:"art/demon.webp"}},"gm");
+    expect(updated?.ok,"editing a custom demon failed");
+    eq(actor.system.stats.rez,{value:55,max:55},"custom demon kept old REZ");
+    eq(actor.img,"art/demon.webp","custom demon kept old icon");
+  }
+  game.actors.splice(0);
+}
+
 console.log(`\nChecks: ${checks}, failures: ${failures}`);
 process.exit(failures ? 1 : 0);

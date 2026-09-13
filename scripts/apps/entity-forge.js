@@ -110,6 +110,7 @@ export function openForgeForm(kind, { key = "", def = null } = {}) {
   }
   return new Promise((resolve) => {
     let settled = false;
+    let saving = false;
     const finish = (value) => { if (!settled) { settled = true; resolve(value); } };
     const titleKey = key
       ? "CRNS.Forge.TitleEdit"
@@ -126,12 +127,16 @@ export function openForgeForm(kind, { key = "", def = null } = {}) {
           // simply keep the window open. It reopens instead, seeded with exactly
           // what the GM typed — nothing is retyped after a validation warning.
           callback: async (html) => {
+            if (saving) return;
+            saving = true;
             const root = html[0] ?? html;
             const draft = readForm(root, kind);
-            const res = await mutate("custom.save", { kind, key, def: draft });
-            if (res?.error) {
-              ui.notifications.warn(loc(res.error));
-              finish(await openForgeForm(kind, { key, def: draft }));
+            let res;
+            try { res = await mutate("custom.save", { kind, key, def: draft }); }
+            catch (e) { console.error("cpr-netrunning | custom save", e); }
+            if (!res?.ok) {
+              ui.notifications.warn(loc(res?.error || "CRNS.Errors.SystemApi"));
+              finish(await openForgeForm(kind, { key: res?.key || key, def: draft }));
               return;
             }
             finish(res?.key || null);
@@ -144,7 +149,8 @@ export function openForgeForm(kind, { key = "", def = null } = {}) {
         },
       },
       default: "save",
-      close: () => finish(null),
+      // v12 Dialog.submit closes without awaiting the button's async callback.
+      close: () => { if (!saving) finish(null); },
       render: (html) => {
         const root = html[0] ?? html;
         root.querySelector('.crns-forge-pick')?.addEventListener("click", (ev) => {

@@ -344,6 +344,33 @@ export async function createDemonActor(type, archName) {
   } catch (e) { sysError(e); return null; }
 }
 
+/** Apply a GM's template edit to an architecture-owned entity. A change to
+ * maximum REZ preserves damage already taken and never revives derezzed ICE. */
+export async function updateCustomEntityActor(actorId, kind, type, def) {
+  try {
+    const actor = game.actors?.get(actorId);
+    if (!actor) return true; // arch.update recreates missing actors.
+    if (actor.type !== (kind === "ice" ? "blackIce" : "demon")) return false;
+    const current = Number(actor.system?.stats?.rez?.value ?? def.rez);
+    const maximum = Number(actor.system?.stats?.rez?.max ?? def.rez);
+    const damage = Math.max(0, maximum - current);
+    const img = def.img || (kind === "ice" ? DEFAULT_ICE_IMG : DEFAULT_DEMON_IMG);
+    const changes = {
+      name: def.name, img,
+      "prototypeToken.texture.src": img,
+      "system.stats.rez.max": def.rez,
+      "system.stats.rez.value": current <= 0 ? 0 : Math.max(0, def.rez - damage),
+      [`flags.${MODULE_ID}.type`]: type,
+    };
+    const stats = kind === "ice" ? ["per", "spd", "atk", "def"]
+      : ["interface", "actions", "combatNumber"];
+    for (const stat of stats) changes[`system.stats.${stat}`] = def[stat];
+    if (kind === "ice") changes["system.class"] = def.tgt === "P" ? "antiprogram" : "antipersonnel";
+    await actor.update(changes);
+    return true;
+  } catch (e) { sysError(e); return false; }
+}
+
 /** The DEMONS[] key for a demon actor: the creation flag when present, else a
  *  case-insensitive name match against the localized DEMONS names (legacy
  *  actors). Returns null when nothing matches. */

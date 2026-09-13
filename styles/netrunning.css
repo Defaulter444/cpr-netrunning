@@ -1282,32 +1282,41 @@ body.crns-resizing { cursor: ns-resize !important; -webkit-user-select: none !im
   color: var(--crns-text);
 }
 
-/* ---- the ICE / demon picker: light list, dark names ----
-   Deliberately the one window that does not wear the module's dark card. The
-   colours here are literal rather than palette variables on purpose: every
-   foreground in the palette is a light one, written for the suite's near-black
-   ground, so there is no combination of them that reads on a light card.
-   Keeping the accent for hover and for the forged badge is what still ties the
-   window to the rest of the module. */
+/* ---- the ICE / demon picker ----
+   Every colour here is a literal, and every selector carries one class more
+   than it needs. Both are deliberate.
+
+   A Dialog is a separate application window. If the palette ever fails to reach
+   it, `var(--crns-bg)` does not fall back — the whole declaration becomes
+   invalid, i.e. nothing at all. That is what this window kept looking like:
+   Foundry's own dark button showing through a light dialog, with a light name
+   on top of it. Literals cannot fail that way.
+
+   The extra class outranks every single-class rule in this file and Foundry's
+   own layered button styles alike, so nothing downstream can quietly win. */
 .crns-pick-grid {
   background: #d9dbdf;
   border: 1px solid #b6b9bf;
   padding: 8px;
 }
-.crns-pick {
+.crns-pick-grid .crns-pick {
   background: #f7f8f9;
-  border-color: #bfc2c7;
+  border: 1px solid #b0b4ba;
+  color: #14161a;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
 }
-.crns-pick:hover {
+.crns-pick-grid .crns-pick:hover {
   background: #ffffff;
-  border-color: var(--crns-accent);
+  border-color: #6f757e;
+  box-shadow: 0 2px 7px rgba(0, 0, 0, 0.2);
+  transform: translateY(-1px);
 }
-.crns-pick-name { color: #14161a; }
-.crns-pick-stats { color: #4a4f57; opacity: 1; }
-/* The hammer that marks a forged type: the accent is tuned for a dark ground
-   and washes out here, so it gets a darker shade of itself. */
-.crns-pick-badge { color: color-mix(in srgb, var(--crns-accent) 70%, #000); opacity: 1; }
-.crns-pick.custom { border-color: color-mix(in srgb, var(--crns-accent) 55%, #6b6e74); }
+.crns-pick-grid .crns-pick-name { color: #14161a; font-weight: bold; }
+.crns-pick-grid .crns-pick-stats { color: #454a52; opacity: 1; }
+/* The hammer marking a type the GM forged. The theme accent is tuned for a
+   near-black ground and washes out on this one. */
+.crns-pick-grid .crns-pick-badge { color: #8a1f33; opacity: 1; }
+.crns-pick-grid .crns-pick.custom { border-style: dashed; border-color: #8a1f33; }
 
 /* ---- reduced motion ---- */
 @media (prefers-reduced-motion: reduce) {

@@ -430,20 +430,26 @@ console.log("What we draw inside a dialog brings its own ground");
   // paints. A Dialog is its own application window and nothing of ours paints
   // behind it, so `--crns-text` — near-white under the red theme — sat on
   // Foundry's own light dialog and could not be read at all.
-  // The picker is a dialog too, and it was left out of the first pass: its cards
-  // went white under Foundry's own light window while the names stayed
-  // near-white, so the list of Black ICE read as a column of blank cards. It is
-  // now the one window that keeps a light ground on purpose, which means its
-  // colours cannot come from the palette — every foreground there is a light one.
-  const pickGrid = css.indexOf(".crns-pick-grid {");
-  expect(pickGrid > 0, "the picker grid has no ground of its own");
-  expect(css.indexOf("background:", pickGrid) > pickGrid, "the picker grid paints no ground");
-  const paletteName = css.indexOf(".crns-pick-name { color: var(--crns-text); }");
-  const litName = css.lastIndexOf(".crns-pick-name {");
-  expect(paletteName > 0 && litName > paletteName,
-    "the picker names still resolve to the palette's light colour");
-  expect(!/color: var\(--crns-text\)/.test(css.slice(litName, litName + 60)),
-    "the picker names are light again");
+  // The picker is a dialog, and a dialog is a separate application window. When
+  // the palette failed to reach it, every `var(--crns-*)` in its rules became an
+  // invalid declaration rather than a fallback — so the cards showed Foundry's
+  // own dark button under a light dialog, with a light name on top. Literals
+  // cannot fail that way, and the extra class outranks anything that might
+  // otherwise win.
+  const pickAt = css.indexOf(".crns-pick-grid {", css.indexOf("the ICE / demon picker"));
+  expect(pickAt > 0, "the picker has no block of its own");
+  const pickBlock = css.slice(pickAt, css.indexOf("/* ---- reduced motion ---- */", pickAt));
+  expect(pickBlock.length > 0, "the picker block is empty");
+  expect(!pickBlock.includes("var("),
+    "the picker still depends on palette variables that may never reach the dialog");
+  expect(/\.crns-pick-grid \.crns-pick-name\s*\{[^}]*#/.test(pickBlock),
+    "the picker names have no literal colour");
+  expect(/\.crns-pick-grid \.crns-pick\s*\{[^}]*background:\s*#/.test(pickBlock),
+    "the picker cards have no literal background");
+  // Both sit on one class in the rest of the file; the qualified selector is
+  // what keeps those from winning.
+  expect((pickBlock.match(/\.crns-pick-grid \./g) || []).length >= 4,
+    "the picker rules are not qualified and can be outranked");
 
   const groundRule = css.indexOf(".crns-virus-intent,");
   expect(groundRule > 0, "the dialog containers have no shared ground rule");

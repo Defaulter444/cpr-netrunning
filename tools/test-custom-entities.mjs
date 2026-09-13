@@ -451,6 +451,17 @@ console.log("What we draw inside a dialog brings its own ground");
   expect((pickBlock.match(/\.crns-pick-grid \./g) || []).length >= 4,
     "the picker rules are not qualified and can be outranked");
 
+  // And the same colours are written onto the elements. Three attempts to fix
+  // this window through the stylesheet all lost to something that could not be
+  // identified from outside the running app; an inline style cannot lose.
+  const editorSrc = fs.readFileSync(path.join(ROOT, "scripts/apps/editor.js"), "utf-8");
+  for (const [name, decl] of [["card", "background:#f7f8f9"], ["name", "color:#14161a"],
+                              ["stats", "color:#454a52"], ["grid", "background:#d9dbdf"]]) {
+    expect(editorSrc.includes(decl), `the picker ${name} has no inline colour`);
+  }
+  expect(/style="\$\{PICK_CARD\}/.test(editorSrc), "the card markup does not carry its style");
+  expect(/class="crns-pick-name" style=/.test(editorSrc), "the name markup does not carry its style");
+
   const groundRule = css.indexOf(".crns-virus-intent,");
   expect(groundRule > 0, "the dialog containers have no shared ground rule");
   // Searching from -1 would search the whole file and find somebody else's

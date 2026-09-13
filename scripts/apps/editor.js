@@ -414,6 +414,18 @@ export function activateListeners(app, html) {
 }
 
 /* ---- pickers (Dialog with portrait grid + stats) ---- */
+/* The picker's own colours. Literal on purpose: a Dialog is a separate
+ * application window, and when the module's palette does not reach it every
+ * `var(--crns-*)` becomes an invalid declaration rather than a fallback — the
+ * card then shows Foundry's dark button under a light dialog with a light name
+ * on top, which is exactly what kept happening. Contrast of the name against
+ * the card is 17:1, of the stats 8:1. */
+const PICK_CARD = "background:#f7f8f9;border:1px solid #b0b4ba;color:#14161a;";
+const PICK_CARD_CUSTOM = "border-style:dashed;border-color:#8a1f33;";
+const PICK_NAME = "color:#14161a;font-weight:bold;";
+const PICK_STATS = "color:#454a52;opacity:1;";
+const PICK_BADGE = "color:#8a1f33;opacity:1;";
+
 function pickerRows(kind) {
   const custom = kind === "ice" ? isCustomIce : isCustomDemon;
   const keys = kind === "ice" ? Object.keys(BLACK_ICE) : Object.keys(DEMONS);
@@ -426,11 +438,18 @@ function pickerRows(kind) {
       : `REZ ${d.rez} · INT ${d.interface} · NA ${d.actions} · CN ${d.combatNumber}`;
     // The GM's own types are marked, otherwise a homebrew Hellhound-alike is
     // indistinguishable from the printed one at the moment of choosing.
-    return `<button type="button" class="crns-pick${custom(t) ? " custom" : ""}" data-type="${esc(t)}">
+    //
+    // The colours are written onto the elements rather than left to the
+    // stylesheet. Three attempts to fix this window through CSS all lost to
+    // something that could not be identified from outside the running app, and
+    // an inline style cannot lose: it outranks every rule in every sheet. The
+    // matching rules stay in netrunning.css so the window still looks right if
+    // this markup is ever rebuilt without them.
+    return `<button type="button" class="crns-pick${custom(t) ? " custom" : ""}" data-type="${esc(t)}" style="${PICK_CARD}${custom(t) ? PICK_CARD_CUSTOM : ""}">
       <img src="${esc(img)}" alt="${esc(name)}" />
-      <span class="crns-pick-name">${esc(name)}</span>
-      <span class="crns-pick-stats">${esc(stats)}</span>
-      ${custom(t) ? `<span class="crns-pick-badge" title="${esc(loc("CRNS.Forge.CustomBadge"))}"><i class="fas fa-hammer"></i></span>` : ""}
+      <span class="crns-pick-name" style="${PICK_NAME}">${esc(name)}</span>
+      <span class="crns-pick-stats" style="${PICK_STATS}">${esc(stats)}</span>
+      ${custom(t) ? `<span class="crns-pick-badge" style="${PICK_BADGE}" title="${esc(loc("CRNS.Forge.CustomBadge"))}"><i class="fas fa-hammer"></i></span>` : ""}
     </button>`;
   }).join("");
 }
@@ -439,7 +458,7 @@ function pickerRows(kind) {
 function openEntityPicker(app, kind, place) {
   const dlg = new Dialog({
     title: loc(kind === "ice" ? "CRNS.Editor.PickIce" : "CRNS.Editor.PickDemon"),
-    content: `<div class="crns-pick-grid">${pickerRows(kind)}</div>`,
+    content: `<div class="crns-pick-grid" style="background:#d9dbdf;border:1px solid #b6b9bf;padding:8px;">${pickerRows(kind)}</div>`,
     buttons: {
       create: {
         icon: '<i class="fas fa-hammer"></i>',

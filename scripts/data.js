@@ -994,7 +994,13 @@ function sanitizeCustom(kind, raw) {
   const name = String(src.name ?? "").trim().slice(0, 60);
   if (!name) return { error: "CRNS.Errors.CustomName" };
   const effect = String(src.effect ?? "").trim().slice(0, 600);
-  const img = String(src.img ?? "").trim().slice(0, 300);
+  // FilePicker percent-encodes Cyrillic names; a valid local URL can easily
+  // exceed 300 characters. Never truncate an image URL (including mid-%XX).
+  const img = String(src.img ?? "").trim().replace(/\\/g, "/");
+  if (img.length > 8192 || /[\u0000-\u001f]/.test(img)
+      || (/^[a-z][a-z0-9+.-]*:/i.test(img) && !/^https?:\/\//i.test(img))) {
+    return { error: "CRNS.Errors.CustomImage" };
+  }
 
   if (kind === "ice") {
     const per = intIn(src.per, 0, 20);
@@ -2471,6 +2477,22 @@ const OPS = {
 
     bucket[id] = clean.def;
     await setWorld("customEntities", store);
+    // Actors are snapshots, while the picker reads the live registry. Update
+    // only architecture instances of this type, preserving their damage.
+    const actorIds = new Set();
+    for (const arch of Object.values(getWorld("netArchs") || {})) {
+      for (const floor of arch.floors || []) {
+        const entries = kind === "ice" ? floor.ice || [] : [floor.demon];
+        for (const entry of entries) {
+          if (entry?.type === id && entry.actorId) actorIds.add(entry.actorId);
+        }
+      }
+    }
+    for (const actorId of actorIds) {
+      if (!await bridge.updateCustomEntityActor(actorId, kind, id, clean.def)) {
+        return { error: "CRNS.Errors.CustomSync", key: id };
+      }
+    }
     return { ok: true, key: id };
   },
 

@@ -357,6 +357,16 @@ console.log("The two dead controls now have a caller, and the name has room to w
   // Bug: a floor note reached the screen only as the floor div's `title`, and
   // the chips and buttons drawn on top of that div swallowed the hover.
   expect(canvasHbs.includes('data-action="floor-note"'), "the floor draws no note marker");
+  // And it has to be READABLE without pressing anything. As a marker in the
+  // header it lost to the file: a floor holding both showed the file's text on
+  // the card and kept the GM's own note behind a click, so he could not see at
+  // a glance that he had written one.
+  const noteAt = canvasHbs.indexOf('class="crns-floor-note"');
+  const headEnd = canvasHbs.indexOf("crns-shape-box");
+  expect(noteAt > 0, "the note has no block of its own");
+  expect(noteAt > headEnd, "the note is still tucked into the card header");
+  expect(canvasHbs.indexOf("{{floor.description}}</span>", noteAt) > noteAt,
+    "the note text is not rendered, only hung on a tooltip");
   expect(canvasJs.includes('[data-action="floor-note"]'), "nothing listens for the note click");
   expect(canvasJs.includes("hasNote:"), "the view-model never says whether a note exists");
 
@@ -420,7 +430,11 @@ console.log("What we draw inside a dialog brings its own ground");
   // paints. A Dialog is its own application window and nothing of ours paints
   // behind it, so `--crns-text` — near-white under the red theme — sat on
   // Foundry's own light dialog and could not be read at all.
-  const groundRule = css.indexOf(".crns-virus-intent,");
+  // The picker is a dialog too. It was left out of the first pass, and its
+  // cards went white under Foundry's own light window while the names stayed
+  // near-white — the list of Black ICE read as a column of blank cards.
+  expect(css.indexOf(".crns-pick-grid,") >= 0, "the picker grid has no ground of its own");
+  const groundRule = css.indexOf(".crns-pick-grid,");
   expect(groundRule > 0, "the dialog containers have no shared ground rule");
   // Searching from -1 would search the whole file and find somebody else's
   // background, so the rule has to be found before the colour is looked for.

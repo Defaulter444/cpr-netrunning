@@ -54,8 +54,6 @@
           {{#if floor.isRoot}}<img class="crns-floor-root" src="{{floor.rootIcon}}" alt="" />{{/if}}
           <span class="crns-floor-title">{{floor.label}}</span>
           {{#if floor.showDv}}<span class="crns-floor-dv">{{localize "CRNS.Editor.DV"}} {{floor.dv}}</span>{{/if}}
-          {{#if floor.hasNote}}<button type="button" class="crns-icon-btn crns-floor-note" data-action="floor-note"
-                  title="{{floor.description}}"><i class="fas fa-note-sticky"></i></button>{{/if}}
           {{#if floor.gmGear}}
           <button type="button" class="crns-icon-btn crns-floor-gear" data-action="floor-gear" title="{{localize "CRNS.Canvas.GmFloor"}}"><i class="fas fa-gear"></i></button>
           {{/if}}
@@ -115,6 +113,15 @@
         {{#if floor.contents}}
         <div class="crns-floor-contents" title="{{localize "CRNS.Canvas.FileContents"}}">
           <i class="fas fa-file-lines"></i><span>{{floor.contents}}</span>
+        </div>
+        {{/if}}
+        {{!-- The GM's own note, GM-only. It used to be a marker in the header
+              that had to be pressed, so on a floor that also holds a file the
+              file's text was on the card and the note was not — the GM could
+              not see, at a glance, that he had written anything at all. --}}
+        {{#if floor.hasNote}}
+        <div class="crns-floor-note" data-action="floor-note" title="{{localize "CRNS.Canvas.NoteOpen"}}">
+          <i class="fas fa-note-sticky"></i><span>{{floor.description}}</span>
         </div>
         {{/if}}
 

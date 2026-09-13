@@ -1174,8 +1174,20 @@ body.crns-resizing { cursor: ns-resize !important; -webkit-user-select: none !im
 }
 
 /* ---- GM floor note (bug: notes reached the screen only as a title attr) ---- */
-.crns-floor-note { flex: 0 0 auto; color: var(--crns-accent); opacity: 0.85; }
-.crns-floor-note:hover { opacity: 1; text-shadow: 0 0 6px var(--crns-glow); }
+.crns-floor-note {
+  display: flex; gap: 6px; align-items: flex-start; cursor: pointer;
+  font-size: 11px; line-height: 1.35; padding: 5px 7px;
+  color: var(--crns-dim);
+  border: 1px dashed color-mix(in srgb, var(--crns-dim) 45%, transparent);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--crns-dim) 6%, transparent);
+}
+.crns-floor-note i { opacity: 0.7; margin-top: 1px; flex: 0 0 auto; }
+.crns-floor-note span {
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2;
+  overflow: hidden; overflow-wrap: anywhere;
+}
+.crns-floor-note:hover { color: var(--crns-text); border-color: var(--crns-accent); }
 .crns-note-body { white-space: normal; line-height: 1.5; padding: 4px 2px; }
 
 /* ---- clearable slid badge ---- */
@@ -1240,6 +1252,7 @@ body.crns-resizing { cursor: ns-resize !important; -webkit-user-select: none !im
    .crns-root paints var(--crns-bg) behind everything.
    So the containers we draw bring their own ground, and the fields stop being
    transparent windows onto somebody else's background. */
+.crns-pick-grid,
 .crns-virus-intent,
 .crns-forge,
 .crns-forge-list {

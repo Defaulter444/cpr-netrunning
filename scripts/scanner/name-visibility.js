@@ -39,7 +39,8 @@ export function canReadAPName(token) {
   for (const source of canvas.effects?.visionSources?.values() ?? []) {
     // The same character must both know and see the point. Other selected tokens
     // and global GM vision cannot lend their sight to it.
-    if (selected.length && !known.some(viewer => viewer.id === source.object?.id)) continue;
+    if (selected.length && !known.some(viewer => source.cprCameraActorUuid
+      ? viewer.actor?.uuid === source.cprCameraActorUuid : viewer.id === source.object?.id)) continue;
     if (!source.active || source.isBlinded || rect.contains(source.x, source.y) !== inScene) continue;
     const modes = source.object?.document?.detectionModes ?? [];
     for (const id of ["basicSight", "lightPerception"]) {

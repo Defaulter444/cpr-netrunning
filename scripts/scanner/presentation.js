@@ -3,6 +3,7 @@ import { apData, canSeeAP, canSeePulse, isAP, pulseProgress, tokenCenter } from 
 import { colorFor, serverNow } from "./actions.js";
 import { setting } from "./settings.js";
 import { canReadAPName } from "./name-visibility.js";
+import { cameraConfig } from "./camera-rules.js";
 
 /** Client-only presentation. No shared lights, player-owned APs, or global fog changes. */
 export class APPresentation {
@@ -140,6 +141,8 @@ export class APPresentation {
         const radius = radiusUnits * canvas.grid.size / canvas.scene.grid.distance;
         for (const token of canvas.tokens.placeables) {
           const doc = token.document;
+          // A configured surveillance camera reveals its view only to its controller.
+          if (cameraConfig(doc).enabled) continue;
           if (!canvas.scene.tokens.has(doc.id) || !apData(doc).discovery?.revealed || !canSeeAP(doc, game.user)) continue;
           const id = `${MODULE_ID}.${doc.id}`;
           wanted.add(id);

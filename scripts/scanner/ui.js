@@ -8,6 +8,7 @@ import { visibleControls, controlState, bulkControls, controlChange } from "./co
 
 import { isNetrunner, isPlayerOwned } from "./runners.js";
 import { openArchitecture } from "./architectures.js";
+import { cameraConfig, controlFloors } from "./camera-rules.js";
 
 const panels = new Map();
 const rootElement = (html) => html[0] ?? html;
@@ -29,11 +30,15 @@ export class APEditor extends FormApplication {
 
   getData() {
     const data = apData(this.object);
+    const camera = cameraConfig(this.object);
     const items = architectures();
     const nets = items.map((item) => ({ uuid: item.uuid, label: item.parent ? `${item.name} (${item.parent.name})` : item.name, selected: item.uuid === data.netarch }));
     if (data.netarch && !nets.some((entry) => entry.uuid === data.netarch)) nets.unshift({ uuid: data.netarch, label: "Архитектура удалена — выберите другую", selected: true });
     return {
       appId: this.appId,
+      isCamera: data.type === "camera", camera, cameraRotation: this.object.rotation ?? 0,
+      cameraNodes: controlFloors(game.settings.get(MODULE_ID, "netArchs")?.[camera.archId])
+        .map((floor, index) => ({ id: floor.id, label: floor.label || `Узел ${index + 1}`, selected: floor.id === camera.floorId })),
       name: this.object.name,
       types: [...accessPointTypes(), ...(!accessPointTypes().some(entry => entry.id === data.type) ? [{ ...(typeInfo(data.type) ?? { id: data.type, label: data.type }), label: (typeInfo(data.type)?.label ?? data.type) + " (отключён)" }] : [])].map(entry => ({ ...entry, selected: entry.id === data.type })),
       nets, noNet: !data.netarch, color: colorFor(data.netarch, this.object.parent), hasNet: Boolean(data.netarch),
@@ -43,10 +48,21 @@ export class APEditor extends FormApplication {
   activateListeners(html) {
     super.activateListeners(html);
     const root = rootElement(html);
+    const cameraFields = root.querySelector(".ap-camera-settings");
+    root.querySelector('[name="type"]').addEventListener("change", event => {
+      cameraFields.hidden = event.target.value !== "camera";
+    });
     root.querySelector('[name="netarch"]').addEventListener("change", (event) => {
       root.querySelector('[name="color"]').value = colorFor(event.target.value, this.object.parent);
       root.querySelector('[name="color"]').disabled = !event.target.value;
       root.querySelector('[data-action="open-netarch"]').disabled = !event.target.value;
+      const select = root.querySelector('[name="cameraFloor"]');
+      const previous = select.value;
+      select.replaceChildren(new Option("Выберите управляющий узел", ""));
+      const archId = event.target.value.startsWith("CRNS.NetArch.") ? event.target.value.slice(13) : "";
+      controlFloors(game.settings.get(MODULE_ID, "netArchs")?.[archId]).forEach((floor, index) => {
+        select.add(new Option(floor.label || `Узел ${index + 1}`, floor.id, false, floor.id === previous));
+      });
     });
     root.querySelector('[data-action="open-netarch"]').addEventListener("click", async () => {
       const uuid = root.querySelector('[name="netarch"]').value;

@@ -4,6 +4,7 @@ import { MODULE_ID, TYPES, iconPath } from "./constants.js";
 import { apData, architectureColor, blankDiscovery, isAP, mergeDiscovery, pulseProgress } from "./model.js";
 import { setting, pulseCount } from "./settings.js";
 import { suiteArchitectures, resolveArchitecture } from "./architectures.js";
+import { validateCameraInput } from "./camera-rules.js";
 
 export function requireGM() {
   if (!game.user?.isGM) throw new Error("Управлять точками доступа может только мастер.");
@@ -101,7 +102,8 @@ export async function stopPulses(documents) {
   return docs.length;
 }
 
-export async function saveAP(doc, { name, type, netarch, color }) {
+export async function saveAP(doc, data) {
+  let { name, type, netarch, color } = data;
   requireGM();
   if (!isAP(doc)) throw new Error("Выберите токен точки доступа.");
   name = String(name ?? "").trim();
@@ -113,6 +115,11 @@ export async function saveAP(doc, { name, type, netarch, color }) {
   }
   if (netarch && !/^#[\da-f]{6}$/i.test(color ?? "")) throw new Error("Выберите цвет архитектуры в палитре.");
   const updates = { name, [`flags.${MODULE_ID}.type`]: type, [`flags.${MODULE_ID}.netarch`]: netarch || "" };
+  if (type === "camera" && Object.hasOwn(data, "cameraEnabled")) {
+    const { config, rotation } = validateCameraInput(data, game.settings.get(MODULE_ID, "netArchs"));
+    updates[`flags.${MODULE_ID}.camera`] = config;
+    updates.rotation = rotation;
+  }
   if (type !== apData(doc).type && (accessPointTypes({ includeDisabled: true }).some(entry => entry.img === doc.texture.src) || TYPES.some(entry => iconPath(entry.id) === doc.texture.src))) updates["texture.src"] = typeImage(type);
   await doc.update(updates);
   if (netarch) {

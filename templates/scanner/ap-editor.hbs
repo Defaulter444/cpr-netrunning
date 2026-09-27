@@ -22,5 +22,18 @@
     <input type="color" name="color" value="{{color}}" {{#unless hasNet}}disabled{{/unless}}>
     <p class="notes">Один цвет для всех точек этой архитектуры.</p>
   </div>
+  <fieldset class="ap-camera-settings" {{#unless isCamera}}hidden{{/unless}}>
+    <legend><i class="fas fa-video"></i> Обзор камеры</legend>
+    <label class="ap-camera-check" data-tooltip="После захвата выбранного узла его владелец получает изображение камеры. Контроль: корбук, с. 200."><input type="checkbox" name="cameraEnabled" {{#if camera.enabled}}checked{{/if}}> Открывать обзор владельцу узла</label>
+    <div class="form-group"><label>Управляющий узел</label><select name="cameraFloor" data-tooltip="Выберите конкретный узел в архитектуре нашего модуля. Обнаружение сканером не даёт контроля. Корбук, с. 200."><option value="">Выберите управляющий узел</option>{{#each cameraNodes}}<option value="{{id}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}</select></div>
+    <div class="ap-camera-optics">
+      <label>Дальность<input type="number" name="cameraRange" value="{{camera.range}}" min="0.1" max="10000" step="0.1" data-tooltip="В единицах сцены. Параметр установленной камеры задаёт мастер, это не универсальная дальность по правилам."></label>
+      <label>Угол обзора, °<input type="number" name="cameraAngle" value="{{camera.angle}}" min="1" max="360" step="1" data-tooltip="Ширина сектора от 1 до 360 градусов. Стены и закрытые двери ограничивают обзор."></label>
+      <label>Направление, °<input type="number" name="cameraRotation" value="{{cameraRotation}}" min="0" max="359" step="1" data-tooltip="Направление Foundry: 0 — вниз, 90 — влево, 180 — вверх, 270 — вправо."></label>
+    </div>
+    <label class="ap-camera-check"><input type="checkbox" name="cameraOnline" {{#if camera.online}}checked{{/if}} data-tooltip="Выключенная или неисправная камера не передаёт изображение."> Камера работает</label>
+    <label class="ap-camera-check"><input type="checkbox" name="cameraNightVision" {{#if camera.nightVision}}checked{{/if}} data-tooltip="Включайте, если у этой камеры есть ночное видение. Иначе ей требуется освещение сцены."> У камеры есть ночное видение</label>
+    <p class="notes">Просмотр на текущей сцене автоматически прекращается при потере контроля. Изображение камеры не сохраняется в исследованный туман.</p>
+  </fieldset>
   <footer class="sheet-footer flexrow"><button type="submit"><i class="fas fa-check"></i> Сохранить точку</button></footer>
 </form>

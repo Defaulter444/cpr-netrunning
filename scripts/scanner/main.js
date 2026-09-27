@@ -8,7 +8,9 @@ import { hideAPs, pulseAPs, requireGM, revealAPs, stopPulses } from './actions.j
 import { installScannerIntegration, registerScannerHooks } from './scanner.js';
 import { APTypeManager } from './type-manager.js';
 import { scannerAvailability } from './availability.js';
+import { CameraVision } from './camera-vision.js';
 let presentation;
+let cameras;
 let active = false;
 Hooks.once('init', () => {
   game.settings.register(MODULE_ID, 'scannerEnabled', {
@@ -24,6 +26,7 @@ Hooks.once('init', () => {
     get enabled() { return active; },
     open: (...args) => { if (!active) return ui.notifications.info('Включите «Сканер: точки доступа на карте» в настройках нетраннинга и перезагрузите мир.'); return openScanner(...args); },
     ...(active ? { reveal: revealAPs, hide: hideAPs, pulse: pulseAPs, stopPulses, ensureTemplates,
+      cameras: () => cameras?.openPanel(),
       edit: doc => { requireGM(); return new APEditor(doc).render(true); } } : {}),
   });
   if (!active) return;
@@ -33,6 +36,8 @@ Hooks.once('init', () => {
     icon: 'fas fa-list', type: APTypeManager, restricted: true,
   });
   presentation = new APPresentation();
+  cameras = new CameraVision();
+  cameras.registerHooks();
   registerTokenGuards();
   registerUI();
   presentation.registerHooks();
@@ -57,5 +62,5 @@ Hooks.once('ready', async () => {
   }
   try { await ensureTemplates(); }
   catch (error) { console.error(`${MODULE_ID} | Шаблоны точек`, error); if (game.user.isGM) ui.notifications.error('Не удалось создать шаблоны точек доступа. Проверьте журнал ошибок.'); }
-  if (canvas.ready) presentation.queueRefresh();
+  if (canvas.ready) { presentation.queueRefresh(); cameras.queueRefresh(); }
 });

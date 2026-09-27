@@ -295,6 +295,13 @@ html[data-cpr-theme="darkmode"] .crns-ap-scanner-panel {
 .chat-message button.crns-ap-open-scanner:active { transform: translateY(1px); box-shadow: none; }
 
 .crns-ap-scanner-panel .ap-controls-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.crns-ap-scanner .ap-camera-settings[hidden] { display: none !important; }
+.crns-ap-scanner .ap-camera-settings { border: 1px solid #597567; border-radius: 4px; padding: 10px; margin: 10px 0; }
+.crns-ap-scanner .ap-camera-check { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
+.crns-ap-scanner .ap-camera-optics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.crns-ap-scanner .ap-camera-optics input { width: 100%; margin-top: 4px; }
+.crns-ap-scanner .ap-camera-locate { width: 100%; text-align: left; padding: 8px; height: auto; }
+.crns-ap-scanner .ap-camera-locate span { float: right; margin-left: 8px; }
 .crns-ap-scanner-panel .ap-controls-heading .ap-section-title { margin: 0; }
 .crns-ap-scanner-panel button.ap-hide-all { width: auto; padding: 3px 10px; background: #9b2335; color: #fff; border: 1px solid #741a28; border-radius: 4px; font-weight: 700; white-space: nowrap; }
 .crns-ap-scanner-panel button.ap-hide-all:hover { background: #b62a40; }

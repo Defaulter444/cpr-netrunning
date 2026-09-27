@@ -306,3 +306,85 @@ html[data-cpr-theme="darkmode"] .crns-ap-scanner-panel {
 .crns-ap-scanner-panel button.ap-hide-all { width: auto; padding: 3px 10px; background: #9b2335; color: #fff; border: 1px solid #741a28; border-radius: 4px; font-weight: 700; white-space: nowrap; }
 .crns-ap-scanner-panel button.ap-hide-all:hover { background: #b62a40; }
 .crns-ap-scanner-panel button.ap-hide-all:focus-visible { outline: 2px solid #9b2335; outline-offset: 2px; }
+
+/* Camera setup is a GM-only workspace; colours never replace state labels. */
+.crns-camera-manager .window-content { padding: 0; background: #0b1118; color: #e9f1f7; max-height: calc(100vh - 80px); }
+.crns-camera-manager .cam-workspace { padding: 16px; font-family: "Signika", sans-serif; }
+.crns-camera-manager .cam-heading { display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #ef394d; padding-bottom: 10px; }
+.crns-camera-manager .cam-heading h2 { border: 0; margin: 3px 0; color: #fff; font-size: 25px; }
+.crns-camera-manager .cam-heading p { margin: 0; color: #b9c9d5; font-size: 13px; }
+.crns-camera-manager .cam-heading > i { color: #f24b5e; font-size: 32px; }
+.crns-camera-manager .cam-eyebrow { color: #ff8390; font-size: 10px; letter-spacing: 2px; }
+.crns-camera-manager .cam-steps { display: flex; flex-wrap: wrap; gap: 18px; padding: 12px 0; font-size: 12px; color: #c8d5df; }
+.crns-camera-manager .cam-steps b { display: inline-grid; place-items: center; width: 22px; height: 22px; background: #2c3544; color: #fff; border-radius: 50%; margin-right: 5px; }
+.crns-camera-manager .cam-layout { display: grid; grid-template-columns: 190px minmax(0, 1fr); gap: 16px; }
+.crns-camera-manager .cam-sidebar { border-right: 1px solid #344454; padding-right: 12px; }
+.crns-camera-manager .cam-main { min-width: 0; }
+.crns-camera-manager button { width: auto; min-height: 34px; height: auto; padding: 6px 10px; border: 1px solid #506574; background: #16222d; color: #edf5fa; border-radius: 4px; line-height: 1.25; font-family: inherit; text-shadow: none; }
+.crns-camera-manager button:hover { background: #23384a; border-color: #6ed5d7; box-shadow: none; }
+.crns-camera-manager button:focus-visible { outline: 2px solid #ff8a98; outline-offset: 2px; box-shadow: none; }
+.crns-camera-manager button:disabled { opacity: .45; cursor: not-allowed; }
+.crns-camera-manager button.cam-primary { background: #b9233d; border-color: #ed5470; color: #fff; font-weight: bold; }
+.crns-camera-manager button.cam-primary:hover { background: #d4324e; }
+.crns-camera-manager .cam-sidebar > button { width: 100%; margin-bottom: 8px; }
+.crns-camera-manager .cam-device-list { max-height: 460px; overflow-y: auto; padding-top: 6px; }
+.crns-camera-manager .cam-device, .crns-camera-manager .cam-node { width: 100%; display: flex; gap: 9px; align-items: center; text-align: left; margin: 0 0 7px; padding: 10px; }
+.crns-camera-manager .cam-device > i, .crns-camera-manager .cam-node > i { flex: 0 0 18px; }
+.crns-camera-manager .cam-device span, .crns-camera-manager .cam-node span { min-width: 0; }
+.crns-camera-manager .cam-device strong, .crns-camera-manager .cam-node strong { display: block; overflow-wrap: anywhere; font-size: 13px; }
+.crns-camera-manager .cam-device small, .crns-camera-manager .cam-node small { display: block; color: #bfced8; font-size: 11px; padding-top: 5px; }
+.crns-camera-manager button.is-selected { background: #13343e; border-color: #51ddd5; box-shadow: inset 3px 0 #51ddd5; }
+.crns-camera-manager .cam-connection { display: grid; grid-template-columns: minmax(0, 1fr) 64px minmax(0, 1fr); align-items: center; border: 1px solid #506574; background: #121d28; border-radius: 5px; padding: 12px; margin-bottom: 14px; }
+.crns-camera-manager .cam-connection > div { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 4px; align-items: center; }
+.crns-camera-manager .cam-connection strong { color: #edf5fa; font-size: 14px; overflow-wrap: anywhere; }
+.crns-camera-manager .cam-connection small { grid-column: 2; font-size: 11px; color: #c2d0d9; }
+.crns-camera-manager .cam-connection > div > i { color: #72ddd7; }
+.crns-camera-manager .cam-link-wire { width: 100%; height: 32px; padding: 0 8px; overflow: hidden; }
+.crns-camera-manager .cam-link-wire path { fill: none; stroke: #758595; stroke-width: 2; stroke-dasharray: 5 5; }
+.crns-camera-manager .cam-link-wire circle { fill: #56e0d4; opacity: 0; }
+.crns-camera-manager .is-linked .cam-link-wire path { stroke: #56e0d4; }
+.crns-camera-manager .is-linked .cam-link-wire circle { opacity: 1; animation: crns-camera-signal 2.2s linear 3; transform: translateX(116px); }
+@keyframes crns-camera-signal { from { transform: translateX(0); } to { transform: translateX(116px); } }
+.crns-camera-manager .cam-editor-grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 16px; }
+.crns-camera-manager h3 { font-size: 15px; color: #edf5fa; margin: 0 0 8px; border: 0; }
+.crns-camera-manager .cam-preview-wrap { position: relative; border: 1px solid #3c626d; border-radius: 5px; overflow: hidden; }
+.crns-camera-manager .cam-preview { width: 100%; height: 205px; display: block; cursor: crosshair; }
+.crns-camera-manager .cam-preview-tag { position: absolute; top: 8px; left: 8px; color: #b8e1e3; background: #07131bcf; font-size: 9px; padding: 4px 6px; letter-spacing: 1px; pointer-events: none; }
+.crns-camera-manager .cam-note { font-size: 11px; line-height: 1.4; color: #bacbd6; margin: 7px 0; }
+.crns-camera-manager .cam-optics > button { width: 100%; }
+.crns-camera-manager label { display: block; color: #dce7ef; font-size: 12px; margin: 8px 0; }
+.crns-camera-manager input:not([type="checkbox"]):not([type="range"]), .crns-camera-manager select { width: 100%; height: 32px; color: #fff; background: #101a24; border: 1px solid #506574; padding: 4px 7px; margin-top: 4px; font-family: inherit; }
+.crns-camera-manager select option { color: #fff; background: #101a24; }
+.crns-camera-manager input:focus, .crns-camera-manager select:focus { outline: 1px solid #55dace; box-shadow: none; }
+.crns-camera-manager input[type="checkbox"] { flex: 0 0 16px; width: 16px; height: 16px; margin: 0; accent-color: #36c5c6; }
+.crns-camera-manager .cam-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.crns-camera-manager .cam-check { display: flex; align-items: center; gap: 8px; margin: 12px 0; }
+.crns-camera-manager .cam-direction output { float: right; font-variant-numeric: tabular-nums; color: #66e5dc; }
+.crns-camera-manager input[type="range"] { width: 100%; height: 22px; margin-top: 4px; accent-color: #46c9c7; }
+.crns-camera-manager .cam-field-title { display: block; font-size: 12px; margin: 12px 0 7px; color: #dce7ef; }
+.crns-camera-manager .cam-node-list { max-height: 195px; overflow-y: auto; padding: 2px; }
+.crns-camera-manager .cam-rule { border-left: 2px solid #39c4c5; padding: 7px 10px; color: #c3d4df; background: #10222c; font-size: 11px; line-height: 1.4; }
+.crns-camera-manager .cam-footer { display: flex; justify-content: space-between; gap: 8px; margin-top: 12px; border-top: 1px solid #344454; padding-top: 12px; flex-wrap: wrap; }
+.crns-camera-manager .cam-footer-tools { display: flex; gap: 5px; flex-wrap: wrap; }
+.crns-camera-manager .cam-footer-tools button { font-size: 11px; }
+.crns-camera-manager .cam-status { font-size: 12px; min-height: 18px; color: #9de3e0; margin: 8px 0 0; }
+.crns-camera-manager .cam-empty { color: #bdcdd8; font-size: 12px; line-height: 1.5; margin: 10px 0; }
+.crns-camera-manager .cam-welcome { padding: 45px 20px; text-align: center; color: #cad9e3; }
+.crns-camera-manager .cam-welcome > i { font-size: 40px; color: #59ded7; margin-bottom: 18px; }
+.crns-camera-map-prompt { position: fixed; top: 65px; left: 50%; transform: translateX(-50%); z-index: 10001; background: #102331f5; border: 1px solid #62e1d8; border-radius: 5px; box-shadow: 0 6px 20px #0008; color: #fff; padding: 12px 16px; display: flex; gap: 16px; align-items: center; font-family: "Signika", sans-serif; }
+.crns-camera-map-prompt button { width: auto; min-width: 110px; color: #fff; background: #283f50; border: 1px solid #668999; font-family: inherit; }
+@media (max-width: 760px) {
+  .crns-camera-manager .cam-layout { grid-template-columns: 140px minmax(0, 1fr); gap: 10px; }
+  .crns-camera-manager .cam-editor-grid { grid-template-columns: 1fr; }
+  .crns-camera-manager .cam-sidebar { padding-right: 8px; }
+  .crns-camera-manager .cam-connection { grid-template-columns: 1fr; gap: 8px; }
+  .crns-camera-manager .cam-link-wire { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { .crns-camera-manager .is-linked .cam-link-wire circle { animation: none; } }
+/* CPR's global form/button skin uses !important; keep this workspace readable. */
+.crns-camera-manager button { color: #edf5fa !important; background: #16222d !important; }
+.crns-camera-manager button:hover { background: #23384a !important; }
+.crns-camera-manager button.cam-primary { background: #b9233d !important; color: #fff !important; }
+.crns-camera-manager button.cam-primary:hover { background: #d4324e !important; }
+.crns-camera-manager button.is-selected { background: #13343e !important; color: #edf5fa !important; }
+.crns-camera-manager input:not([type="checkbox"]):not([type="range"]), .crns-camera-manager select, .crns-camera-manager select option { background: #101a24 !important; color: #fff !important; }

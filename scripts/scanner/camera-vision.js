@@ -81,6 +81,9 @@ export class CameraVision {
   }
 
   openPanel() {
+    if (game.user.isGM) return import("./camera-manager.js")
+      .then(({ openCameraManager }) => openCameraManager())
+      .catch(error => ui.notifications.warn(error.message));
     const cameras = this.available();
     const content = `<div class="ap-camera-list"><p>Обзор подключённых камер добавлен к вашему обзору на карте. Персонаж остаётся на месте.</p>${cameras.length
       ? cameras.map(({token, config}) => `<button type="button" class="ap-camera-locate" data-camera-id="${escapeHTML(token.id)}" data-tooltip="Перейти к камере на карте. Управление устройствами: корбук, с. 200."><i class="fas fa-video"></i> ${escapeHTML(token.name)} <span>${config.angle}° · ${config.range} ${escapeHTML(canvas.scene.grid.units)}</span></button>`).join("")

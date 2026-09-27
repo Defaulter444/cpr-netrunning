@@ -13,6 +13,10 @@ import { cameraConfig, controlFloors } from "./camera-rules.js";
 const panels = new Map();
 const rootElement = (html) => html[0] ?? html;
 const report = (error) => { console.error(`${MODULE_ID} |`, error); ui.notifications.error(error.message); };
+export function editAccessPoint(doc) {
+  if (apData(doc).type === "camera") return import("./camera-manager.js").then(({ openCameraManager }) => openCameraManager(doc));
+  return new APEditor(doc).render(true);
+}
 
 export function refreshPanels() {
   for (const panel of panels.values()) if (panel.rendered && !panel.busy) panel.render(false);
@@ -284,7 +288,7 @@ export class ScannerPanel extends Application {
       if (!this.documents.length) return;
       return this.applyControls(this.documents, { reveal: "hidden", pulse: "off", showName: false });
     }
-    if (action === "edit" && doc) return new APEditor(doc).render(true);
+    if (action === "edit" && doc) return editAccessPoint(doc);
     if (action === "locate" && doc) {
       if (canvas.scene?.id !== this.scene.id) throw new Error("Откройте эту сцену, чтобы перейти к её точке доступа.");
       const token = canvas.tokens.get(doc.id);
@@ -343,7 +347,7 @@ export function installAPDoubleClick(tokenClass = CONFIG.Token.objectClass) {
   if (typeof globalThis.libWrapper?.register !== "function") throw new Error("Включите libWrapper и перезагрузите мир, чтобы использовать сканер.");
   if (typeof tokenClass.prototype._onClickLeft2 !== "function") throw new Error("Недоступен обработчик двойного щелчка токена. Проверьте версию Foundry.");
   libWrapper.register(MODULE_ID, "CONFIG.Token.objectClass.prototype._onClickLeft2", function(wrapped, ...args) {
-    if (game.user.isGM && isAP(this.document)) return new APEditor(this.document).render(true);
+    if (game.user.isGM && isAP(this.document)) return editAccessPoint(this.document);
     return wrapped(...args);
   }, "MIXED");
   wrappedTokenClasses.add(tokenClass);
@@ -360,7 +364,7 @@ export function registerUI() {
     for (const element of rootElement(html).querySelectorAll("button, input, select")) {
       const label = element.getAttribute("title") || element.getAttribute("aria-label")
         || element.closest("label")?.textContent?.trim() || element.textContent?.trim();
-      if (label) element.dataset.tooltip = label;
+      if (label && !element.dataset.tooltip) element.dataset.tooltip = label;
     }
   });
   // Token interaction callbacks bind before ready on an initial scene load.
@@ -385,7 +389,7 @@ export function registerUI() {
       });
       column.append(button);
     };
-    add("Изменить точку доступа", "fa-pen-to-square", () => new APEditor(doc).render(true));
+    add(apData(doc).type === "camera" ? "Настроить связь и обзор камеры" : "Изменить точку доступа", "fa-pen-to-square", () => editAccessPoint(doc));
     add("Показать точку доступа…", "fa-eye", () => openScanner({ scene: doc.parent, selected: [doc.id] }));
     if (apData(doc).discovery?.revealed) {
       add("Скрыть точку от всех игроков", "fa-eye-slash", () => hideAPs([doc]));

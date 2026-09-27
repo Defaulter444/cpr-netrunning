@@ -1,0 +1,47 @@
+<section class="cam-workspace">
+  <header class="cam-heading"><div><span class="cam-eyebrow">ВИДЕОНАБЛЮДЕНИЕ</span><h2>Камеры сцены</h2><p>{{sceneName}} · настройка видна только мастеру</p></div><i class="fas fa-video" aria-hidden="true"></i></header>
+  <nav class="cam-steps" aria-label="Порядок настройки"><span><b>1</b> Выберите камеру</span><span><b>2</b> Укажите узел</span><span><b>3</b> Настройте обзор</span></nav>
+  <div class="cam-layout">
+    <aside class="cam-sidebar">
+      <button type="button" class="cam-primary" data-cam-action="place" data-tooltip="Щёлкните на сцене, чтобы поставить новую камеру. Игроки не увидят её до открытия мастером."><i class="fas fa-plus"></i> Поставить камеру</button>
+      <button type="button" data-cam-action="pick" data-tooltip="Выбрать существующий значок камеры щелчком на сцене."><i class="fas fa-crosshairs"></i> Выбрать на карте</button>
+      <div class="cam-device-list" aria-label="Камеры текущей сцены">
+      {{#each cameras}}<button type="button" class="cam-device {{#if selected}}is-selected{{/if}}" data-cam-action="select" data-id="{{id}}" aria-pressed="{{selected}}" data-tooltip="Настроить связь и обзор этой камеры."><i class="fas fa-video"></i><span><strong>{{name}}</strong><small>{{#if bound}}<i class="fas fa-link"></i>{{else}}<i class="fas fa-unlink"></i>{{/if}} {{state}}</small></span></button>{{else}}<p class="cam-empty">Камер пока нет. Нажмите «Поставить камеру» и укажите место на сцене.</p>{{/each}}
+      </div>
+    </aside>
+    <main class="cam-main">
+    {{#if hasCamera}}
+      <div class="cam-connection {{#if linked}}is-linked{{/if}}">
+        <div><i class="fas fa-video"></i><strong>{{draft.name}}</strong><small>Камера на сцене</small></div>
+        <svg class="cam-link-wire" viewBox="0 0 120 32" aria-hidden="true"><path d="M0 16H120"/><circle r="4" cx="0" cy="16"/></svg>
+        <div><i class="fas fa-network-wired"></i><strong>{{nodeName}}</strong><small>{{linkState}}</small></div>
+      </div>
+      <div class="cam-editor-grid">
+        <section class="cam-optics">
+          <h3><i class="fas fa-eye"></i> Сектор камеры</h3>
+          <div class="cam-preview-wrap"><svg class="cam-preview" role="img" aria-label="Предпросмотр сектора камеры с учётом стен. Щёлкните, чтобы направить камеру." data-tooltip="Щёлкните по мини-карте, чтобы направить камеру. Красные линии — стены, бирюзовая область — сектор."></svg><span class="cam-preview-tag">ПРЕДПРОСМОТР</span></div>
+          <p class="cam-note">Щёлкните по мини-карте, чтобы направить камеру. Сектор учитывает стены; освещение проверяется при просмотре игроком.</p>
+          <button type="button" data-cam-action="aim" data-tooltip="Наведите курсор на сцену: сектор будет следовать за ним. Щелчок выбирает направление, Esc отменяет."><i class="fas fa-location-arrow"></i> Направить по курсору на сцене</button>
+          <div class="cam-fields"><label>Дальность, {{units}}<input name="range" type="number" min="0.1" max="10000" step="0.1" value="{{draft.range}}" data-tooltip="Дальность конкретной камеры в единицах сцены. Её задаёт мастер." /></label><label>Угол обзора, °<input name="angle" type="number" min="1" max="360" step="1" value="{{draft.angle}}" data-tooltip="Ширина сектора от 1 до 360 градусов." /></label></div>
+          <label class="cam-direction">Повернуть <output data-cam-output="rotation">{{draft.rotation}}°</output><input name="rotation" type="range" min="0" max="359" step="1" value="{{draft.rotation}}" data-tooltip="Направление: 0° — вниз, 90° — влево, 180° — вверх, 270° — вправо." /></label>
+          <label class="cam-check"><input name="overlay" type="checkbox" {{#if showOverlay}}checked{{/if}} data-tooltip="Показать сектор на основной сцене только мастеру. Это не раскрывает туман игрокам." /> Показать сектор на сцене</label>
+        </section>
+        <section class="cam-binding">
+          <h3><i class="fas fa-link"></i> Подключение</h3>
+          <label>Название камеры<input name="name" value="{{draft.name}}" maxlength="120" data-tooltip="Название для списка камер мастера и управляющего игрока." /></label>
+          <label>СЕТевая архитектура<select name="archId" data-tooltip="Выберите архитектуру, в которой расположен управляющий узел камеры."><option value="">Выберите архитектуру</option>{{#each architectures}}<option value="{{id}}" {{#if selected}}selected{{/if}}>{{name}}</option>{{/each}}</select></label>
+          <span class="cam-field-title">Нажмите управляющий узел</span>
+          <div class="cam-node-list">
+          {{#each nodes}}<button type="button" class="cam-node {{#if selected}}is-selected{{/if}}" data-cam-action="node" data-id="{{id}}" aria-pressed="{{selected}}" data-tooltip="Подключить камеру к этому узлу. После захвата игрок получает её обзор; корбук, с. 200."><i class="fas {{#if selected}}fa-check-circle{{else}}fa-network-wired{{/if}}"></i><span><strong>{{label}}</strong><small>Привязано камер: {{count}}</small></span></button>{{else}}<p class="cam-empty">{{#if draft.archId}}В архитектуре нет управляющих узлов. Добавьте «Узел управления» в редакторе нетраннинга.{{else}}Сначала выберите архитектуру. Здесь появятся её управляющие узлы.{{/if}}</p>{{/each}}
+          </div>
+          <label class="cam-check"><input name="online" type="checkbox" {{#if draft.online}}checked{{/if}} data-tooltip="Выключенная камера не передаёт изображение." /> Камера работает</label>
+          <label class="cam-check"><input name="nightVision" type="checkbox" {{#if draft.nightVision}}checked{{/if}} data-tooltip="Включайте при наличии ночного видения у этой камеры. Иначе ей нужно освещение." /> Есть ночное видение</label>
+          <p class="cam-rule"><i class="fas fa-lock"></i> Игрок получит обзор только после захвата узла. Потерял контроль — изображение исчезло. Корбук, с. 200.</p>
+        </section>
+      </div>
+      <footer class="cam-footer"><div class="cam-footer-tools"><button type="button" data-cam-action="locate" data-tooltip="Перевести вид карты к выбранной камере без перемещения токенов."><i class="fas fa-map-marker-alt"></i> Найти</button><button type="button" data-cam-action="reset" data-tooltip="Отменить несохранённые изменения выбранной камеры.">Сбросить правки</button><button type="button" data-cam-action="unlink" data-tooltip="Снять привязку камеры и отключить её обзор игроку. Камера останется на сцене.">Отвязать</button></div><button type="button" class="cam-primary" data-cam-action="save" {{#unless canSave}}disabled{{/unless}} data-tooltip="Сохранить выбранный управляющий узел и сектор камеры. Обнаружение сканером само по себе не даёт обзора."><i class="fas fa-link"></i> {{saveLabel}}</button></footer>
+    {{else}}<div class="cam-welcome"><i class="fas fa-video"></i><h3>Камера → управляющий узел → обзор игрока</h3><p>Поставьте камеру на сцене или выберите уже существующую. Затем нажмите узел, который ей управляет.</p></div>{{/if}}
+    <p class="cam-status" role="status" aria-live="polite">{{status}}</p>
+    </main>
+  </div>
+</section>

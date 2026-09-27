@@ -58,6 +58,7 @@ Hooks.once("ready", async () => {
 
   await loadTemplates([
     "shell", "tree", "tabs", "arch-canvas", "editor", "runners", "actions", "actions-damagebox", "actions-target", "entity-card",
+    "scanner/scanner", "scanner/ap-editor", "scanner/type-manager",
   ].map(TPL));
 
   patchSortCombatants();

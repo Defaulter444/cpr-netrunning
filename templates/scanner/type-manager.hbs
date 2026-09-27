@@ -1,0 +1,11 @@
+<form class="ap-types-form">
+  <p class="notes">Добавьте тип, измените название или изображение. Отключённые типы скрываются из новых списков; существующие точки и шаблоны сохраняются.</p>
+  <div class="ap-types-list">
+    {{#each types}}<div class="ap-type-row" data-type-row="{{id}}">
+      <label class="ap-type-enabled"><input type="checkbox" data-field="enabled" aria-label="Включить {{label}}" {{#if enabled}}checked{{/if}}> Включён</label>
+      <label>Название<input type="text" data-field="label" value="{{label}}" maxlength="80" required></label>
+      <label>Изображение<div class="ap-type-image"><input type="text" data-field="img" value="{{img}}" required><button type="button" data-action="browse-type" title="Выбрать изображение" aria-label="Выбрать изображение"><i class="fas fa-file-import"></i></button></div></label>
+    </div>{{/each}}
+  </div>
+  <footer class="ap-type-footer"><button type="button" data-action="add-type"><i class="fas fa-plus"></i> Добавить тип</button><button type="submit"><i class="fas fa-save"></i> Сохранить типы</button></footer>
+</form>

@@ -63,6 +63,11 @@ const boundText = walk(path.join(ROOT, "scripts"), ".js")
   .map((f) => fs.readFileSync(f, "utf-8"))
   .join("\n");
 const bound = new Set([...boundText.matchAll(/data-action=\\?"([^"\\]+)\\?"/g)].map((m) => m[1]));
+// The optional scanner routes button.dataset.action through handleAction.
+const scannerSource = fs.readFileSync(path.join(ROOT, "scripts/scanner/ui.js"), "utf8");
+if (scannerSource.includes("this.handleAction(button.dataset.action,")) {
+  for (const match of scannerSource.matchAll(/if \(action === "([^"]+)"/g)) bound.add(match[1]);
+}
 
 for (const [name, where] of emitted) {
   expect(bound.has(name), `${where}: "${name}" is rendered but nothing binds it — the control is dead`);

@@ -1,0 +1,26 @@
+<form class="ap-editor-form" autocomplete="off">
+  <div class="form-group">
+    <label for="{{appId}}-ap-name">Название</label>
+    <input id="{{appId}}-ap-name" type="text" name="name" value="{{name}}" maxlength="120" required autofocus>
+  </div>
+  <div class="form-group">
+    <label>Тип</label>
+    <select name="type">{{#each types}}<option value="{{id}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}</select>
+  </div>
+  <div class="form-group">
+    <label>СЕТевая архитектура</label>
+    <div class="form-fields">
+      <select name="netarch">
+        <option value="" {{#if noNet}}selected{{/if}}>Без привязки к архитектуре</option>
+        {{#each nets}}<option value="{{uuid}}" {{#if selected}}selected{{/if}}>{{label}}</option>{{/each}}
+      </select>
+      <button type="button" class="ap-icon-button" data-action="open-netarch" title="Открыть архитектуру" {{#unless hasNet}}disabled{{/unless}}><i class="fas fa-up-right-from-square"></i></button>
+    </div>
+  </div>
+  <div class="form-group">
+    <label>Цвет архитектуры</label>
+    <input type="color" name="color" value="{{color}}" {{#unless hasNet}}disabled{{/unless}}>
+    <p class="notes">Один цвет для всех точек этой архитектуры.</p>
+  </div>
+  <footer class="sheet-footer flexrow"><button type="submit"><i class="fas fa-check"></i> Сохранить точку</button></footer>
+</form>

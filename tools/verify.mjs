@@ -172,7 +172,7 @@ if (!/##\s*13\.\s*Deviations/i.test(spec)) fail("[7] SPEC.md missing Deviations 
 try {
   const mainSrc = read(join(ROOT, "scripts", "main.js"));
   const ltMatch = mainSrc.match(/loadTemplates\(\[([\s\S]*?)\]/);
-  const loaded = new Set([...(ltMatch?.[1] || "").matchAll(/"([\w-]+)"/g)].map((m) => m[1]));
+  const loaded = new Set([...(ltMatch?.[1] || "").matchAll(/"([\w/-]+)"/g)].map((m) => m[1]));
   for (const f of walk(join(ROOT, "templates"), (p) => p.endsWith(".hbs"))) {
     const base = rel(f).replace(/^templates\//, "").replace(/\.hbs$/, "");
     if (!loaded.has(base)) fail(`[8] templates/${base}.hbs is not preloaded in main.js loadTemplates`);

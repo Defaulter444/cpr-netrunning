@@ -13,6 +13,9 @@ import * as CPRRolls from "/systems/cyberpunk-red-core/modules/rolls/cpr-rolls.j
 import CPRChat from "/systems/cyberpunk-red-core/modules/chat/cpr-chat.js";
 import CPRCONFIG from "/systems/cyberpunk-red-core/modules/system/config.js";
 
+// Optional scanner decorates native cards without replacing the roll pipeline.
+export { CPRChat as scannerChatClass };
+
 function sysError(e) {
   console.error("cpr-netrunning | bridge", e);
   try { ui.notifications.error(loc("CRNS.Errors.SystemApi")); } catch (_e) { /* noop */ }

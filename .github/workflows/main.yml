@@ -119,14 +119,33 @@ jobs:
             module.json                          \
             README.md                            \
             LICENSE                              \
+            CHANGELOG.md                         \
+            NOTICE-SCANNER.md                    \
+            assets/                              \
+            docs/                                \
             templates                            \
             scripts/                             \
             styles/                              \
-            packs/                               \
-            language/                            \
             lang/
           # Don't forget to add a backslash at the end of the line for any
           # additional files or directories!
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          from zipfile import ZipFile
+          with ZipFile('module.zip') as archive:
+              assert archive.testzip() is None
+              names = set(archive.namelist())
+              manifest = json.loads(archive.read('module.json'))
+              required = manifest['esmodules'] + manifest['styles']
+              required += [language['path'] for language in manifest['languages']]
+              required += ['README.md', 'LICENSE', 'CHANGELOG.md', 'NOTICE-SCANNER.md']
+              for directory in ('scripts', 'styles', 'templates', 'lang', 'assets', 'docs'):
+                  required += [path.as_posix() for path in Path(directory).rglob('*') if path.is_file()]
+              missing = set(required) - names
+              assert not missing, f'Missing release files: {sorted(missing)}'
+          PY
+          sha256sum module.json module.zip > SHA256SUMS.txt
 
 
       # Update the GitHub release with the manifest and module archive files.
@@ -139,6 +158,6 @@ jobs:
           draft: ${{ github.event.release.unpublished }}
           prerelease: ${{ github.event.release.prerelease }}
           token: ${{ secrets.GITHUB_TOKEN }}
-          artifacts: './module.json, ./module.zip'
+          artifacts: './module.json, ./module.zip, ./SHA256SUMS.txt'
           tag: ${{ github.event.release.tag_name }}
           body: ${{ github.event.release.body }}

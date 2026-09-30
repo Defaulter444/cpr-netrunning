@@ -312,6 +312,13 @@ Hooks.on("renderChatMessage",(message,html)=>{if(message.getFlag?.(MODULE_ID,"ic
 Hooks.on("createChatMessage",message=>{const cue=message.getFlag?.(MODULE_ID,"iceCue");if(cue&&message.author?.isGM&&message.visible&&message.isContentVisible)globalThis.CRNS?.ui?.playIceEffect?.(cue);});
 for(const event of ["createJournalEntry","updateJournalEntry","createJournalEntryPage","updateJournalEntryPage","deleteJournalEntryPage"])Hooks.on(event,rerenderNow);
 
+// Camera power, optics and links can change without a session mutation.
+for(const event of ['createToken','updateToken','deleteToken'])Hooks.on(event,doc=>{
+  if(doc.parent?.id===canvas.scene?.id&&doc.flags?.[MODULE_ID]?.accessPoint&&doc.flags[MODULE_ID].type==='camera')rerenderNow();
+});
+Hooks.on('canvasReady',rerenderNow);
+Hooks.on('updateScene',(scene,change)=>{if(scene.id===canvas.scene?.id&&Object.hasOwn(change,'tokenVision'))rerenderNow();});
+
 const _itemHook = (item) => {
   const app = globalThis.CRNS?.ui;
   if (!app?.rendered) return;

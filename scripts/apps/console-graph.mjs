@@ -1,4 +1,5 @@
 /** Read-only layout of the permission-filtered VM. Never infer undiscovered nodes. */
+import {tokenHealth} from './console-devices.mjs';
 export const CONSOLE_GRAPH_WIDTH = 860;
 const point = (x, y) => `${Math.round(x * 10) / 10},${Math.round(y * 10) / 10}`;
 const polygon = ps => ps.map(([x, y]) => point(x, y)).join(' ');
@@ -167,12 +168,12 @@ export function consoleGraph(canvas,selected=-1){
     }:null);
     const card=!!preview||isFile,perRow=4,tokenColumns=Math.min(perRow,tokens.length);
     const tokenWidth=tokenColumns?tokenColumns*108:0,cardWidth=card?200:0,gap=card&&tokens.length?20:0;
-    const width=Math.max(320,tokenWidth+cardWidth+gap+120),height=Math.max(116,Math.ceil(tokens.length/perRow)*108+72,card?216:0);
+    const width=Math.max(320,tokenWidth+cardWidth+gap+120),height=Math.max(116,Math.ceil(tokens.length/perRow)*124+72,card?216:0);
     rowHeights[p.row]=Math.max(rowHeights[p.row]??0,height+42);
     const label=encrypted?'Неизвестный этаж':String(f.label??'Этаж');
     return {index:f.index,number:encrypted?'?':f.number??f.index+1,label,shortLabel:label.length>29?label.slice(0,28)+'…':label,
       ...p,width,height,encrypted,isEntry:!!f.isEntry,selected:f.index===index,current:occupants.some(t=>t.selected||t.isMine),glyph:glyph(f),
-      tokens,preview,isFile,card,tokenWidth,cardWidth,gap,people:[],icons:[],
+      tokens,preview,isFile,card,tokenWidth,cardWidth,gap,people:[],icons:[],hasNote:!encrypted&&!!f.hasNote,
       objectLabel:encrypted?'Неизвестный этаж':card?'Открыть файл: '+label:'Открыть объект: '+label};
   });
   compactPositions(nodes,links);
@@ -193,19 +194,21 @@ export function consoleGraph(canvas,selected=-1){
     n.grid=grid.join('');n.labelX=n.x;n.labelY=t+h+29;n.subtitleY=n.labelY+21;n.routeBottom=n.subtitleY+10;
     n.captionX=n.x-Math.max(90,n.shortLabel.length*5+10);n.captionY=n.labelY-23;
     n.captionWidth=(n.x-n.captionX)*2;n.captionHeight=n.routeBottom-n.captionY;
+    n.noteX=n.x+98;n.noteY=n.labelY-21;
     n.objectX=l+w/2-30;n.objectY=t+h/2-30;
     n.previewX=l+60;n.previewY=t+36;
     const start=l+(w-(n.tokenWidth+n.cardWidth+n.gap))/2+n.cardWidth+n.gap;
-    n.tokens=n.tokens.map((p,k)=>({...p,floorIndex:n.index,
+    n.tokens=n.tokens.map((p,k)=>({...p,...tokenHealth(p),floorIndex:n.index,
       img:(p.tokenImg&&!p.tokenImg.endsWith('mystery-man.svg')?p.tokenImg:p.img)||'icons/svg/mystery-man.svg',
       kindLabel:p.kind==='runner'?'НЕТРАННЕР':p.kind==='demon'?'ДЕМОН':p.kind==='program'?'ПРОГРАММА':'ЛЁД',
       shortName:String(p.name??'').length>12?String(p.name).slice(0,11)+'…':p.name,
-      x:start+(k%4)*108,y:t+36+Math.floor(k/4)*108}));
+      x:start+(k%4)*108,y:t+36+Math.floor(k/4)*124}));
     // The object badge stays on its slab even when tokens occupy its centre.
     if(n.tokens.length&&!n.card){n.objectX=l+24;n.objectY=t+64;n.smallObject=true;}
-    const boxes=n.tokens.map(t=>[t.x-6,t.y-6,120,116]);
+    const boxes=n.tokens.map(t=>[t.x-6,t.y-6,120,132]);
     boxes.push(n.card?[n.previewX-6,n.previewY-6,212,156]:[n.objectX-6,n.objectY-6,n.smallObject?44:76,n.smallObject?44:76]);
     boxes.push([n.captionX,n.captionY,n.captionWidth,n.captionHeight]);
+    if(n.hasNote)boxes.push([n.noteX,n.noteY,28,28]);
     n.wireMasks=boxes.map(([x,y,width,height])=>({x,y,width,height}));
   }
   const byIndex=new Map(nodes.map(n=>[n.index,n]));
@@ -243,7 +246,7 @@ export function consoleGraph(canvas,selected=-1){
     const samples=Array.from({length:81},(_,k)=>sampleCurve(points,k/80));
     // Continue onto the receiving slab and stop the visible arrow just before
     // its content. The actual path still ends at the geometric centre.
-    const boxes=b.tokens.map(t=>[t.x-6,t.y-6,t.x+114,t.y+110]);
+    const boxes=b.tokens.map(t=>[t.x-6,t.y-6,t.x+114,t.y+126]);
     if(b.card)boxes.push([b.previewX-6,b.previewY-6,b.previewX+206,b.previewY+150]);
     else boxes.push([b.objectX-6,b.objectY-6,b.objectX+(b.smallObject?38:70),b.objectY+(b.smallObject?38:70)]);
     const inContent=q=>boxes.some(([l,t,r,bottom])=>q[0]>=l&&q[0]<=r&&q[1]>=t&&q[1]<=bottom);

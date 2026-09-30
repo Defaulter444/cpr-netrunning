@@ -6,6 +6,8 @@ import {activateDisplay} from './console-display.js';
 import {MODULE_ID,loc,esc} from '../constants.js';
 import {connectionData,activateConnection} from './console-connect.js';
 import {activateOverview} from './console-overview.js';
+import {controlDeviceData} from './console-devices.mjs';
+import {activateDevices} from './console-devices.js';
 import {getDeck, installedPrograms} from '../cpr-bridge.js';
 import {consoleGraph, consoleGraphScale, clampMapZoom, mapZoomAnchor} from './console-graph.mjs';
 import {consoleSnapshot,consoleChanges,appendConsoleEvents,consoleFloorSummary} from './console-state.mjs';
@@ -25,7 +27,8 @@ export function consoleData(app,data){
   app._consoleGraph=graph;
   const ice=iceSnapshot(data.canvas,action.pid);
   app._iceFeedback=queueIceChanges(app._iceFeedback,iceChanges(app._iceSnapshot,ice),app._iceSnapshot?.scope===ice.scope);app._iceSnapshot=ice;
-  const snapshot=consoleSnapshot(data);
+  const devices=controlDeviceData(data,game.modules.get(MODULE_ID)?.api?.scanner?.cameraDevices?.(action.pid)??[]);
+  const snapshot=consoleSnapshot({...data,actions:{...action,controlNodes:devices.nodes}});
   app._consoleVisualPid=action.pid??null;
   app._consoleForceMotion=game.settings.get(MODULE_ID,'consoleForceMotion')===true;
   if(app._consoleSnapshot?.scope!==snapshot.scope)app._consoleEvents=[];
@@ -35,8 +38,8 @@ export function consoleData(app,data){
   app._consoleFeedback=changes;
   app.state.consoleFloor=graph.selectedIndex;app.state.consoleFloorArch=archId;
   return {consoleUI:!app.state.consoleClassic,console:{
-    section:app.state.consoleSection??'overview', graph, connection:connectionData(app,data),
-    archName:data.tabsGM?.tabs?.find(t=>t.active)?.name??'СЕТевая архитектура',
+    section:app.state.consoleSection??'overview', graph, connection:connectionData(app,data),devices,
+    archName:data.canvas?.archName||data.tabsGM?.tabs?.find(t=>t.active)?.name||'СЕТевая архитектура',
     selectedLabel:graph.selectedLabel||'Обзор доступных этажей',
     deckName:deck?.name??'Кибердека не выбрана',deckId:deck?.id??'',actorId:actor?.id??'',actorUuid:actor?.uuid??'',
     programCount:programs.length,activeCount:programs.filter(p=>p.system.isRezzed).length,
@@ -57,6 +60,7 @@ export function activateConsole(app,html){
   if(game.settings.get(MODULE_ID,'iceSound'))root.addEventListener('pointerdown',()=>unlockIceAudio(),{once:true});
   activateConnection(app,root);
   activateOverview(app,root);
+  activateDevices(app,root);
   root.querySelector('[data-console-findings]')?.addEventListener('click',openFindingsCollection);
   app._stopConsoleEffects=()=>{stopConsoleEffects(app);stopIceEffects(app);};
   app.playIceEffect=cue=>playIceEffect(app,cue);
@@ -84,6 +88,11 @@ export function activateConsole(app,html){
   const setSection=(section)=>{app.state.consoleSection=section;app.state.editorArchId='';if(section==='detail')app.state.consoleDetailFocus=app.state.consoleFloor;if(section==='manage'){app.state.collapsedLeft=false;app.state.collapsedRight=false;}app.render(false);};
   root.querySelector('[data-console-clear-log]')?.addEventListener('click',()=>{app._consoleEvents=[];app.render(false);});
   const feedback=app._consoleFeedback??[];app._consoleFeedback=[];
+  if(feedback.some(event=>event.key==='ControlTaken')){
+    app._consoleLayout.right=true;
+    app._consoleRevealPanel='right';
+    ui.notifications.info('Узел под вашим контролем. Камеры и действия доступны в блоке «Устройства узла».');
+  }
   const effect=effectForChanges(feedback);
   if(root.classList.contains('has-motion')&&(app._consoleForceMotion||!matchMedia('(prefers-reduced-motion: reduce)').matches)){
     for(const e of feedback){

@@ -11,7 +11,7 @@
   <div class="nc-viewbar" role="toolbar" aria-label="Панели обзора">
     <span class="nc-view-label"><i class="fas fa-layer-group"></i> ОБЗОР</span>
     <button type="button" data-console-panel-toggle="left" aria-controls="nc-panel-left"><i class="fas fa-user"></i> Нетраннер</button>
-    <button type="button" data-console-panel-toggle="right" aria-controls="nc-panel-right"><i class="fas fa-microchip"></i> Оснащение</button>
+    <button type="button" data-console-panel-toggle="right" aria-controls="nc-panel-right"><i class="fas fa-microchip"></i> Устройства</button>
     <button type="button" data-console-panel-toggle="controls" aria-controls="nc-panel-controls"><i class="fas fa-sliders"></i> Управление</button>
     <button type="button" data-console-panel-toggle="log" aria-controls="nc-panel-log"><i class="fas fa-list"></i> Журнал</button>
     <button type="button" data-console-focus>Только схема</button>
@@ -53,6 +53,7 @@
                 <g data-floor-surface="{{index}}"><polygon class="nc-slab-face" points="{{face}}"/><polygon class="nc-slab-top" points="{{points}}"/><path class="nc-slab-grid" d="{{grid}}"/></g>
                 <g data-floor-caption="{{index}}"><text class="nc-floor-number" x="{{labelX}}" y="{{labelY}}">ЭТАЖ {{number}}</text><text class="nc-floor-title" x="{{labelX}}" y="{{subtitleY}}">{{shortLabel}}</text></g>
               </g>
+              {{#if hasNote}}<foreignObject x="{{noteX}}" y="{{noteY}}" width="28" height="28"><button xmlns="http://www.w3.org/1999/xhtml" type="button" class="nc-note-marker" data-console-note="{{index}}" aria-label="Заметка Мастера, этаж {{number}}"><i class="fas fa-note-sticky"></i></button></foreignObject>{{/if}}
               {{#if card}}
               <foreignObject x="{{previewX}}" y="{{previewY}}" width="200" height="144" data-floor-object="{{index}}">
                 <button xmlns="http://www.w3.org/1999/xhtml" type="button" class="nc-file-thumb{{#unless preview}} locked{{/unless}}" data-console-object="{{index}}" aria-label="{{objectLabel}}, этаж {{number}}">
@@ -62,10 +63,10 @@
               </foreignObject>
               {{else}}<foreignObject x="{{objectX}}" y="{{objectY}}" width="64" height="64" data-floor-object="{{index}}"><button xmlns="http://www.w3.org/1999/xhtml" type="button" class="nc-object{{#if smallObject}} small{{/if}}{{#if encrypted}} encrypted{{/if}}" data-console-object="{{index}}" aria-label="{{objectLabel}}, этаж {{number}}" data-tooltip="{{objectLabel}}"><i class="fas {{glyph}}" aria-hidden="true"></i></button></foreignObject>{{/if}}
               {{#each tokens}}
-              <foreignObject x="{{x}}" y="{{y}}" width="108" height="104" class="nc-token-slot" data-token-slot="{{ref}}">
+              <foreignObject x="{{x}}" y="{{y}}" width="108" height="120" class="nc-token-slot" data-token-slot="{{ref}}">
                 <div xmlns="http://www.w3.org/1999/xhtml" class="nc-map-token {{kind}}{{#if selected}} selected{{/if}}{{#if targeted}} targeted{{/if}}{{#if derezzed}} derezzed{{/if}}" data-console-token="{{ref}}" {{#if iceType}}data-ice-type="{{iceType}}"{{/if}} data-floor-index="{{floorIndex}}">
                   <button type="button" class="nc-token-main" data-can-move="{{#if canMove}}true{{else}}false{{/if}}" data-entity-ref="{{ref}}" aria-label="{{kindLabel}}: {{name}}, этаж {{../number}}" aria-pressed="{{#if (crnsEq kind 'runner')}}{{#if selected}}true{{else}}false{{/if}}{{else}}{{#if targeted}}true{{else}}false{{/if}}{{/if}}" data-tooltip="{{name}} · {{kindLabel}}{{#if canMove}} · перетащите на этаж{{/if}}">
-                    <img class="nc-token-portrait" src="{{img}}" alt="" draggable="false"/><span class="nc-token-name">{{shortName}}</span><small>{{#if targeted}}ЦЕЛЬ · {{/if}}{{kindLabel}}</small>
+                    <img class="nc-token-portrait" src="{{img}}" alt="" draggable="false"/><span class="nc-token-name">{{shortName}}</span><small>{{#if targeted}}ЦЕЛЬ · {{/if}}{{kindLabel}}</small>{{#if hasHealth}}<span class="nc-token-health" aria-label="{{healthLabel}}: {{health}} из {{healthMax}}"><span style="width:{{healthPct}}%"></span><b>{{health}} / {{healthMax}}</b></span>{{/if}}
                   </button>
                   <button type="button" class="nc-token-target" data-console-target-token="{{ref}}" aria-label="Цель: {{name}}" aria-pressed="{{#if targeted}}true{{else}}false{{/if}}" data-tooltip="Выбрать целью: {{name}}"><i class="fas fa-crosshairs" aria-hidden="true"></i></button>
                 </div>
@@ -98,11 +99,23 @@
       </section>{{/if}}
     </main>
     <aside class="nc-right" id="nc-panel-right" data-console-panel="right"><div class="nc-sidebar-inner">
+      {{#if console.devices.hasNodes}}<section class="nc-panel nc-devices"><h2><i class="fas fa-tower-broadcast"></i> УСТРОЙСТВА УЗЛА</h2><div class="nc-pad">
+        {{#each console.devices.nodes}}<article class="nc-controlled-node"><strong>{{label}}</strong><small>Контроль получен</small>
+          {{#each cameras}}<div class="nc-device"><span><i class="fas fa-video"></i> <strong>{{name}}</strong><small>{{#if online}}{{#if viewing}}Обзор включён{{else}}Обзор скрыт{{/if}}{{else}}Выключена Мастером{{/if}} · {{angle}}° · {{range}} {{units}}</small></span><div>
+            <button type="button" data-console-camera="view" data-camera-id="{{id}}" data-pid="{{../pid}}" {{#unless online}}disabled{{/unless}}>Смотреть</button>
+            {{#if viewing}}<button type="button" data-console-camera="hide" data-camera-id="{{id}}" data-pid="{{../pid}}">Скрыть обзор</button>{{/if}}
+          </div>{{#unless nightVision}}<small>Без ночного зрения: видны освещённые участки.</small>{{/unless}}{{#unless visionEnabled}}<small>Зрение токенов на сцене отключено.</small>{{/unless}}</div>{{else}}<p>На этой сцене нет камер, подключённых к узлу.</p>{{/each}}
+          <div class="nc-node-actions"><button type="button" data-console-node="activate" data-pid="{{pid}}" data-arch-id="{{archId}}" data-floor-id="{{floorId}}" {{#unless canAct}}disabled{{/unless}}>Активировать · 1 NET</button><button type="button" data-console-node="release" data-arch-id="{{archId}}" data-floor-id="{{floorId}}">Отпустить</button></div>
+        </article>{{/each}}
+        {{#if isGM}}<button type="button" data-console-camera-setup><i class="fas fa-link"></i> Настроить камеры</button><button type="button" data-console-camera-stop><i class="fas fa-eye"></i> Обычное зрение Мастера</button>{{/if}}
+      </div></section>{{/if}}
       {{#if console.floor}}<section class="nc-panel nc-floor-inspector"><h2>{{localize 'CRNS.Console.SelectedFloor'}}</h2><div class="nc-pad">
         {{#if console.floor.encrypted}}<div class="nc-floor-readout"><i class="fas fa-lock" aria-hidden="true"></i><strong>{{localize 'CRNS.Console.UnknownFloor'}}</strong></div><p>{{localize 'CRNS.Console.EncryptedHint'}}</p>
         {{else}}<div class="nc-floor-readout"><span class="nc-floor-badge">{{console.floor.number}}</span><strong>{{console.floor.label}}</strong></div>
         <div class="nc-floor-tags">{{#if console.floor.breached}}<span class="success"><i class="fas fa-lock-open" aria-hidden="true"></i> {{localize 'CRNS.Console.Breached'}}</span>{{/if}}{{#if console.floor.controlled}}<span class="success"><i class="fas fa-toggle-on" aria-hidden="true"></i> {{localize 'CRNS.Console.Controlled'}}</span>{{/if}}{{#if console.floor.checkLabel}}<span>{{console.floor.checkLabel}}</span>{{/if}}{{#if console.floor.showDv}}<span>{{localize 'CRNS.Console.DV'}} {{console.floor.dv}}</span>{{/if}}</div>
-        {{#each console.floor.entities}}<div class="nc-floor-occupant"><img src="{{img}}" alt=""><span>{{name}}</span></div>{{/each}}
+        {{#if console.floor.controlName}}<p class="nc-control-owner">Контролирует: <strong>{{console.floor.controlName}}</strong></p>{{/if}}
+        {{#if console.floor.hasNote}}<details class="nc-overview-note" open><summary><i class="fas fa-note-sticky"></i> Заметка Мастера</summary><p>{{console.floor.note}}</p></details>{{/if}}
+        {{#each console.floor.entities}}<div class="nc-floor-occupant"><img src="{{img}}" alt=""><span>{{name}} <small>{{#if rezMax}}ХП {{rez}} / {{rezMax}}{{/if}}{{#if derezzed}} · Отключён{{/if}}</small></span></div>{{/each}}
         {{/if}}<button type="button" data-console-move-here><i class="fas fa-person-walking" aria-hidden="true"></i> Переместить выбранный токен сюда</button><button type="button" data-console-open-floor><i class="fas fa-arrow-up-right-from-square" aria-hidden="true"></i> {{localize 'CRNS.Console.InspectFloor'}}</button>
       </div></section>{{/if}}
       <section class="nc-panel nc-deck"><h2>КИБЕРДЕКА <small>// ОСНАЩЕНИЕ</small></h2><img src="modules/cpr-netrunning/assets/console/cyberdeck.png" alt="Кибердека в красной подсветке"><div class="nc-pad"><strong>{{console.deckName}}</strong><p>Установлено программ <b>{{console.programCount}}</b></p><p>Активно <b>{{console.activeCount}}</b></p>{{#if console.actorId}}<button type="button" data-console-sheet data-actor-uuid="{{console.actorUuid}}"><i class="fas fa-arrow-up-right-from-square"></i> Открыть оснащение</button>{{/if}}</div></section>

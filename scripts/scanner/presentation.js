@@ -12,6 +12,7 @@ export class APPresentation {
     this.entries = new Map();
     this.lights = new Map();
     this.pending = false;
+    this.runnerHighlight=null;this.highlightedRunner=null;
     this.tick = this.tick.bind(this);
   }
 
@@ -34,6 +35,7 @@ export class APPresentation {
       this.container.eventMode = "none";
       this.container.interactiveChildren = false;
       this.container.zIndex = 1000;
+      this.runnerHighlight=this.container.addChild(new PIXI.Graphics());
       canvas.app.ticker.add(this.tick);
     }
     const wanted = new Set();
@@ -118,6 +120,14 @@ export class APPresentation {
   }
 
   tick() {
+    if(this.runnerHighlight){
+      this.runnerHighlight.clear();
+      const token=this.highlightedRunner?.sceneId===canvas.scene?.id?canvas.tokens.get(this.highlightedRunner.tokenId):null;
+      if(token&&!isAP(token.document)){
+        this.runnerHighlight.lineStyle(3,0x62f4d0,.95).drawCircle(token.center.x,token.center.y,Math.max(token.w,token.h)/2+12);
+        this.runnerHighlight.lineStyle(1,0xffffff,.8).drawCircle(token.center.x,token.center.y,Math.max(token.w,token.h)/2+17);
+      }
+    }
     const now = serverNow();
     for (const entry of this.entries.values()) {
       const doc = entry.token.document;
@@ -175,9 +185,11 @@ export class APPresentation {
     this.entries.clear();
     if (this.container && !this.container.destroyed) this.container.destroy({ children: true });
     this.container = null;
+    this.runnerHighlight=null;this.highlightedRunner=null;
   }
 
   registerHooks() {
+    Hooks.on('cprNetrunningScannerRunner',selection=>{this.highlightedRunner=selection.tokenId?selection:null;this.queueRefresh();});
     Hooks.on("canvasReady", () => this.queueRefresh());
     Hooks.on("canvasTearDown", () => this.destroy());
     Hooks.on("initializeLightSources", () => this.initializeLights());

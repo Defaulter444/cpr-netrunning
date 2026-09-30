@@ -13,6 +13,16 @@ globalThis.Application = class {
 globalThis.FormApplication = class extends Application { constructor(object, options) { super(options); this.object = object; } };
 const { openScanner, ScannerPanel, APEditor, installAPDoubleClick, registerUI } = await import("../../scripts/scanner/ui.js");
 
+test('scanner rerenders keep GM selection; changing perspective or locating explicitly selects the runner',async()=>{
+  environment();const scene=makeScene('highlight');const a=makeToken(scene,'a',{ap:false}),b=makeToken(scene,'b',{ap:false});
+  const selected=[];for(const token of canvas.tokens.placeables)token.control=opts=>{assert.equal(opts.releaseOthers,true);selected.push(token.id);};
+  const panel=new ScannerPanel({scene,runnerId:a.id});
+  panel.highlightRunner();panel.highlightRunner();assert.deepEqual(selected,['a']);
+  panel.runnerId=b.id;panel.highlightRunner();assert.deepEqual(selected,['a','b']);
+  const pans=[];canvas.animatePan=async point=>pans.push(point);
+  await panel.handleAction('locate-runner');assert.deepEqual(selected,['a','b','b']);assert.equal(pans.length,1);
+});
+
 test("right-click selection replaces stale selections from an earlier Scanner window", async () => {
   environment(); const scene = makeScene("manual"); const a = makeToken(scene, "a"), b = makeToken(scene, "b");
   const panel = openScanner({ scene, selected: [a.id] }); panel.radius = 4;

@@ -20,13 +20,24 @@ Hooks.once('init', () => {
   });
   registerSettings(() => { if (active) { presentation.queueRefresh(); refreshPanels(); } });
   active = scannerAvailability(game).active;
+  // Cameras belong to controlled nodes; they do not require scanner roll wrappers.
+  if (game.system.id === 'cyberpunk-red-core' && Number(game.release.generation) === 12) {
+    cameras = new CameraVision();
+    cameras.registerHooks();
+  }
   const host = game.modules.get(MODULE_ID);
   host.api ??= {};
   host.api.scanner = Object.freeze({
     get enabled() { return active; },
     open: (...args) => { if (!active) return ui.notifications.info('Включите «Сканер: точки доступа на карте» в настройках нетраннинга и перезагрузите мир.'); return openScanner(...args); },
-    ...(active ? { reveal: revealAPs, hide: hideAPs, pulse: pulseAPs, stopPulses, ensureTemplates,
+    ...(cameras ? {
       cameras: () => cameras?.openPanel(),
+      cameraDevices: pid => cameras?.devices(pid)??[],
+      cameraView: (...args) => cameras?.view(...args),
+      cameraLocate: (...args) => cameras?.locate(...args),
+      cameraStopPreview: () => cameras?.stopPreview(),
+    } : {}),
+    ...(active ? { reveal: revealAPs, hide: hideAPs, pulse: pulseAPs, stopPulses, ensureTemplates,
       edit: doc => { requireGM(); return editAccessPoint(doc); } } : {}),
   });
   if (!active) return;
@@ -36,8 +47,6 @@ Hooks.once('init', () => {
     icon: 'fas fa-list', type: APTypeManager, restricted: true,
   });
   presentation = new APPresentation();
-  cameras = new CameraVision();
-  cameras.registerHooks();
   registerTokenGuards();
   registerUI();
   presentation.registerHooks();
@@ -46,6 +55,7 @@ Hooks.once('init', () => {
 });
 Hooks.once('ready', async () => {
   const status = scannerAvailability(game);
+  if (canvas.ready && canvas.scene) cameras?.queueRefresh();
   if (!active) {
     if (status.reason && game.user.isGM) ui.notifications.warn(status.reason);
     return;
@@ -57,5 +67,5 @@ Hooks.once('ready', async () => {
   }
   try { await ensureTemplates(); }
   catch (error) { console.error(`${MODULE_ID} | Шаблоны точек`, error); if (game.user.isGM) ui.notifications.error('Не удалось создать шаблоны точек доступа. Проверьте журнал ошибок.'); }
-  if (canvas.ready) { presentation.queueRefresh(); cameras.queueRefresh(); }
+  if (canvas.ready) presentation.queueRefresh();
 });

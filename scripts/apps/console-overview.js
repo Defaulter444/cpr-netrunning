@@ -1,12 +1,18 @@
 import {openFloorFindings} from './findings.js';
 import {mutate} from '../data.js';
-import {loc} from '../constants.js';
+import {loc,dialogClasses} from '../constants.js';
 import {overviewTokens,overviewMove,escapeOverview as esc} from './console-overview.mjs';
 
 export function activateOverview(app,root) {
   app._consoleDragCleanup?.();
   const canvas=app._consoleCanvas, archId=canvas?.archId;
   const tokens=overviewTokens(canvas), tokenFor=ref=>tokens.find(t=>t.ref===ref);
+  root.querySelectorAll('[data-console-note]').forEach(button=>button.addEventListener('click',event=>{
+    event.stopPropagation();
+    const floor=canvas?.floors?.find(f=>f.index===Number(button.dataset.consoleNote));
+    if(!game.user.isGM||floor?.encrypted||!floor?.hasNote)return;
+    new Dialog({title:`Заметка Мастера · ${floor.label}`,content:`<div class="nc-overview-note-dialog">${esc(floor.description)}</div>`,buttons:{close:{label:'Закрыть'}},default:'close'},{classes:dialogClasses()}).render(true);
+  }));
   const current=()=>app._consoleCanvas?.archId===archId&&root.isConnected;
   const warn=result=>{if(result!==true&&result?.ok!==true)ui.notifications.warn((result?.error?loc(result.error):'')||'Действие не выполнено. Проверьте подключение и права участника.');};
   const target=async ref=>{

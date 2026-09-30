@@ -603,6 +603,7 @@ export function getData(app) {
     canvas: {
       empty: false,
       archId,
+      archName: arch.name || '',
       floors: visibleFloors,
       // Overview must not inherit spacing from undiscovered branches.
       layoutVisibleOnly: fogActive,

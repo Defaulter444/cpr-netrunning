@@ -5,10 +5,11 @@ import {MODULE_ID,loc} from '../constants.js';
 import {layoutPreferences,PANEL_KEYS,motionAllowed} from './console-layout.mjs';
 import {playConsoleEffect,stopConsoleEffects,EFFECT_KINDS} from './console-effects.mjs';
 
-const LABELS={left:'Нетраннер',right:'Оснащение',controls:'Управление',log:'Журнал'};
+const LABELS={left:'Нетраннер',right:'Устройства и оснащение',controls:'Управление',log:'Журнал'};
 export function activateDisplay(app,root){
   app._consoleDisplayCleanup?.();
-  let timer=0,frame=0,disposed=false,narrow=root.clientWidth<680,narrowOpen='';
+  let timer=0,frame=0,disposed=false,narrow=root.clientWidth<680,narrowOpen=app._consoleRevealPanel||'';
+  delete app._consoleRevealPanel;
   const prefs=app._consoleLayout;
   const motion=matchMedia('(prefers-reduced-motion: reduce)');
   const complete=()=>{clearTimeout(timer);delete root.dataset.panelAnimating;app._consoleRelayout?.();};

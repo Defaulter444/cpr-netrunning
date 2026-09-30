@@ -5,7 +5,7 @@
     <div class="ap-top-controls">
       <div class="ap-controls-heading"><h3 class="ap-section-title"><i class="fas fa-tower-broadcast" aria-hidden="true"></i> Управление обнаружением</h3></div>
       <div class="ap-runner-row"><label class="ap-runner-field">Токен нетраннера<select name="runner"><option value="">Выберите нетраннера…</option>{{#each runners}}<option value="{{id}}" {{#if selected}}selected{{/if}}>{{name}}</option>{{/each}}</select></label>
-      <label class="ap-player-owned"><input type="checkbox" name="playerOwnedOnly" {{#if playerOwnedOnly}}checked{{/if}}> только персонажи игроков</label></div>
+      <button type="button" data-action="locate-runner" {{#if runnerMissing}}disabled{{/if}}><i class="fas fa-crosshairs"></i> Найти нетраннера</button><label class="ap-player-owned"><input type="checkbox" name="playerOwnedOnly" {{#if playerOwnedOnly}}checked{{/if}}> только персонажи игроков</label></div>
       <label class="ap-radius-field"><span>Расстояние от нетраннера ({{units}}). <small>0 — показать все точки</small></span><input type="number" name="radius" value="{{radius}}" min="0" step="any"></label>
     </div>
     </div>

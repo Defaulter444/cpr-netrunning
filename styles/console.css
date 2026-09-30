@@ -462,3 +462,25 @@
 .nc-finding-tile>img,.nc-finding-tile>i {height:100px;}
 .nc-finding-tile>span {display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.5;max-height:54px;}
 .nc-findings-window .nc-finding-tile>span {display:-webkit-box!important;padding:0;margin:9px 13px 14px;max-height:3em;flex:0 0 auto;}
+
+.crns-console .nc-map-token,.crns-console.crns-root .nc-token-main {height:120px;}
+.crns-console .nc-token-health {position:relative;display:block;width:82px;min-height:15px;margin-top:3px;background:#150e18;border:1px solid #663147;color:#fff;overflow:hidden;font-size:10px;}
+.crns-console .nc-token-health>span {position:absolute;inset:0 auto 0 0;background:#ce2450;opacity:.7;}
+.crns-console .nc-token-health>b {position:relative;z-index:1;display:block;text-align:center;font-weight:600;line-height:14px;}
+.crns-console.crns-root .nc-note-marker {height:26px;width:26px;padding:2px!important;background:#2b1b18!important;border:1px solid #ffbf6c!important;color:#ffca7d!important;}
+.crns-console .nc-overview-note {margin:10px 0;padding:9px;border-left:2px solid #ffc174;background:#211a16;}
+.crns-console .nc-overview-note summary {cursor:pointer;color:#ffd79e;font-weight:600;}
+.crns-console .nc-overview-note p {white-space:pre-wrap;margin:8px 0 0;font-size:12px;overflow-wrap:anywhere;}
+.crns-console .nc-floor-occupant small {display:block;color:#f9a6b9;font-size:11px;}
+.crns-console .nc-control-owner {font-size:12px;color:#62f4d0;}
+.crns-console .nc-controlled-node {padding:8px 0;border-bottom:1px solid #572238;}
+.crns-console .nc-controlled-node>small,.crns-console .nc-device small {display:block;color:#a8bdc9;font-size:11px;line-height:1.5;}
+.crns-console .nc-device {margin:9px 0;padding:8px;background:#111b22;border:1px solid #315c64;}
+.crns-console .nc-device>div,.crns-console .nc-node-actions {display:flex;flex-wrap:wrap;gap:5px;margin-top:7px;}
+.crns-console .nc-devices button {font-size:11px;padding:5px 7px;width:auto;}
+.crns-console .nc-devices p {font-size:12px;color:#a8bdc9;}
+.crns-console.section-overview.nc-compact .nc-deck>img,.crns-console.section-overview.nc-compact .nc-short-help {display:none;}
+.crns-console.section-overview.nc-compact .nc-deck .nc-pad {min-height:0;padding:9px;font-size:11px;}
+.crns-console.section-overview.nc-compact .nc-deck strong {font-size:13px;}
+.crns-console.section-overview.nc-compact .nc-deck p {margin:4px 0;}
+.nc-overview-note-dialog{white-space:pre-wrap;line-height:1.5;padding:8px;overflow-wrap:anywhere;}

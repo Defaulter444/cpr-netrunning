@@ -1,5 +1,5 @@
 // Camera access is derived from the live control node, never from scanner discovery.
-const MODULE = "cpr-netrunning";
+import { MODULE_ID as MODULE } from './constants.js';
 const PREFIX = "CRNS.NetArch.";
 
 export function cameraConfig(doc) {
@@ -28,16 +28,16 @@ export function validOptics(camera) {
  * Core p. 200: control belongs to a runner until released, taken, or disconnected.
  * Merely discovering an access point does not control a device.
  */
-export function cameraController(doc, { archs, session, user, ownsActor = () => false, selectedActors = [] }) {
+export function cameraController(doc, { archs, session, user, ownsActor = () => false, selectedActors = [], assignedPlayer = () => true }, { includeOffline=false }={}) {
   const config = cameraConfig(doc);
-  if (!config.enabled || !config.online || !validOptics(config)) return null;
+  if (!config.enabled || (!includeOffline && !config.online) || !validOptics(config)) return null;
   if (!controlFloors(archs?.[config.archId]).some(floor => floor.id === config.floorId)) return null;
   const pid = session?.floorState?.[`${config.archId}:${config.floorId}`]?.control?.pid;
   const runner = session?.participants?.[pid];
-  if (!runner || runner.kind !== "runner" || !runner.jackedIn || runner.archId !== config.archId) return null;
+  if (!runner || !runner.actorUuid || runner.kind !== "runner" || !runner.jackedIn || runner.archId !== config.archId) return null;
   if (user?.isGM) return selectedActors.includes(runner.actorUuid) ? runner : null;
   if (!user?.id) return null;
-  return (runner.userId ? runner.userId === user.id : ownsActor(runner.actorUuid, user)) ? runner : null;
+  return (runner.userId && assignedPlayer(runner.userId) ? runner.userId === user.id : ownsActor(runner.actorUuid, user)) ? runner : null;
 }
 
 export function cameraSourceData(doc, config, { size, distance, maxR }) {

@@ -56,6 +56,10 @@ test("disabled bootstrap registers no gameplay wrappers or templates and preserv
   assert.equal(game.modules.get(MODULE_ID).api.existing,true);
   assert.equal(game.modules.get(MODULE_ID).api.scanner.enabled,false);
   assert.equal(game.modules.get(MODULE_ID).api.scanner.reveal,undefined);
+  // Control-node cameras remain usable without libWrapper or scanner wrappers.
+  assert.equal(typeof game.modules.get(MODULE_ID).api.scanner.cameraDevices,'function');
+  assert.equal(typeof game.modules.get(MODULE_ID).api.scanner.cameraView,'function');
+  assert.deepEqual(game.modules.get(MODULE_ID).api.scanner.cameraDevices(),[]);
   assert.equal(game.actors.size,0);
   assert.equal(libWrapper.registrations.length,0);
   const scene = makeScene();

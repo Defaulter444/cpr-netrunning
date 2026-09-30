@@ -61,6 +61,8 @@ export function consoleFloorSummary(canvas, index) {
     encrypted:false, label:floor.label, number:floor.number,
     breached:!!floor.markers?.breached, controlled:!!floor.markers?.control,
     checkLabel:floor.checkLabel || '', showDv:!!floor.showDv, dv:floor.showDv ? floor.dv : null,
-    entities:(floor.entities ?? []).map(e => ({name:e.name,img:e.img})),
+    note:floor.description||'',hasNote:!!floor.hasNote,
+    controlName:floor.markers?.control?.name||'',
+    entities:(floor.entities ?? []).map(e => ({name:e.name,img:e.img,rez:e.rez,rezMax:e.rezMax,rezPct:e.rezPct,derezzed:!!e.derezzed,ref:e.ref})),
   };
 }

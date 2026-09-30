@@ -190,6 +190,7 @@ export class ScannerPanel extends Application {
     syncHeader();
     this.renderRollCard(root);
     this.syncControls(root);
+    this.highlightRunner();
     root.querySelectorAll("button[data-action]").forEach((button) => button.addEventListener("click", (event) => {
       event.preventDefault();
       this.readRunnerSelection(root);
@@ -264,6 +265,17 @@ export class ScannerPanel extends Application {
     } finally { this.busy = false; this.render(false); }
   }
 
+  highlightRunner({control=false}={}) {
+    const doc=this.runner;
+    Hooks.callAll?.('cprNetrunningScannerRunner',{sceneId:this.scene.id,tokenId:doc?.id||''});
+    const key=doc?`${this.scene.id}:${doc.id}`:'';
+    const changed=this._highlightedRunnerKey!==key;this._highlightedRunnerKey=key;
+    if(doc&&canvas.scene?.id===this.scene.id&&(control||changed)){
+      const token=canvas.tokens.get(doc.id);
+      if(token&&!token.controlled&&typeof token.control==='function')token.control({releaseOthers:true});
+    }
+  }
+
   selectedDocuments() {
     this.pruneSelection();
     return this.documents.filter((doc) => this.selected.has(doc.id)
@@ -284,6 +296,11 @@ export class ScannerPanel extends Application {
     requireGM();
     if (this.busy) return;
     const doc = id ? this.scene.tokens.get(id) : null;
+    if (action === "locate-runner") {
+      if(!this.runner)throw Error('Выберите токен нетраннера.');
+      if(canvas.scene?.id!==this.scene.id)throw Error('Откройте сцену сканера.');
+      this.highlightRunner({control:true});const token=canvas.tokens.get(this.runner.id);if(token)await canvas.animatePan({...token.center});return;
+    }
     if (action === "hide-all") {
       if (!this.documents.length) return;
       return this.applyControls(this.documents, { reveal: "hidden", pulse: "off", showName: false });
@@ -312,6 +329,7 @@ export class ScannerPanel extends Application {
   async close(options) {
     clearTimeout(this.pulseTimer);
     panels.delete(this.scene.id);
+    Hooks.callAll?.('cprNetrunningScannerRunner',{sceneId:this.scene.id,tokenId:''});
     return super.close(options);
   }
 }
@@ -333,6 +351,7 @@ export function openScanner({ scene = canvas.scene, runnerId = "", result = null
     if (selected.length) panel.selected = new Set(selected);
   }
   if (selected.length) panel.radius = 0;
+  panel.highlightRunner();
   panel.bulkChanges = {};
   panel.render(true);
   // Initial rendering is asynchronous; Foundry raises the window when it is ready.

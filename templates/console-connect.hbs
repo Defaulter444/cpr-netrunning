@@ -1,0 +1,28 @@
+{{!-- Direct connection. Context is the VM from connectionData() in scripts/apps/console-connect.js.
+     Every value is double-stashed (escaped); never switch these to triple-stash. --}}
+<div class="nc-connect nc-pad" data-console-connect style="display:grid;gap:8px"{{#if busy}} aria-busy="true"{{/if}}>
+  {{#if gm}}
+  {{#if runners.length}}
+  <label class="nc-connect-field" style="display:grid;gap:3px"><small>Нетраннер</small>
+    <select data-connect-select="runner"{{#if busy}} disabled{{/if}}>
+      {{#each runners}}<option value="{{pid}}"{{#if selected}} selected{{/if}}>{{label}}</option>{{/each}}
+    </select>
+  </label>
+  <label class="nc-connect-field" style="display:grid;gap:3px"><small>Архитектура</small>
+    <select data-connect-select="arch"{{#if busy}} disabled{{/if}}{{#unless archs.length}} disabled{{/unless}}>
+      {{#each archs}}<option value="{{id}}"{{#if selected}} selected{{/if}}>{{name}}</option>{{else}}<option value="">Нет архитектур</option>{{/each}}
+    </select>
+  </label>
+  {{#if pick}}<p class="nc-connect-state{{#if pick.online}} online{{/if}}" style="margin:0"><i class="fas {{#if pick.online}}fa-link{{else}}fa-link-slash{{/if}}" aria-hidden="true"></i> <strong>{{pick.name}}</strong> — {{pick.status}}{{#if pick.acting}} · под управлением{{/if}}</p>{{/if}}
+  {{#if canConnect}}<button type="button" data-connect-action="connect"{{#if busy}} disabled{{/if}}><i class="fas fa-plug" aria-hidden="true"></i> Подключить к СЕТИ</button>{{/if}}
+  {{#if canSwitch}}<button type="button" data-connect-action="switch"{{#if busy}} disabled{{/if}}><i class="fas fa-user-check" aria-hidden="true"></i> Управлять этим нетраннером</button>{{/if}}
+  {{#if canReconnect}}<button type="button" data-connect-action="connect"{{#if busy}} disabled{{/if}}><i class="fas fa-right-left" aria-hidden="true"></i> Переподключить к СЕТИ</button>{{/if}}
+  {{/if}}
+  {{/if}}
+  {{#if player}}
+  {{#if me}}<p class="nc-connect-state{{#if me.online}} online{{/if}}" style="margin:0"><i class="fas {{#if me.online}}fa-link{{else}}fa-link-slash{{/if}}" aria-hidden="true"></i> <strong>{{me.name}}</strong> — {{me.status}}</p>{{/if}}
+  {{#if canAsk}}<button type="button" data-connect-action="ask"{{#if busy}} disabled{{/if}}><i class="fas fa-hand" aria-hidden="true"></i> Запросить подключение к СЕТИ</button>{{/if}}
+  {{#if canCancel}}<button type="button" data-connect-action="cancel"{{#if busy}} disabled{{/if}}><i class="fas fa-xmark" aria-hidden="true"></i> Отменить запрос</button>{{/if}}
+  {{/if}}
+  {{#if hint}}<p style="margin:0">{{hint}}</p>{{/if}}
+</div>

@@ -95,6 +95,8 @@
             floor with nowhere to merge from — which is most of them — there was
             simply nowhere to type a file. --}}
       <div class="crns-floor-file">
+        <button type="button" data-action="floor-findings"><i class="fas fa-folder-open"></i> Находки · {{floor.findingCount}} · настроить</button>
+        {{#unless floor.authoredFindings}}
         <label class="crns-floor-contents-edit" title="{{localize "CRNS.Editor.ContentsHint"}}">
           <span class="crns-floor-parent-lbl">{{localize "CRNS.Editor.Contents"}}</span>
           <textarea data-action="floor-contents" rows="2"
@@ -112,6 +114,7 @@
           <img class="crns-floor-image-thumb" src="{{floor.contentsImage}}" alt="" />
           {{/if}}
         </label>
+        {{/unless}}
       </div>
 
       {{!-- The GM's own notes. These are never shown to anybody. --}}

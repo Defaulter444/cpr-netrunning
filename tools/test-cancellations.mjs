@@ -33,6 +33,7 @@ for (const kind of ["ice", "demon", "runner", "prog"]) {
   let cards = 0, clears = 0;
   const context = vm.createContext({
     getWorld: () => ({ pendingTests: [{ id: "t1", pid: "p1", iceActorId: "i1" }] }),
+    resolvingSpeedTests: new Set(),
     game: { actors: { get: () => ({ name: "ICE" }) } },
     bridge: { rollEntityStat: async () => null },
     mutate: async () => { clears++; }, postComparisonCard: () => { cards++; },
@@ -40,7 +41,7 @@ for (const kind of ["ice", "demon", "runner", "prog"]) {
     refToActor: () => null,
   });
   vm.runInContext(extract("handleSpeedTest"), context);
-  await context.handleSpeedTest({ testId: "t1", runnerTotal: 10 });
+  await context.handleSpeedTest({ testId: "t1", pid: "p1", runnerTotal: 10 });
   const pass = cards === 0 && clears === 0;
   results.push({ name: "Cancelled ICE SPEED: encounter remains pending", pass });
   if (!pass) failures++;

@@ -33,7 +33,7 @@
  */
 export function floorHoldsFile(floor) {
   if (!floor) return false;
-  if (floor.kind === "file") return true;
+  if (floor.kind === "file" || floor.findingSourceId || floor.findings?.length) return true;
   return !!String(floor.contents || "").trim() || !!String(floor.contentsImage || "").trim();
 }
 

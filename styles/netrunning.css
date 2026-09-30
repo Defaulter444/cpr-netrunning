@@ -1320,7 +1320,7 @@ body.crns-resizing { cursor: ns-resize !important; -webkit-user-select: none !im
 
 /* ---- reduced motion ---- */
 @media (prefers-reduced-motion: reduce) {
-  .crns-root *, .crns-root *::before, .crns-root *::after {
+  .crns-root:not(.force-motion) *, .crns-root:not(.force-motion) *::before, .crns-root:not(.force-motion) *::after {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;

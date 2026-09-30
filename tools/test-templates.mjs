@@ -40,19 +40,18 @@ function expect(ok, message) {
   console.error(`  FAIL: ${message}`);
 }
 
-/* Handlebars ships with Foundry. Without it this check cannot run honestly, so
- * it says so and stops rather than pretending to have passed. */
+/* Use Foundry's Handlebars locally, or the same pinned version supplied by CI. */
 const FOUNDRY = [
   "C:/Program Files/Foundry Virtual Tabletop/resources/app/package.json",
   "C:/Program Files (x86)/Foundry Virtual Tabletop/resources/app/package.json",
   "/Applications/Foundry Virtual Tabletop.app/Contents/Resources/app/package.json",
 ].find((p) => fs.existsSync(p));
 
-if (!FOUNDRY) {
+if (!FOUNDRY && !process.env.CRNS_HANDLEBARS_PACKAGE) {
   console.log("Handlebars not found (Foundry is not installed here) — skipping.\n");
   process.exit(0);
 }
-const Handlebars = createRequire(FOUNDRY)("handlebars");
+const Handlebars = createRequire(process.env.CRNS_HANDLEBARS_PACKAGE || FOUNDRY)("handlebars");
 
 console.log("Template scope\n");
 console.log(`  Handlebars ${Handlebars.VERSION}`);

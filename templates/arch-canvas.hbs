@@ -105,6 +105,7 @@
         </div>
         {{/if}}
 
+        {{#if floor.holdsFile}}<button type="button" data-action="floor-findings-view" data-index="{{floor.index}}"><i class="fas fa-folder-open"></i> Находки{{#unless floor.contentsVisible}} · закрыто{{/unless}}</button>{{/if}}
         {{#if floor.contentsImage}}
         <img class="crns-floor-image" src="{{floor.contentsImage}}" alt=""
              data-action="floor-image-view" data-src="{{floor.contentsImage}}"

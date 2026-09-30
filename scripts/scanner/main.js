@@ -42,12 +42,7 @@ Hooks.once('init', () => {
   registerUI();
   presentation.registerHooks();
   registerScannerHooks(openScanner);
-  Hooks.on('getApplicationHeaderButtons', (app, buttons) => {
-    if (app.options.id === 'crns-suite' && game.user.isGM) buttons.unshift({
-      label: 'Точки доступа', class: 'crns-scanner-launch', icon: 'fas fa-tower-broadcast',
-      onclick: () => { try { openScanner(); } catch (e) { ui.notifications.warn(e.message); } },
-    });
-  });
+
 });
 Hooks.once('ready', async () => {
   const status = scannerAvailability(game);

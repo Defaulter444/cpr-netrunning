@@ -42,6 +42,7 @@ export function getData(app) {
 function enrichArchForExport(arch) {
   const out = foundry.utils.deepClone(arch);
   for (const floor of out.floors || []) {
+    delete floor.findingSourceId;
     for (const i of floor.ice || []) {
       const snap = i.actorId ? snapshotEntityActor(i.actorId) : null;
       if (snap) i.actorData = snap;

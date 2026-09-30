@@ -194,7 +194,7 @@
       "VirusWork": "The work on the virus is not finished yet."
     },
     "Hints": {
-      "FreeRoll": "Hold Shift to roll without spending a NET action (e.g. defending against an attack).",
+      "FreeRoll": "The GM can hold Shift to roll without spending a NET action. Speed and Defense rolls are always free.",
       "Ability": {
         "scanner": "Find the physical access points of nearby architectures. A meat action — it happens in the room, not in the NET.",
         "backdoor": "Break a password. Beat the floor's DV and the way down opens.",
@@ -450,6 +450,49 @@
       "Delete": "Delete",
       "Empty": "Nothing forged yet.",
       "CustomBadge": "Forged by the GM"
+    },
+    "Console": {
+      "Motion": "Animations",
+      "MotionHint": "Particle effects, action feedback and signal movement. Full effects can be enabled in the Effects menu.",
+      "Effects": {
+        "Title": "Effects",
+        "Force": "Full effects in this console",
+        "ForceHint": "Show effects even when system reduced motion is enabled. Only applies to this Foundry client; the Animations button disables all effects.",
+        "Hint": "Preview animations without rolling or spending game actions.",
+        "Disabled": "Enable Animations. If system reduced motion is enabled, select Full effects in this console in the Effects menu.",
+        "scan": "Scan",
+        "program": "Activate program",
+        "zap": "Zap",
+        "breach": "Breach",
+        "speed": "Speed",
+        "defense": "Defense",
+        "cloak": "Cloak",
+        "Preview": "Preview",
+        "Effect": "Effect"
+      },
+      "Journal": "RUN JOURNAL",
+      "JournalScope": "/ CURRENT PARTICIPANT",
+      "ClearLog": "Clear this window’s journal",
+      "EmptyJournal": "Connection, position, NET action and program changes will appear here. Rolls remain in game chat.",
+      "SelectedFloor": "SELECTED FLOOR",
+      "UnknownFloor": "Unknown floor",
+      "EncryptedHint": "Contents are hidden. Discover this floor during the run to reveal information.",
+      "Breached": "Breached",
+      "Controlled": "Controlled",
+      "DV": "DV",
+      "InspectFloor": "Open floor card",
+      "Events": {
+        "Connected": "Connected to the NET.",
+        "Disconnected": "Disconnected from the NET.",
+        "Moved": "Moved to: {floor}.",
+        "ActionsChanged": "NET actions available: {value}.",
+        "Discovered": "Floor discovered: {floor}.",
+        "Breached": "Floor breached: {floor}.",
+        "ProgramOn": "Program activated: {name}.",
+        "ProgramOff": "Program deactivated: {name}.",
+        "ControlTaken": "Control acquired: {name}.",
+        "ControlReleased": "Control lost or released: {name}."
+      }
     }
   },
   "CRNS.Errors.NotConnected": "Jack into an architecture first.",

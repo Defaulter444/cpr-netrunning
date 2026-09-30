@@ -7,6 +7,7 @@ import { initSocket } from "./socket.js";
 import * as bridge from "./cpr-bridge.js";
 import { eligibleNetrunner, userNetrunnerActor } from "./cpr-bridge.js";
 import NetrunningSuiteApp from "./apps/suite-app.js";
+import { blocksLiveRefresh } from './apps/interaction-state.mjs';
 
 /* ------------------------------------------------------------------ */
 /* init: settings + helpers                                            */
@@ -45,6 +46,17 @@ Hooks.once("init", () => {
   });
 
   registerHandlebarsHelpers();
+  game.settings.register(MODULE_ID,'iceSound',{scope:'client',config:false,type:Boolean,default:false});
+  game.settings.register(MODULE_ID,'iceVolume',{scope:'client',config:false,type:Number,default:.35});
+  game.settings.register(MODULE_ID, 'consoleLayout', {scope:'client',config:false,type:Object,default:{left:true,right:true,controls:true,log:true,compact:true,duration:300}});
+  game.settings.register(MODULE_ID, 'consoleMotion', {
+    name:'CRNS.Console.Motion', hint:'CRNS.Console.MotionHint',
+    scope:'client', config:true, type:Boolean, default:true, onChange:rerenderNow,
+  });
+  game.settings.register(MODULE_ID, 'consoleForceMotion', {
+    name:'CRNS.Console.Effects.Force', hint:'CRNS.Console.Effects.ForceHint',
+    scope:'client', config:true, type:Boolean, default:false, onChange:rerenderNow,
+  });
 });
 
 /* ------------------------------------------------------------------ */
@@ -54,10 +66,18 @@ Hooks.once("init", () => {
 Hooks.once("ready", async () => {
   watchInteraction();
   initSocket();
+  if(isPrimaryGM()){
+    const archs=getWorld('netArchs')??{};
+    if(Object.values(archs).some(a=>(a.floors??[]).some(f=>!game.journal.get(f.findingSourceId)&&(f.contents||f.contentsImage)))){
+      try{await setWorld('netArchs',archs);}catch(error){console.error(`${MODULE_ID} | findings migration`,error);ui.notifications.warn('Перенос файлов в журналы не завершён. Исходная архитектура сохранена.');}
+    }
+    const stale=game.messages.filter(m=>m.getFlag(MODULE_ID,'iceCue')).map(m=>m.id);
+    if(stale.length)await ChatMessage.deleteDocuments(stale);
+  }
   globalThis.CRNS = { ui: new NetrunningSuiteApp() };
 
   await loadTemplates([
-    "shell", "tree", "tabs", "arch-canvas", "editor", "runners", "actions", "actions-damagebox", "actions-target", "entity-card",
+    "shell", "console", "console-connect", "tree", "tabs", "arch-canvas", "editor", "runners", "actions", "actions-damagebox", "actions-target", "entity-card",
     "scanner/scanner", "scanner/ap-editor", "scanner/type-manager", "scanner/camera-manager",
   ].map(TPL));
 
@@ -182,11 +202,11 @@ function suiteRoot() {
 function suiteBusy() {
   const root = suiteRoot();
   if (!root) return false;
-  if (_interacting || _dragging) return true;
+  if (_interacting || _dragging || globalThis.CRNS?.ui?._consoleDragActive) return true;
   const active = document.activeElement;
   return !!active
     && root.contains(active)
-    && active.matches("input, textarea, select, [contenteditable=\"true\"]");
+    && blocksLiveRefresh(active);
 }
 
 const _rerenderDebounced = foundry.utils.debounce(() => {
@@ -237,14 +257,19 @@ function watchInteraction() {
 
   document.addEventListener("focusout", () => {
     // Focus moving out of a field is the other end of "the user is typing".
-    if (_renderPending && !suiteBusy()) flushPendingRender();
+    queueMicrotask(() => { if (_renderPending && !suiteBusy()) flushPendingRender(); });
   }, true);
+  document.addEventListener('change', ev => {
+    if (suiteRoot()?.contains(ev.target) && ev.target.matches('select')) ev.target.blur();
+  });
 }
 
 function rerenderNow() { _rerenderDebounced(); }
 
 Hooks.on("updateSetting", (setting) => {
   if (!setting.key?.startsWith(`${MODULE_ID}.`)) return;
+  // Visibility preferences are applied in place so saving cannot interrupt the slide.
+  if (setting.key === `${MODULE_ID}.consoleLayout`) return;
   _rerenderDebounced();
 });
 
@@ -283,6 +308,9 @@ const _actorHook = (actor) => {
   if (actorRelevant(actor)) _rerenderDebounced();
 };
 Hooks.on("updateActor", _actorHook);
+Hooks.on("renderChatMessage",(message,html)=>{if(message.getFlag?.(MODULE_ID,"iceCue"))html.hide();});
+Hooks.on("createChatMessage",message=>{const cue=message.getFlag?.(MODULE_ID,"iceCue");if(cue&&message.author?.isGM&&message.visible&&message.isContentVisible)globalThis.CRNS?.ui?.playIceEffect?.(cue);});
+for(const event of ["createJournalEntry","updateJournalEntry","createJournalEntryPage","updateJournalEntryPage","deleteJournalEntryPage"])Hooks.on(event,rerenderNow);
 
 const _itemHook = (item) => {
   const app = globalThis.CRNS?.ui;
@@ -421,15 +449,23 @@ async function resolveSlideTest(data) {
  *  (Corebook p.205). The runner's total arrives in `data.runnerTotal`; the GM
  *  rolls the ICE's SPD, compares (ties go to the RUNNER — he is defending), and
  *  on a runner loss posts the ICE's effect text. Then the test is cleared. */
+const resolvingSpeedTests = new Set();
 async function handleSpeedTest(data) {
+  if (!data.testId || resolvingSpeedTests.has(data.testId) || !Number.isFinite(Number(data.runnerTotal))) return;
+  resolvingSpeedTests.add(data.testId);
+  try { await resolveSpeedTest(data); }
+  finally { resolvingSpeedTests.delete(data.testId); }
+}
+async function resolveSpeedTest(data) {
   const session = getWorld("session") || {};
   const test = (session.pendingTests || []).find((t) => t.id === data.testId);
-  if (!test) return;
+  if (!test || test.pid !== data.pid) return;
   const iceActor = game.actors?.get(test.iceActorId);
   if (!iceActor) { await mutate("run.clearSpeedTest", { testId: data.testId }); return; }
 
   const roll = await bridge.rollEntityStat(iceActor, "spd");
   if (!roll) return; // Keep the pending test when the GM cancels.
+  if (!(getWorld('session')?.pendingTests ?? []).some(t => t.id === test.id && t.pid === test.pid)) return;
   const iceTotal = Number(roll?.resultTotal) || 0;
   const runnerTotal = Number(data.runnerTotal) || 0;
   const runnerName = participantName(session, test.pid);
@@ -514,7 +550,7 @@ function runnerIsPlayerControlled(pid) {
   const part = (getWorld("session") || {}).participants?.[pid];
   if (!part || part.kind !== "runner" || !part.userId) return false;
   const user = game.users.get(part.userId);
-  return !!user && !user.isGM;
+  return !!user && user.active && !user.isGM;
 }
 
 async function handleRollRequest(data) {

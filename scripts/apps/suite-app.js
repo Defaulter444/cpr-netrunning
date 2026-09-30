@@ -13,6 +13,7 @@ import * as Editor from "./editor.js";
 import * as Canvas from "./arch-canvas.js";
 import * as Runners from "./runners.js";
 import * as Actions from "./actions.js";
+import {consoleData, activateConsole} from './console.js';
 
 const SUBMODULES = [Tree, Tabs, Editor, Canvas, Runners, Actions];
 
@@ -75,8 +76,8 @@ export default class NetrunningSuiteApp extends Application {
       popOut: true,
       resizable: true,
       minimizable: true,
-      width: 1180,
-      height: 760,
+      width: Math.min(1640, (globalThis.innerWidth || 1700) - 30),
+      height: Math.min(920, (globalThis.innerHeight || 970) - 30),
       title: loc("CRNS.Button.Open"),
       // Core Application v1 preserves these containers' scrollTop across
       // re-renders — without this every mutation snapped all lists to the top.
@@ -142,6 +143,7 @@ export default class NetrunningSuiteApp extends Application {
       try { Object.assign(data, mod.getData(this) || {}); }
       catch (e) { console.error(`${MODULE_ID} | getData`, e); }
     }
+    Object.assign(data, consoleData(this,data));
     return data;
   }
 
@@ -160,7 +162,7 @@ export default class NetrunningSuiteApp extends Application {
       // root, so the T targeting key arms as soon as the user clicks anywhere in
       // the app — not only after clicking a chip.
       rootEl.addEventListener("pointerdown", (ev) => {
-        if (ev.target.closest("input, textarea, select")) return;
+        if (ev.target.closest("input, textarea, select, button, [data-console-token]")) return;
         rootEl.focus({ preventScroll: true });
       });
     }
@@ -169,6 +171,15 @@ export default class NetrunningSuiteApp extends Application {
       try { mod.activateListeners(this, html); }
       catch (e) { console.error(`${MODULE_ID} | activateListeners`, e); }
     }
+    activateConsole(this,html);
+    // Foundry v12 keeps the window header when only its contents are rendered again.
+    const viewLabel = this.state.consoleClassic ? 'Новая консоль' : 'Прежний вид';
+    this.element.find('.crns-switch-view').html(`<i class="fas fa-display"></i> ${viewLabel}`).attr('data-tooltip', viewLabel);
+  }
+
+  get template() { return TPL(this.state?.consoleClassic ? 'shell' : 'console'); }
+  _getHeaderButtons() {
+    return [{label:this.state?.consoleClassic?'Новая консоль':'Прежний вид',class:'crns-switch-view',icon:'fas fa-display',onclick:()=>{this.state.consoleClassic=!this.state.consoleClassic;this.render(false);}},...super._getHeaderButtons()];
   }
 
   _onKeyDown(ev) {
@@ -198,6 +209,12 @@ export default class NetrunningSuiteApp extends Application {
   }
 
   async close(options) {
+    this._consoleDisplayCleanup?.();
+    this._consoleGeometryCleanup?.();
+    this._consoleDisplayDialog?.close();
+    this._consoleResizeObserver?.disconnect();
+    this._stopConsoleEffects?.();
+    this._consoleDragCleanup?.();
     // Tear down the matrix-rain rAF loop + ResizeObserver (owned by the canvas).
     try { Canvas.stopRain?.(this); } catch (e) { /* noop */ }
     if (this._rainRaf) { cancelAnimationFrame(this._rainRaf); this._rainRaf = null; }

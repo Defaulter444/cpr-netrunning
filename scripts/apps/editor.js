@@ -7,6 +7,8 @@
 
 import { loc, esc, uid, dialogClasses, BLACK_ICE, DEMONS, FLOOR_KINDS, FLOOR_ICONS, ENTITY_ICONS, MAX_ICE_PER_FLOOR, maxDemons, CHECK_ABILITIES,
          iceName, demonName, DEFAULT_ICE_IMG, DEFAULT_DEMON_IMG, isCustomIce, isCustomDemon } from "../constants.js";
+import {editFindings} from "./findings.js";
+import {floorFindings} from "../findings-model.js";
 import { openForgeForm, openForgeManager } from "./entity-forge.js";
 import * as archTree from "../rules/tree.js";
 import { getWorld, mutate } from "../data.js";
@@ -143,6 +145,8 @@ export function getData(app) {
       check: f.check || "",
       contents: f.contents || "",
       contentsImage: f.contentsImage || "",
+      findingCount:floorFindings(f).length,
+      authoredFindings:Array.isArray(f.findings),
       checkChoices,
       // A password gates by its nature; anything else gates only if the GM says
       // so. Showing the switch as already-on for a password keeps the card
@@ -301,6 +305,11 @@ export function activateListeners(app, html) {
         reRender(app);
       },
     }).render(true);
+  });
+
+  html.find('[data-action="floor-findings"]').on("click",ev=>{
+    const f=floorAt(app,ev.currentTarget.closest("[data-floor-id]")?.dataset.floorId);
+    if(f)editFindings(f,findings=>{f.findings=findings;reRender(app);});
   });
 
   html.find('[data-action="floor-contents"]').on("change", (ev) => {

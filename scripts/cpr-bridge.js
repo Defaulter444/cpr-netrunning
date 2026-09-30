@@ -172,57 +172,85 @@ export async function rollProgram(actor, programId, executionType, event) {
  *  replicate ONLY the safe part of `deck.rezProgram` — `program.setRezzed()` — and
  *  skip the token spawn entirely, silencing the warning at the source. */
 export async function rezProgram(actor, programId) {
-  try {
-    const deck = getDeck(actor);
-    if (!deck) { ui.notifications.warn(loc("CRNS.Errors.NoDeck")); return false; }
-    const program = actor.getOwnedItem(programId);
-    if (!program) return false;
-    if (program.system.isRezzed) return true;
-
-    if (program.system.class === "blackice") {
-      // Safe subset of deck.rezProgram (cpr-cyberdeck.js:62-68) minus the token.
-      await program.setRezzed();
-    } else {
-      await deck.rezProgram(program, actor.token ?? null);
-    }
-
-    const updateList = [];
-    if (deck.isOwned && deck.isEmbedded) updateList.push({ _id: deck.id, system: deck.system });
-    if (program.isOwned && program.isEmbedded) updateList.push({ _id: program.id, system: program.system });
-    if (updateList.length) await actor.updateEmbeddedDocuments("Item", updateList);
-    return true;
-  } catch (e) { sysError(e); return false; }
+  return legacyRezResult(await setProgramRez(actor, programId, true));
 }
 
 /** Derez a program. Module rule: deactivation restores its REZ to max. */
 export async function derezProgram(actor, programId) {
+  return legacyRezResult(await setProgramRez(actor, programId, false));
+}
+
+/** The old boolean contract of rezProgram/derezProgram, with its notifications. */
+function legacyRezResult(res) {
+  if (res.status === "done" || res.status === "noop") return true;
+  if (res.error === "CRNS.Errors.NoDeck") ui.notifications.warn(loc(res.error));
+  else if (res.threw) { try { ui.notifications.error(loc("CRNS.Errors.SystemApi")); } catch (_e) { /* noop */ } }
+  return false;
+}
+
+/** Rez (`rezzed` true) or derez an installed program and persist it, reporting
+ *  what is known about the outcome instead of a bare boolean. Never notifies —
+ *  the caller decides what the user hears.
+ *    { status: "done" }            the change was made and persisted;
+ *    { status: "noop" }            the program was already in that state;
+ *    { status: "failed", error }   nothing was changed (safe to undo a cost);
+ *    { status: "unknown", error }  it threw after the program was touched or
+ *                                  while persisting — it may have taken effect.
+ *  Derez follows the module rule: deactivation restores REZ to max. */
+export async function setProgramRez(actor, programId, rezzed, { requireInstalled = false } = {}) {
+  let phase = "check";
+  let program = null;
   try {
     const deck = getDeck(actor);
-    if (!deck) { ui.notifications.warn(loc("CRNS.Errors.NoDeck")); return false; }
-    const program = actor.getOwnedItem(programId);
-    if (!program) return false;
-    if (!program.system.isRezzed) return true;
-
-    if (program.system.class === "blackice") {
-      // Mirror of the rez-side note above: the system's `deck.derezProgram`
-      // calls `_derezBlackIceToken`, which expects the token flags the token
-      // spawn would have written (biTokenId/sceneId) and logs a CPR ERR when
-      // they're absent — our BI never had a canvas token. Replicate only the
-      // safe part (`program.unsetRezzed()` mutates in-memory; the
-      // updateEmbeddedDocuments below persists it).
-      program.unsetRezzed?.();
-    } else {
-      await deck.derezProgram(program);
+    if (!deck) return { status: "failed", error: "CRNS.Errors.NoDeck" };
+    program = actor?.getOwnedItem?.(programId) ?? null;
+    if (!program) return { status: "failed", error: "CRNS.Errors.SystemApi" };
+    // A NET-action spend awaits the GM. Recheck the current deck afterwards;
+    // the runner may have changed equipment while that request was in flight.
+    if (requireInstalled && !installedPrograms(deck).some((p) => p.id === programId)) {
+      return { status: "failed", error: "CRNS.Errors.SystemApi" };
     }
-    // Module rule: restore REZ to max on deactivation.
-    await deck.resetRezProgram(program);
+    if (!!program.system?.isRezzed === rezzed) return { status: "noop" };
 
+    phase = "apply";
+    if (rezzed) {
+      if (program.system.class === "blackice") {
+        // Safe subset of deck.rezProgram (cpr-cyberdeck.js:62-68) minus the token.
+        await program.setRezzed();
+      } else {
+        await deck.rezProgram(program, actor.token ?? null);
+      }
+    } else {
+      if (program.system.class === "blackice") {
+        // Mirror of the rez-side note above: the system's `deck.derezProgram`
+        // calls `_derezBlackIceToken`, which expects the token flags the token
+        // spawn would have written (biTokenId/sceneId) and logs a CPR ERR when
+        // they're absent — our BI never had a canvas token. Replicate only the
+        // safe part (`program.unsetRezzed()` mutates in-memory; the
+        // updateEmbeddedDocuments below persists it).
+        program.unsetRezzed?.();
+      } else {
+        await deck.derezProgram(program);
+      }
+      // Module rule: restore REZ to max on deactivation.
+      await deck.resetRezProgram(program);
+    }
+
+    phase = "persist";
     const updateList = [];
     if (deck.isOwned && deck.isEmbedded) updateList.push({ _id: deck.id, system: deck.system });
     if (program.isOwned && program.isEmbedded) updateList.push({ _id: program.id, system: program.system });
     if (updateList.length) await actor.updateEmbeddedDocuments("Item", updateList);
-    return true;
-  } catch (e) { sysError(e); return false; }
+    return { status: "done" };
+  } catch (e) {
+    console.error("cpr-netrunning | bridge", e);
+    // Only a throw that left the program exactly as it was is a known failure.
+    // Once the write to the server has started, or the program already flipped
+    // in memory, the change may well have landed.
+    const untouched = phase === "check" ||
+      (phase === "apply" && !!program?.system?.isRezzed !== rezzed);
+    return { status: untouched ? "failed" : "unknown", error: "CRNS.Errors.SystemApi", threw: true };
+  }
 }
 
 /** Reduce a rezzed program's REZ (brain/black-ice damage to a runner program). */

@@ -341,6 +341,34 @@ await scenario("Secondary GM relays writes through primary GM",async()=>{
   try { expect(await D.mutate("run.spend",{pid:"p1",n:1})===true && relayed,"secondary GM uses primary queue"); }
   finally {game.user=oldUser;game.socket.emit=oldEmit;game.users.splice(game.users.findIndex(u=>u.id==="gm2"),1);}
 });
+await scenario("GM placement moves only the runner and ends their pursuit",async()=>{
+  iceFixture();
+  editSession(s=>{
+    s.attachments.push({pid:"p2",archId:"a1",iceId:"other"},{pid:"p1",archId:"a1",progKey:"p2|trap"});
+    s.progState["p2|trap"]={floorIndex:0,mode:"trap",rezzed:true};
+    s.pendingTests=[{id:"old",pid:"p1"},{id:"keep",pid:"p2"}];
+    s.participants.p1.slidePending={id:"old-attempt"};
+  });
+  const archBefore=deepClone(settings.get("netArchs"));
+  expect(await D.applyOp("session.reposition",{pid:"p1",floorIndex:1},"player")===false,"players cannot invoke GM placement");
+  for(const invalid of [-1,999,0.5,"1",null])expect(await D.applyOp("session.reposition",{pid:"p1",floorIndex:invalid},"gm")===false,"invalid floor denied");
+  expect(getPart().floorIndex===0,"denials keep runner position");
+  expect(await D.applyOp("session.reposition",{pid:"p1",floorIndex:1},"gm")===true,"GM placement accepted");
+  eq(settings.get("netArchs"),archBefore,"no architecture ICE moved");
+  const s=settings.get("session");
+  expect(s.progState["p2|trap"].floorIndex===0,"trapped program stays behind");
+  expect(getPart().floorIndex===1&&getPart().actions.value===5,"only position changes, no NET action spent");
+  expect(getPart().visited.includes("f2"),"destination becomes visited");
+  eq(s.attachments,[{pid:"p2",archId:"a1",iceId:"other"}],"only placed runner detached");
+  eq(s.pendingTests,[{id:"keep",pid:"p2"}],"only placed runner stale tests removed");
+  expect(!getPart().slidePending,"old Slide response cannot move runner later");
+});
+await scenario("Ordinary movement still carries attached ICE",async()=>{
+  iceFixture();
+  expect(await D.applyOp("session.move",{pid:"p1",floorIndex:1},"player")===true,"player move accepted");
+  expect(settings.get("netArchs").a1.floors[1].ice.some(i=>i.id==="ice1"),"attached ICE follows in run mode");
+  expect(settings.get("session").attachments.some(a=>a.pid==="p1"&&a.iceId==="ice1"),"pursuit preserved");
+});
 fs.rmSync(scripts,{recursive:true,force:true});
 console.log(JSON.stringify({checks,failures,scenarios:outcomes},null,2));
 process.exit(failures?1:0);

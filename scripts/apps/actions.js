@@ -18,6 +18,7 @@ import * as archTree from "../rules/tree.js";
 import * as archAbilities from "../rules/abilities.js";
 import { getWorld, mutate, notifyClients, canDerezTrap } from "../data.js";
 import * as bridge from "../cpr-bridge.js";
+import { withRunnerGuard } from "./action-guard.mjs";
 
 /* ------------------------------------------------------------------ */
 /* Selection resolution                                                */
@@ -128,7 +129,7 @@ function programVMs(actor, part, session) {
       // Auto-derez hint for attacker programs (they self-derez after a DMG roll).
       autoDerezHint: rezzed && isAttacker,
       // Tooltip: full name + class + REZ.
-      tip: `${p.name} · ${chrome.cls}${rezMax > 0 ? ` · REZ ${rez}/${rezMax}` : ""}`,
+      tip: `${p.name} · ${loc(`CRNS.ProgramClass.${classBucket}`)}${rezMax > 0 ? ` · REZ ${rez}/${rezMax}` : ""}`,
     };
   });
 }
@@ -341,6 +342,7 @@ function buildRunnerVM(app, sel, session) {
     variant: "runner",
     pid,
     actorId: actor.id,
+    actorUuid: actor.uuid,
     archId: part.archId || "",
     floorIndex: part.floorIndex || 0,
     name: actor.name,
@@ -628,17 +630,23 @@ export function activateListeners(app, html) {
     ev.preventDefault();
     const el = ev.currentTarget;
     const { testId, pid } = el.dataset;
-    const actor = game.actors?.get(el.dataset.actorId);
-    if (!actor) return;
-    const roll = await bridge.rollInterface(actor, "speed", ev.originalEvent || ev);
-    if (!roll) return; // cancelled — leave the test pending.
-    notifyClients({
-      kind: "speedTest",
-      testId,
-      pid,
-      runnerTotal: Number(roll.resultTotal) || 0,
+    const event = ev.originalEvent || ev;
+    await withRunnerGuard(app, pid, async () => {
+      const actor = game.actors?.get(el.dataset.actorId);
+      if (!actor || !speedTestPending(testId)) return;
+      const roll = await bridge.rollInterface(actor, "speed", event);
+      if (!roll) return; // cancelled — leave the test pending.
+      // Dismissed or resolved while the dialog was open: nothing left to answer.
+      if (!speedTestPending(testId)) { app.render(false); return; }
+      notifyClients({
+        kind: "speedTest",
+        testId,
+        pid,
+        runnerTotal: Number(roll.resultTotal) || 0,
+      });
+      app.playConsoleEffect?.("speed", pid);
+      app.render(false);
     });
-    app.render(false);
   });
 
   // Player defence prompt (SPEC Addendum 2): roll defence with the STANDARD CPR
@@ -647,22 +655,30 @@ export function activateListeners(app, html) {
     ev.preventDefault();
     const el = ev.currentTarget;
     const { testId, pid } = el.dataset;
-    const actor = game.actors?.get(el.dataset.actorId);
-    if (!actor) return;
-    const roll = await bridge.rollInterface(actor, "defense", ev.originalEvent || ev);
-    if (!roll) return; // cancelled — leave the prompt pending.
-    const entry = (app._pendingDefense || []).find((d) => d.id === testId);
-    notifyClients({
-      kind: "defenseResult",
-      pid,
-      attackerName: entry?.attackerName || "",
-      attackerTotal: entry?.attackerTotal || 0,
-      defenseTotal: Number(roll.resultTotal) || 0,
-      // Attacker program (Requirement 3): the GM derezzes it on a miss.
-      attackerProg: entry?.attackerProg || null,
+    const event = ev.originalEvent || ev;
+    const pendingEntry = () => (app._pendingDefense || []).find((d) => d.id === testId) || null;
+    await withRunnerGuard(app, pid, async () => {
+      const actor = game.actors?.get(el.dataset.actorId);
+      if (!actor || !pendingEntry()) return;
+      const roll = await bridge.rollInterface(actor, "defense", event);
+      if (!roll) return; // cancelled — leave the prompt pending.
+      // Re-read: the prompt may have been answered or dismissed meanwhile, and a
+      // reply without its attack would reach the GM as a 0-vs-defence verdict.
+      const entry = pendingEntry();
+      if (!entry) { app.render(false); return; }
+      app._pendingDefense = (app._pendingDefense || []).filter((d) => d.id !== testId);
+      notifyClients({
+        kind: "defenseResult",
+        pid,
+        attackerName: entry.attackerName || "",
+        attackerTotal: entry.attackerTotal || 0,
+        defenseTotal: Number(roll.resultTotal) || 0,
+        // Attacker program (Requirement 3): the GM derezzes it on a miss.
+        attackerProg: entry.attackerProg || null,
+      });
+      app.playConsoleEffect?.("defense", pid);
+      app.render(false);
     });
-    app._pendingDefense = (app._pendingDefense || []).filter((d) => d.id !== testId);
-    app.render(false);
   });
 
   // Dismiss a pending defence prompt without rolling.
@@ -686,71 +702,11 @@ export function activateListeners(app, html) {
     ev.preventDefault();
     const el = ev.currentTarget;
     const pid = el.dataset.pid;
-    const actorId = el.dataset.actorId;
-    const ability = el.dataset.ability;
-    const free = el.dataset.free === "true";
-    const actor = game.actors?.get(actorId);
-    if (!actor) return;
-
-    const shift = !!ev.shiftKey;
-    const spend = !free && !shift; // Defence/Speed are free; Shift skips the spend.
-
-    if (ability === "slide" && participantById(pid)?.slidePending) {
-      await mutate("run.slideRetry", { pid });
-      return;
-    }
-
-    if (ability === "virus") {
-      // Ask before anything is spent. What the virus is for is the runner's to
-      // say; the plan in the editor is the GM's answer to that — how hard and
-      // how long — and it was standing in for a declaration nobody ever made.
-      let intent = "";
-      if (!declaredVirusIntent(pid)) {
-        intent = await askVirusIntent();
-        if (intent === null) return;
-      }
-      const work = await mutate("run.virusWork", { pid, intent });
-      if (work?.error) { ui.notifications.warn(loc(work.error)); return; }
-      if (!work?.ready) {
-        ui.notifications.info(loc("CRNS.Actions.VirusProgress", { progress: work?.progress, required: work?.required }));
-        return;
-      }
-    } else if (spend && (participantById(pid)?.actions?.value ?? 0) < 1) {
-      ui.notifications.warn(loc("CRNS.Errors.NoActions")); return;
-    }
-    const part = participantById(pid);
-    if (!part?.jackedIn) { ui.notifications.warn(loc("CRNS.Errors.NotConnected")); return; }
-    const sessionBefore = getWorld("session") || {};
-    const testRef = (sessionBefore.targets || {})[game.user.id] || "";
-    let slideFloor = null;
-    if (ability === "slide") {
-      slideFloor = await pickSlideFloor(part, sessionBefore);
-      if (slideFloor === null) return;
-    }
-    const roll = await bridge.rollInterface(actor, ability, ev.originalEvent || ev);
-    if (!roll) return;
-    if (spend && ability !== "virus" && ability !== "slide") {
-      const spent = await mutate("run.spend", { pid, n: 1 });
-      if (spent !== true) { ui.notifications.warn(loc(spent?.error || "CRNS.Errors.NoActions")); return; }
-    }
-
-    // Slide is an opposed roll vs the targeted ICE — arch ICE (ice:) or a
-    // player-placed Black ICE (prog:, Addendum 2) → emit the slideTest notify.
-    if (ability === "slide") {
-      const res = await mutate("run.slideAttempt", { pid, testRef, total: Number(roll.resultTotal), floorIndex: slideFloor });
-      if (res?.error) ui.notifications.warn(loc(res.error));
-      return;
-    }
-
-    // Floor-effect abilities → resolve GM-side via run.abilityResult.
-    if (["backdoor", "cloak", "control", "eyedee", "virus", "pathfinder"].includes(ability)) {
-      const res = await mutate("run.abilityResult", { pid, ability, total: Number(roll.resultTotal) || 0 });
-      if (res && res.error) ui.notifications.warn(loc(res.error));
-      return;
-    }
-
-    // Attack abilities (zap) → auto-roll defence path.
-    await maybeAutoRoll(app, roll, actor, ability, "interface");
+    // Only the GM may waive the cost: Shift is a referee's override (a reactive
+    // roll the table agreed on), not a player's way round the action economy.
+    const shift = !!ev.shiftKey && !!game.user.isGM;
+    const event = ev.originalEvent || ev;
+    await withRunnerGuard(app, pid, () => abilityRoll(app, el, event, shift));
   });
 
   // Control Node ability: spend 1 + pick a controlled node → nodePulse.
@@ -759,12 +715,14 @@ export function activateListeners(app, html) {
     const el = ev.currentTarget;
     const pid = el.dataset.pid;
     const archId = el.dataset.archId;
-    const part = participantById(pid);
-    if ((part?.actions?.value ?? 0) < 1) { ui.notifications.warn(loc("CRNS.Errors.NoActions")); return; }
-    const floorId = await pickControlledNode(html, el);
-    if (!floorId) return;
-    const res = await mutate("run.nodePulse", { archId, floorId });
-    if (res && res.error) ui.notifications.warn(loc(res.error));
+    await withRunnerGuard(app, pid, async () => {
+      const part = participantById(pid);
+      if ((part?.actions?.value ?? 0) < 1) { ui.notifications.warn(loc("CRNS.Errors.NoActions")); return; }
+      const floorId = await pickControlledNode(html, el);
+      if (!floorId) return;
+      const res = await mutate("run.nodePulse", { archId, floorId });
+      if (res && res.error) ui.notifications.warn(loc(res.error));
+    });
   });
 
   // Let go of a node. Free — no action is spent.
@@ -781,36 +739,50 @@ export function activateListeners(app, html) {
   // Program: activate / deactivate.
   html.find('[data-action="program-activate"]').on("click", async (ev) => {
     const el = ev.currentTarget;
-    const { pid, actorId, programId, cls } = el.dataset;
-    const actor = game.actors?.get(actorId);
-    if (!actor) return;
-    const part = participantById(pid);
-    if ((part?.actions?.value ?? 0) < 1) { ui.notifications.warn(loc("CRNS.Errors.NoActions")); return; }
+    const { pid, actorId, programId } = el.dataset;
+    await withRunnerGuard(app, pid, async () => {
+      const actor = game.actors?.get(actorId);
+      if (!actor) return;
+      const part = participantById(pid);
+      if ((part?.actions?.value ?? 0) < 1) { ui.notifications.warn(loc("CRNS.Errors.NoActions")); return; }
+      // The deck, not the button, says what the program is and whether it is
+      // already running: nothing is spent on a program that is gone or up.
+      const program = installedProgram(actor, programId);
+      if (!program) { ui.notifications.warn(loc("CRNS.Errors.SystemApi")); return; }
+      if (program.system?.isRezzed) { app.render(false); return; }
 
-    // Player Black-ICE deploy flow (SPEC §14.12): trap vs deployed.
-    if (cls === "blackice") { await activateBlackIce(app, part, pid, actor, programId); return; }
+      // Player Black-ICE deploy flow (SPEC §14.12): trap vs deployed.
+      if (program.system?.class === "blackice") { await activateBlackIce(app, pid, actor, programId); return; }
 
-    if ((await mutate("run.spend", { pid, n: 1 })) !== true) return;
-    await bridge.rezProgram(actor, programId);
+      if ((await mutate("run.spend", { pid, n: 1 })) !== true) return;
+      await settleProgramRez(pid, await bridge.setProgramRez(actor, programId, true, { requireInstalled: true }));
+    });
   });
 
   html.find('[data-action="program-deactivate"]').on("click", async (ev) => {
     const el = ev.currentTarget;
-    const { pid, actorId, programId, cls } = el.dataset;
-    const actor = game.actors?.get(actorId);
-    if (!actor) return;
-    const part = participantById(pid);
-    if ((part?.actions?.value ?? 0) < 1) { ui.notifications.warn(loc("CRNS.Errors.NoActions")); return; }
+    const { pid, actorId, programId } = el.dataset;
+    await withRunnerGuard(app, pid, async () => {
+      const actor = game.actors?.get(actorId);
+      if (!actor) return;
+      const part = participantById(pid);
+      if ((part?.actions?.value ?? 0) < 1) { ui.notifications.warn(loc("CRNS.Errors.NoActions")); return; }
+      const program = installedProgram(actor, programId);
+      if (!program) { ui.notifications.warn(loc("CRNS.Errors.SystemApi")); return; }
+      if (!program.system?.isRezzed) { app.render(false); return; }
+      const isBlackIce = program.system?.class === "blackice";
 
-    // Trap Black-ICE derez gating: owner must stand on the trap's floor.
-    if (cls === "blackice") {
-      const session = getWorld("session") || {};
-      if (!canDerezTrap(session, pid, programId)) { ui.notifications.warn(loc("CRNS.Errors.TrapDerezFloor")); return; }
-    }
+      // Trap Black-ICE derez gating: owner must stand on the trap's floor.
+      if (isBlackIce) {
+        const session = getWorld("session") || {};
+        if (!canDerezTrap(session, pid, programId)) { ui.notifications.warn(loc("CRNS.Errors.TrapDerezFloor")); return; }
+      }
 
-    if ((await mutate("run.spend", { pid, n: 1 })) !== true) return;
-    await bridge.derezProgram(actor, programId);
-    if (cls === "blackice") await mutate("run.setRezzed", { pid, programId, state: null });
+      if ((await mutate("run.spend", { pid, n: 1 })) !== true) return;
+      const res = await bridge.setProgramRez(actor, programId, false, { requireInstalled: true });
+      if (!(await settleProgramRez(pid, res))) return;
+      if (isBlackIce) await mutate("run.setRezzed", { pid, programId, state: null });
+    });
   });
 
   // Program rolls: atk / def / damage.
@@ -818,29 +790,34 @@ export function activateListeners(app, html) {
     ev.preventDefault();
     const el = ev.currentTarget;
     const { pid, actorId, programId, exec, isAttacker } = el.dataset;
-    const actor = game.actors?.get(actorId);
-    if (!actor) return;
-    const roll = await bridge.rollProgram(actor, programId, exec, ev.originalEvent || ev);
-    if (!roll) return;
+    const event = ev.originalEvent || ev;
+    await withRunnerGuard(app, pid, async () => {
+      const actor = game.actors?.get(actorId);
+      if (!actor) return;
+      const roll = await bridge.rollProgram(actor, programId, exec, event);
+      if (!roll) return;
 
-    if (exec === "damage") {
-      stashDamage(app, roll);
-      // Attacker-class programs auto-deactivate after a damage roll (no cost).
-      // Idempotent: derezProgram no-ops when the program is already derezzed
-      // (e.g. a miss already derezzed it), so no double card / no error.
-      if (isAttacker === "true") {
-        const wasRezzed = !!actor.getOwnedItem?.(programId)?.system?.isRezzed;
-        await bridge.derezProgram(actor, programId);
-        if (wasRezzed) ui.notifications.info(loc("CRNS.Actions.AttackerDerez", { name: actor.name }));
+      if (exec === "damage") {
+        stashDamage(app, roll);
+        // Attacker-class programs auto-deactivate after a damage roll (no cost).
+        // Idempotent: derezProgram no-ops when the program is already derezzed
+        // (e.g. a miss already derezzed it), so no double card / no error.
+        if (isAttacker === "true") {
+          const wasRezzed = !!actor.getOwnedItem?.(programId)?.system?.isRezzed;
+          await bridge.derezProgram(actor, programId);
+          if (wasRezzed) ui.notifications.info(loc("CRNS.Actions.AttackerDerez", { name: actor.name }));
+        }
+        app.render(false);
       }
-      app.render(false);
-    }
-    if (exec === "atk") {
-      // Thread the attacker-program identity so a MISS auto-derezzes it without a
-      // damage roll (Requirement 3). `pid`/`programId` from the button dataset.
-      const attackerProg = { pid, programId, isAttacker: isAttacker === "true" };
-      await maybeAutoRoll(app, roll, actor, "atk", "program", { attackerProg });
-    }
+      if (exec === "atk") {
+        // Thread the attacker-program identity so a MISS auto-derezzes it without a
+        // damage roll (Requirement 3). `pid`/`programId` from the button dataset.
+        const attackerProg = { pid, programId, isAttacker: isAttacker === "true" };
+        const cueTarget=(getWorld("session")?.targets??{})[game.user.id];
+        if(cueTarget)await mutate("ice.attackCue",{sourceRef:`prog:${pid}:${programId}`,targetRef:cueTarget});
+        await maybeAutoRoll(app, roll, actor, "atk", "program", { attackerProg });
+      }
+    });
   });
 
   /* ---- entity variant (GM) ---- */
@@ -850,10 +827,13 @@ export function activateListeners(app, html) {
     const el = ev.currentTarget;
     const actor = game.actors?.get(el.dataset.actorId);
     if (!actor) return;
+    const sourceRef=app.state.selection;
     const roll = await bridge.rollEntityStat(actor, el.dataset.stat, ev.originalEvent || ev);
     // A GM ICE ATTACK against a targeted PLAYER runner triggers that player's
     // defence prompt (SPEC Addendum 2) — same rollRequest contract as demon Zap.
     if (roll && el.dataset.stat === "atk") {
+      const cueTarget=(getWorld("session")?.targets??{})[game.user.id];
+      if(cueTarget)await mutate("ice.attackCue",{sourceRef,targetRef:cueTarget});
       const session = getWorld("session") || {};
       const targetRef = (session.targets || {})[game.user.id] || "";
       if (targetRef.startsWith("runner:")) {
@@ -1054,6 +1034,82 @@ function persistBarHeight(px) {
   }, 250);
 }
 
+/** One interface-ability click, run under the runner's pending-action guard.
+ *  `event` is the real click, so the CPR roll dialog appears; `shift` is the
+ *  GM's cost waiver (always false for players). */
+async function abilityRoll(app, el, event, shift) {
+  const pid = el.dataset.pid;
+  const actorId = el.dataset.actorId;
+  const ability = el.dataset.ability;
+  const free = el.dataset.free === "true";
+  const actor = game.actors?.get(actorId);
+  if (!actor) return;
+
+  const spend = !free && !shift; // Defence/Speed are free; the GM's Shift skips the spend.
+
+  if (ability === "slide" && participantById(pid)?.slidePending) {
+    await mutate("run.slideRetry", { pid });
+    return;
+  }
+
+  if (ability === "virus") {
+    // Ask before anything is spent. What the virus is for is the runner's to
+    // say; the plan in the editor is the GM's answer to that — how hard and
+    // how long — and it was standing in for a declaration nobody ever made.
+    let intent = "";
+    if (!declaredVirusIntent(pid)) {
+      intent = await askVirusIntent();
+      if (intent === null) return;
+    }
+    const work = await mutate("run.virusWork", { pid, intent });
+    if (work?.error) { ui.notifications.warn(loc(work.error)); return; }
+    if (!work?.ready) {
+      ui.notifications.info(loc("CRNS.Actions.VirusProgress", { progress: work?.progress, required: work?.required }));
+      return;
+    }
+  } else if (spend && (participantById(pid)?.actions?.value ?? 0) < 1) {
+    ui.notifications.warn(loc("CRNS.Errors.NoActions")); return;
+  }
+  const part = participantById(pid);
+  if (!part?.jackedIn) { ui.notifications.warn(loc("CRNS.Errors.NotConnected")); return; }
+  const sessionBefore = getWorld("session") || {};
+  const testRef = (sessionBefore.targets || {})[game.user.id] || "";
+  let slideFloor = null;
+  if (ability === "slide") {
+    slideFloor = await pickSlideFloor(part, sessionBefore);
+    if (slideFloor === null) return;
+  }
+  const roll = await bridge.rollInterface(actor, ability, event);
+  if (!roll) return;
+  if (spend && ability !== "virus" && ability !== "slide") {
+    const spent = await mutate("run.spend", { pid, n: 1 });
+    if (spent !== true) { ui.notifications.warn(loc(spent?.error || "CRNS.Errors.NoActions")); return; }
+  }
+
+  // Slide is an opposed roll vs the targeted ICE — arch ICE (ice:) or a
+  // player-placed Black ICE (prog:, Addendum 2) → emit the slideTest notify.
+  if (ability === "slide") {
+    const res = await mutate("run.slideAttempt", { pid, testRef, total: Number(roll.resultTotal), floorIndex: slideFloor });
+    if (res?.error) ui.notifications.warn(loc(res.error));
+    return;
+  }
+
+  // Floor-effect abilities → resolve GM-side via run.abilityResult.
+  if (["backdoor", "cloak", "control", "eyedee", "virus", "pathfinder"].includes(ability)) {
+    const res = await mutate("run.abilityResult", { pid, ability, total: Number(roll.resultTotal) || 0 });
+    if (res && res.error) ui.notifications.warn(loc(res.error));
+    else if ((res === true || res?.ok === true) && ["pathfinder", "eyedee"].includes(ability)) app.playConsoleEffect?.("scan", pid);
+    else if ((res === true || res?.ok === true) && ability === "cloak") app.playConsoleEffect?.("cloak", pid);
+    return;
+  }
+
+  if (["speed", "defense"].includes(ability)) { app.playConsoleEffect?.(ability, pid); return; }
+
+  // Attack abilities (zap) → auto-roll defence path.
+  const targetRef = await maybeAutoRoll(app, roll, actor, ability, "interface");
+  if (ability === "zap" && targetRef) app.playConsoleEffect?.("zap", pid, {sourceRef:`runner:${pid}`,targetRef});
+}
+
 function participantById(pid) {
   const session = getWorld("session") || {};
   const part = (session.participants || {})[pid] || null;
@@ -1113,19 +1169,61 @@ function hasDemonAction(actorId) {
  *  target → DEPLOYED against it; no target → TRAP on the runner's current floor
  *  (allowed in and out of combat). No owner-escort/standby. To change a deployed
  *  target the runner deactivates then reactivates with a new target. */
-async function activateBlackIce(app, part, pid, actor, programId) {
+async function activateBlackIce(app, pid, actor, programId) {
   const session = getWorld("session") || {};
   const targetRef = (session.targets || {})[game.user.id] || "";
   const hasTarget = targetRef && !targetRef.startsWith("prog:");
 
   if ((await mutate("run.spend", { pid, n: 1 })) !== true) return;
-  const ok = await bridge.rezProgram(actor, programId);
-  if (!ok) return;
-  await mutate("run.setRezzed", { pid, programId, state: { rezzed: true } });
-  const res = hasTarget
+  if (!(await settleProgramRez(pid, await bridge.setProgramRez(actor, programId, true, { requireInstalled: true })))) return;
+  const mirrored = await mutate("run.setRezzed", { pid, programId, state: { rezzed: true } });
+  // The floor is read now: the spend and the rez were both round trips.
+  const floorIndex = participantById(pid)?.floorIndex || 0;
+  const res = mirrored === false ? false : hasTarget
     ? await mutate("run.progDeploy", { pid, programId, mode: "deployed", targetRef })
-    : await mutate("run.progDeploy", { pid, programId, mode: "trap", floorIndex: part?.floorIndex || 0 });
-  if (res && res.error) ui.notifications.warn(loc(res.error));
+    : await mutate("run.progDeploy", { pid, programId, mode: "trap", floorIndex });
+  if (res === true) return;
+  // No answer is not a refusal: the deploy may have landed, so leave it be.
+  if (res === null || res === undefined) { ui.notifications.warn(loc("CRNS.Errors.SystemApi")); return; }
+
+  // Refused outright — nothing was deployed. Put the program back down rather
+  // than leave a running Black ICE with neither trap nor target, and give the
+  // action back only once it really is back down.
+  const back = await bridge.setProgramRez(actor, programId, false);
+  if (back.status === "done" || back.status === "noop") {
+    await mutate("run.setRezzed", { pid, programId, state: null });
+    await mutate("run.give", { pid, n: 1 });
+  }
+  ui.notifications.warn(loc(res?.error || "CRNS.Errors.SystemApi"));
+}
+
+/** An installed program of this runner's deck (the live item when there is
+ *  one), or null when the deck no longer carries it. */
+function installedProgram(actor, programId) {
+  const installed = (bridge.installedPrograms(bridge.getDeck(actor)) || []).find((p) => p.id === programId);
+  if (!installed) return null;
+  return actor.getOwnedItem?.(programId) ?? installed;
+}
+
+/** Settle the NET action already spent on a program rez/derez. Returns true
+ *  when the change was made. A known failure — or finding the program already
+ *  in that state — gives the action back; an outcome that may have landed
+ *  keeps it, since refunding a change that happened would be a free action. */
+async function settleProgramRez(pid, res) {
+  const status = res?.status;
+  if (status === "done") return true;
+  if (status === "failed" || status === "noop") {
+    await mutate("run.give", { pid, n: 1 });
+    if (status === "failed") ui.notifications.warn(loc(res.error || "CRNS.Errors.SystemApi"));
+    return false;
+  }
+  ui.notifications.warn(loc(res?.error || "CRNS.Errors.SystemApi"));
+  return false;
+}
+
+/** Whether a Black-ICE SPEED test is still waiting on the runner. */
+function speedTestPending(testId) {
+  return ((getWorld("session") || {}).pendingTests || []).some((t) => t.id === testId);
 }
 
 /** Small popover listing a runner's controlled nodes; resolves to a floorId or
@@ -1278,4 +1376,5 @@ async function maybeAutoRoll(app, roll, actor, ability, source, opts = {}) {
     // MISS. Only present when the attack came from an attacker-class program.
     attackerProg: (opts.attackerProg && opts.attackerProg.isAttacker) ? opts.attackerProg : null,
   });
+  return targetRef;
 }

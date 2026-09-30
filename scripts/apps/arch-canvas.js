@@ -5,9 +5,11 @@
  * wireMapViewport) WITHOUT the chassis CSS-zoom correction — this app uses no
  * CSS `zoom`, so the screen↔local scale divisor is always 1. */
 
-import { MODULE_ID, FLOOR_ICONS, ENTITY_ICONS, loc, abbrFor, dialogClasses } from "../constants.js";
+import { blackIceTypeForName, MODULE_ID, FLOOR_ICONS, ENTITY_ICONS, loc, abbrFor, dialogClasses } from "../constants.js";
 import * as archTree from "../rules/tree.js";
 import { getWorld, mutate } from "../data.js";
+import {floorHoldsFile} from "../rules/abilities.js";
+import {openFloorFindings} from "./findings.js";
 import { getDeck, installedPrograms } from "../cpr-bridge.js";
 
 /* Floor width + gap must match the CSS so the "fit" camera can centre floor 0. */
@@ -207,6 +209,7 @@ export function getData(app) {
         ref,
         isDemon: false,
         isProgram: true,
+        iceType:blackIceTypeForName(prog.name)||"custom",
         actorId: progActor?.id || "",
         name: dispName,
         code: abbrFor(dispName),
@@ -218,6 +221,7 @@ export function getData(app) {
         chaseTitle: chaseAtt ? loc("CRNS.Canvas.Chasing", { name: chasedActor?.name || loc("CRNS.Runners.NPC") }) : "",
         selected: selection === ref,
         selectable: canSelect(ref, myRunnerPid),
+        targeted: session.targets?.[game.user.id] === ref,
         targets: targetsFor(session, ref),
         owner: ownerBadge(p, actor),
         gmDraggable: game.user.isGM,
@@ -282,7 +286,7 @@ export function getData(app) {
         const rp = parts[att.pid];
         const rActor = rp?.actorUuid ? (fromUuidSync?.(rp.actorUuid) ?? null) : null;
         const rName = rActor?.name || loc("CRNS.Runners.NPC");
-        tether = { color: userChrome(rp?.userId).color, title: loc("CRNS.Canvas.AttachedTo", { name: rName }) };
+        tether = { pid: att.pid, name: rName, color: userChrome(rp?.userId).color, title: loc("CRNS.Canvas.AttachedTo", { name: rName }) };
       }
     }
     // Slid badge (SPEC §14.7): a crossed-eye visible to the runner who slid + GM.
@@ -302,9 +306,12 @@ export function getData(app) {
     return {
       ref,
       isDemon,
+      iceType:isDemon?null:def.type,
       actorId: def.actorId || "",
       name: actor?.name || def.type,
       img: actor?.img || "icons/svg/mystery-man.svg",
+      tokenImg: actor?.prototypeToken?.texture?.src || actor?.img,
+      targeted: session.targets?.[game.user.id] === ref,
       rez, rezMax,
       rezPct: rezMax > 0 ? Math.round((rez / rezMax) * 100) : 0,
       derezzed,
@@ -436,6 +443,8 @@ export function getData(app) {
         pid, ref,
         name: actor?.name || loc("CRNS.Runners.NPC"),
         img: actor?.img || "icons/svg/mystery-man.svg",
+        tokenImg: actor?.prototypeToken?.texture?.src || actor?.img,
+        targeted: session.targets?.[game.user.id] === ref,
         color: userChrome(p.userId).color,
         isMine,
         selected: selection === ref,
@@ -471,6 +480,10 @@ export function getData(app) {
       rootIcon: isRoot ? FLOOR_ICONS.root : "",
       icon: FLOOR_ICONS[floor.kind] || FLOOR_ICONS.custom,
       label: kindLabel,
+      kind: floor.kind,
+      holdsFile:floorHoldsFile(floor),
+      findings: (isGM || (floorState[`${archId}:${floor.id}`]?.eyedee || []).includes(myRunnerPid)) ? floor.findings : undefined,
+      contentsVisible: isGM || (floorState[`${archId}:${floor.id}`]?.eyedee || []).includes(myRunnerPid),
       // DV is GM-only (SPEC §14.7 — hide DV from ALL non-GM everywhere).
       dv: isGM ? (floor.dv || 0) : 0,
       showDv: isGM && !!floor.dv,
@@ -569,6 +582,14 @@ export function getData(app) {
       });
   }
 
+  // Relative order of visible floors keeps the overview consistent with the classic
+  // canvas without carrying the widths or empty columns of undiscovered subtrees.
+  if(fogActive){
+    const ordered=[...visibleFloors].sort((a,b)=>a.col-b.col||a.index-b.index);
+    const order=new Map(ordered.map((f,i)=>[f.index,i]));
+    visibleFloors=visibleFloors.map(f=>({...f,layoutOrder:order.get(f.index)}));
+  }
+
   // Connectors, drawn only where both ends survived the fog — a line into
   // nothing would tell the player more than the stub does.
   const shown = new Set(visibleFloors.map((f) => f.index));
@@ -583,6 +604,8 @@ export function getData(app) {
       empty: false,
       archId,
       floors: visibleFloors,
+      // Overview must not inherit spacing from undiscovered branches.
+      layoutVisibleOnly: fogActive,
       links,
       rows: layout.rows,
       cols: layout.cols,
@@ -775,6 +798,10 @@ export function stopRain(app) {
 /* ------------------------------------------------------------------ */
 
 export function activateListeners(app, html) {
+  html.find('[data-action="floor-findings-view"]').on('click',ev=>{
+    const canvas=app._consoleCanvas??getData(app).canvas,floor=canvas?.floors?.find(f=>f.index===Number(ev.currentTarget.dataset.index));
+    if(floor&&!floor.encrypted)openFloorFindings(app,floor,()=>{});
+  });
   // A picture on a floor card is thumbnail-sized by necessity; anyone allowed to
   // see it can open it properly. ImagePopout is the core viewer, so it behaves
   // like every other image in Foundry — and, for the GM, can be shown to the

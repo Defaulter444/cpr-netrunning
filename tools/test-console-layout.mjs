@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import {layoutPreferences,geometrySnapshot,motionAllowed} from '../scripts/apps/console-layout.mjs';
+const defaults=layoutPreferences();assert.equal(defaults.duration,300);assert.equal(defaults.left,true);
+assert.deepEqual(layoutPreferences(null),defaults);
+assert.equal(layoutPreferences({left:false,unknown:'ignored',duration:-9}).left,false);
+assert.equal(layoutPreferences({duration:-9}).duration,300);
+assert.equal(layoutPreferences({duration:'450'}).duration,450);
+const snap=geometrySnapshot({nodes:[{index:1,left:20,top:30,width:300,height:100,x:170,y:80,preview:{image:'SECRET'},tokens:[{ref:'runner:p',x:40,y:50,name:'SECRET'}]}]},'a');
+assert.equal(snap.tokens.get('runner:p').x,40);assert.equal(snap.nodes.get(1).width,300);
+assert.ok(!JSON.stringify([...snap.nodes,...snap.tokens]).includes('SECRET'),'animation snapshots contain geometry, never file contents');
+globalThis.matchMedia=()=>({matches:true});
+const root={classList:{contains:()=>true}},app={element:[{querySelector:()=>root}]};
+assert.equal(motionAllowed(app),false);app._consoleForceMotion=true;assert.equal(motionAllowed(app),true);
+assert.equal(motionAllowed(app,{enabled:false,force:true}),false);
+assert.equal(motionAllowed(app,{enabled:true,force:true}),true);
+assert.equal(app._consoleForceMotion,true,'preview does not mutate stored preferences');
+console.log('Layout: preference normalization, private geometry, unified reduced-motion policy and preview isolation passed');

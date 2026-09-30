@@ -1,0 +1,244 @@
+{
+  "floors": [
+    {
+      "index": 0,
+      "number": 1,
+      "depth": 0,
+      "isEntry": true,
+      "icon": "systems/cyberpunk-red-core/icons/netrunning/Password.png",
+      "label": "Пароль",
+      "entities": [],
+      "participants": []
+    },
+    {
+      "index": 1,
+      "number": 2,
+      "depth": 1,
+      "isEntry": false,
+      "icon": "systems/cyberpunk-red-core/icons/netrunning/Password.png",
+      "label": "Пароль",
+      "entities": [],
+      "participants": []
+    },
+    {
+      "index": 2,
+      "number": 3,
+      "depth": 1,
+      "isEntry": false,
+      "icon": "systems/cyberpunk-red-core/icons/netrunning/Password.png",
+      "label": "Пароль",
+      "entities": [],
+      "participants": []
+    },
+    {
+      "index": 3,
+      "number": 4,
+      "depth": 1,
+      "isEntry": false,
+      "icon": "systems/cyberpunk-red-core/icons/netrunning/Password.png",
+      "label": "Пароль",
+      "entities": [],
+      "participants": []
+    },
+    {
+      "index": 4,
+      "number": 5,
+      "depth": 1,
+      "isEntry": false,
+      "icon": "systems/cyberpunk-red-core/icons/netrunning/Password.png",
+      "label": "Пароль",
+      "entities": [],
+      "participants": []
+    },
+    {
+      "index": 5,
+      "number": 6,
+      "depth": 1,
+      "isEntry": false,
+      "icon": "systems/cyberpunk-red-core/icons/netrunning/Password.png",
+      "label": "Пароль",
+      "entities": [],
+      "participants": []
+    },
+    {
+      "index": 6,
+      "number": 7,
+      "depth": 1,
+      "isEntry": false,
+      "icon": "systems/cyberpunk-red-core/icons/netrunning/Password.png",
+      "label": "Пароль",
+      "entities": [],
+      "participants": []
+    },
+    {
+      "index": 7,
+      "number": 8,
+      "depth": 1,
+      "isEntry": false,
+      "icon": "systems/cyberpunk-red-core/icons/netrunning/Password.png",
+      "label": "Пароль",
+      "entities": [],
+      "participants": []
+    },
+    {
+      "index": 8,
+      "number": 9,
+      "depth": 2,
+      "isEntry": false,
+      "icon": "systems/cyberpunk-red-core/icons/netrunning/Control_Node.png",
+      "label": "Узел управления",
+      "entities": [],
+      "participants": []
+    },
+    {
+      "index": 9,
+      "number": 10,
+      "depth": 1,
+      "isEntry": false,
+      "icon": "systems/cyberpunk-red-core/icons/netrunning/Password.png",
+      "label": "Пароль",
+      "entities": [],
+      "participants": []
+    },
+    {
+      "index": 10,
+      "number": 11,
+      "depth": 1,
+      "isEntry": false,
+      "icon": "systems/cyberpunk-red-core/icons/netrunning/Password.png",
+      "label": "Пароль",
+      "entities": [],
+      "participants": []
+    },
+    {
+      "index": 11,
+      "number": 12,
+      "depth": 1,
+      "isEntry": false,
+      "icon": "systems/cyberpunk-red-core/icons/netrunning/Password.png",
+      "label": "Пароль",
+      "entities": [],
+      "participants": []
+    },
+    {
+      "index": 12,
+      "number": 13,
+      "depth": 1,
+      "isEntry": false,
+      "icon": "systems/cyberpunk-red-core/icons/netrunning/Password.png",
+      "label": "Пароль",
+      "entities": [],
+      "participants": []
+    },
+    {
+      "index": 13,
+      "number": 14,
+      "depth": 1,
+      "isEntry": false,
+      "icon": "systems/cyberpunk-red-core/icons/netrunning/Password.png",
+      "label": "Пароль",
+      "entities": [],
+      "participants": []
+    },
+    {
+      "index": 14,
+      "number": 15,
+      "depth": 1,
+      "isEntry": false,
+      "icon": "systems/cyberpunk-red-core/icons/netrunning/Password.png",
+      "label": "Пароль",
+      "entities": [],
+      "participants": []
+    },
+    {
+      "index": 15,
+      "number": 16,
+      "depth": 1,
+      "isEntry": false,
+      "icon": "systems/cyberpunk-red-core/icons/netrunning/Password.png",
+      "label": "Пароль",
+      "entities": [],
+      "participants": []
+    },
+    {
+      "index": 16,
+      "number": 17,
+      "depth": 3,
+      "isEntry": false,
+      "icon": "systems/cyberpunk-red-core/icons/netrunning/Password.png",
+      "label": "Пароль",
+      "entities": [],
+      "participants": []
+    }
+  ],
+  "links": [
+    {
+      "from": 0,
+      "to": 1
+    },
+    {
+      "from": 0,
+      "to": 2
+    },
+    {
+      "from": 0,
+      "to": 3
+    },
+    {
+      "from": 0,
+      "to": 4
+    },
+    {
+      "from": 0,
+      "to": 5
+    },
+    {
+      "from": 0,
+      "to": 6
+    },
+    {
+      "from": 0,
+      "to": 7
+    },
+    {
+      "from": 7,
+      "to": 8
+    },
+    {
+      "from": 0,
+      "to": 9
+    },
+    {
+      "from": 3,
+      "to": 9
+    },
+    {
+      "from": 0,
+      "to": 10
+    },
+    {
+      "from": 0,
+      "to": 11
+    },
+    {
+      "from": 0,
+      "to": 12
+    },
+    {
+      "from": 0,
+      "to": 13
+    },
+    {
+      "from": 0,
+      "to": 14
+    },
+    {
+      "from": 0,
+      "to": 15
+    },
+    {
+      "from": 8,
+      "to": 16
+    }
+  ]
+}

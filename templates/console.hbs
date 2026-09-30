@@ -1,0 +1,114 @@
+<div class="crns-root crns-console theme-red section-{{console.section}}{{#if console.motion}} has-motion{{/if}}{{#if console.forceMotion}} force-motion{{/if}}{{#if editor}} has-editor{{/if}}" data-arch-id="{{canvas.archId}}">
+  <header class="nc-top"><div><i class="fas fa-microchip"></i><strong>КОНСОЛЬ НЕТРАННЕРА</strong><small>CYBERPUNK RED / СЕТЬ НАЙТ-СИТИ</small></div><span class="nc-motto">ЕЩЁ ОДНА ДВЕРЬ. ЕЩЁ ОДИН МИР.</span><span class="nc-connection{{#if console.connected}} online{{/if}}"><i class="fas {{#if console.connected}}fa-link{{else}}fa-link-slash{{/if}}"></i> {{#if console.connected}}Подключён{{else}}{{#if console.runner}}Нет подключения{{else}}Выберите участника{{/if}}{{/if}}</span></header>
+  <nav class="nc-nav" aria-label="Разделы консоли">
+    <button type="button" data-console-section="overview" class="{{#if (crnsEq console.section 'overview')}}active{{/if}}"><i class="fas fa-layer-group"></i> Обзор</button>
+    <button type="button" data-console-section="detail" class="{{#if (crnsEq console.section 'detail')}}active{{/if}}"><i class="fas fa-diagram-project"></i> Этажи</button>
+    <button type="button" data-console-section="deck" class="{{#if (crnsEq console.section 'deck')}}active{{/if}}"><i class="fas fa-memory"></i> Кибердека</button>
+    {{#if isGM}}<button type="button" data-console-section="manage" class="{{#if (crnsEq console.section 'manage')}}active{{/if}}"><i class="fas fa-sliders"></i> Управлять забегом</button>{{/if}}
+    <button type="button" data-console-findings><i class="fas fa-folder-open"></i> Находки</button>
+    <button type="button" data-console-display><i class="fas fa-sliders" aria-hidden="true"></i> Вид и эффекты</button>
+  </nav>
+  <div class="nc-viewbar" role="toolbar" aria-label="Панели обзора">
+    <span class="nc-view-label"><i class="fas fa-layer-group"></i> ОБЗОР</span>
+    <button type="button" data-console-panel-toggle="left" aria-controls="nc-panel-left"><i class="fas fa-user"></i> Нетраннер</button>
+    <button type="button" data-console-panel-toggle="right" aria-controls="nc-panel-right"><i class="fas fa-microchip"></i> Оснащение</button>
+    <button type="button" data-console-panel-toggle="controls" aria-controls="nc-panel-controls"><i class="fas fa-sliders"></i> Управление</button>
+    <button type="button" data-console-panel-toggle="log" aria-controls="nc-panel-log"><i class="fas fa-list"></i> Журнал</button>
+    <button type="button" data-console-focus>Только схема</button>
+    <span class="nc-view-status" data-console-view-status></span>
+  </div>
+  <div class="nc-layout">
+    <aside class="nc-left" id="nc-panel-left" data-console-panel="left"><div class="nc-sidebar-inner">
+      <section class="nc-panel nc-runner"><h2>НЕТРАННЕР <small>/ ВАША ПОЗИЦИЯ</small></h2><div data-console-profile></div></section>
+      <section class="nc-panel nc-alerts" aria-label="Действия и проверки"><h2>ДЕЙСТВИЯ И ПРОВЕРКИ</h2><div data-console-alerts></div></section>
+      <section class="nc-panel nc-connection-card"><h2>СЕАНС / ПОДКЛЮЧЕНИЕ</h2>{{> "modules/cpr-netrunning/templates/console-connect.hbs" console.connection}}</section>
+      <section class="nc-panel nc-ability-panel"><h2>СПОСОБНОСТИ ИНТЕРФЕЙСА</h2><div data-console-abilities></div>{{#unless console.runner}}<p class="nc-pad">{{#if isGM}}Выберите нетраннера в панели подключения выше.{{else}}После подключения здесь появятся ваши способности.{{/if}}</p>{{/unless}}</section>
+      <section class="nc-panel nc-short-help"><h2>БЫСТРЫЙ ДОСТУП</h2><p>Щелчок по льду или демону — выбрать цель. Список «Цель» показывает имя и этаж каждого. Щелчок по раннеру — управлять им. Тяните токен на этаж для перемещения. Значок файла или узла открывает его карточку.</p></section>
+    </div></aside>
+    <main class="nc-main">
+      <section class="nc-panel nc-architecture"><h2>АРХИТЕКТУРА СЕТИ <small>// {{console.archName}}</small></h2>
+        <div class="crns-tabs">{{> "modules/cpr-netrunning/templates/tabs.hbs"}}</div>
+        {{#if editor}}<div class="crns-editor">{{> "modules/cpr-netrunning/templates/editor.hbs"}}</div>{{else}}
+        {{#unless canvas.empty}}<div class="nc-overview">
+          <div class="nc-collapse nc-controls-collapse" id="nc-panel-controls" data-console-panel="controls"><div class="nc-collapse-inner">
+          <div class="nc-map-toolbar">
+            <label>Этаж <select data-console-floor-select aria-label="Показать этаж на схеме" data-tooltip="Перейти к этажу на схеме. Персонаж остаётся на месте.">{{#each console.graph.navigation}}<option value="{{index}}" {{#if selected}}selected{{/if}}>{{number}} · {{label}}</option>{{/each}}</select></label>
+            <button type="button" data-console-open-floor data-tooltip="Открыть карточку выбранного этажа и его игровые действия"><i class="fas fa-arrow-up-right-from-square"></i> Карточка</button>
+            <button type="button" data-console-map-home data-tooltip="Показать этаж выбранного нетраннера; без нетраннера — вход" aria-label="Показать свою позицию"><i class="fas fa-crosshairs"></i></button>
+            <div class="nc-map-zoom"><button type="button" data-console-zoom="-1" aria-label="Уменьшить схему" data-tooltip="Уменьшить схему"><i class="fas fa-minus"></i></button><input type="range" data-console-zoom-range min="25" max="400" step="1" value="100" aria-label="Масштаб СЕТИ" data-tooltip="Масштаб схемы от 25 до 400 процентов"><output data-console-zoom-value aria-live="off">100%</output><button type="button" data-console-zoom="1" aria-label="Увеличить схему" data-tooltip="Увеличить схему"><i class="fas fa-plus"></i></button><button type="button" data-console-zoom="0" data-tooltip="Вернуть читаемый масштаб и показать выбранный этаж">100%</button><button type="button" data-console-fit data-tooltip="Вписать всю СЕТЬ с ответвлениями в окно"><i class="fas fa-expand"></i> Вся СЕТЬ</button></div>
+          </div>
+          <div class="nc-combat-toolbar">
+            <label>Цель <select data-console-target-select aria-label="Цель: имя и этаж"><option value="">Не выбрана</option></select></label>
+            <button type="button" data-console-clear-target aria-label="Снять цель" data-tooltip="Снять выбранную цель"><i class="fas fa-xmark"></i></button>
+            {{#if isGM}}<button type="button" data-console-control-target data-tooltip="Выбрать эту сущность для действий вместо нетраннера">Управлять целью</button>
+            <label>Перемещение <select data-console-move-mode aria-label="Режим перемещения"><option value="place">Расстановка мастера</option><option value="run">Ход с преследованием</option></select></label>{{/if}}
+            <p data-console-move-hint></p><p class="nc-pursuit" data-console-pursuit hidden></p>
+          </div>
+          </div></div>
+          <div class="nc-schematic-viewport" tabindex="0" role="region" aria-label="Схема СЕТИ: колесо и клавиши плюс/минус меняют масштаб; 0 — сброс; перетаскивание и стрелки двигают схему">
+            <svg class="nc-iso{{#if console.graph.branched}} has-branches{{/if}}" viewBox="0 0 {{console.graph.width}} {{console.graph.height}}" data-map-width="{{console.graph.width}}" data-map-height="{{console.graph.height}}" data-map-count="{{console.graph.count}}" data-map-selected="{{console.graph.selectedIndex}}" data-map-current="{{console.graph.currentIndex}}" role="group" aria-label="Обзор известных этажей архитектуры">
+              {{#each console.graph.levels}}<g class="nc-map-level" aria-hidden="true"><text x="24" y="{{y}}">{{label}}</text></g>{{/each}}
+              <g class="nc-links" aria-hidden="true" mask="url(#{{console.graph.wireId}}-mask)">{{#each console.graph.edges}}<g class="nc-connection-line{{#if underpass}} underpass{{/if}}{{#if active}} active{{/if}}{{#if hidden}} unknown{{/if}}" data-link-from="{{from}}" data-link-to="{{to}}"><title>{{title}}</title><path d="{{path}}" class="nc-edge-halo"/><path d="{{path}}" class="nc-edge{{#if active}} active{{/if}}{{#if hidden}} unknown{{/if}}"/><circle cx="{{startX}}" cy="{{startY}}" r="3.5" class="nc-edge-dot"/></g>{{/each}}</g>
+              {{#each console.graph.nodes}}<g class="nc-isofloor{{#if selected}} selected{{/if}}{{#if encrypted}} encrypted{{/if}}{{#if current}} current{{/if}}" data-console-floor="{{index}}" data-floor-x="{{x}}" data-floor-y="{{y}}" role="button" tabindex="0" aria-pressed="{{#if selected}}true{{else}}false{{/if}}" aria-label="Показать этаж {{number}}: {{label}}"><title>Этаж {{number}}: {{label}}</title>
+                <g data-floor-surface="{{index}}"><polygon class="nc-slab-face" points="{{face}}"/><polygon class="nc-slab-top" points="{{points}}"/><path class="nc-slab-grid" d="{{grid}}"/></g>
+                <g data-floor-caption="{{index}}"><text class="nc-floor-number" x="{{labelX}}" y="{{labelY}}">ЭТАЖ {{number}}</text><text class="nc-floor-title" x="{{labelX}}" y="{{subtitleY}}">{{shortLabel}}</text></g>
+              </g>
+              {{#if card}}
+              <foreignObject x="{{previewX}}" y="{{previewY}}" width="200" height="144" data-floor-object="{{index}}">
+                <button xmlns="http://www.w3.org/1999/xhtml" type="button" class="nc-file-thumb{{#unless preview}} locked{{/unless}}" data-console-object="{{index}}" aria-label="{{objectLabel}}, этаж {{number}}">
+                  {{#if preview}}<span class="nc-file-fallback"><i class="fas fa-file-lines"></i><span>{{#if preview.text}}{{preview.text}}{{else}}Открыть вложение{{/if}}</span></span>{{#if preview.image}}<img src="{{preview.image}}" alt="Предпросмотр: {{preview.label}}" draggable="false"/>{{/if}}<span class="nc-file-caption"><i class="fas fa-expand"></i> {{preview.label}}{{#if preview.count}} · {{preview.count}}{{/if}}</span>
+                  {{else}}<i class="fas fa-lock"></i><span>Файл закрыт</span><small>Идентификация</small>{{/if}}
+                </button>
+              </foreignObject>
+              {{else}}<foreignObject x="{{objectX}}" y="{{objectY}}" width="64" height="64" data-floor-object="{{index}}"><button xmlns="http://www.w3.org/1999/xhtml" type="button" class="nc-object{{#if smallObject}} small{{/if}}{{#if encrypted}} encrypted{{/if}}" data-console-object="{{index}}" aria-label="{{objectLabel}}, этаж {{number}}" data-tooltip="{{objectLabel}}"><i class="fas {{glyph}}" aria-hidden="true"></i></button></foreignObject>{{/if}}
+              {{#each tokens}}
+              <foreignObject x="{{x}}" y="{{y}}" width="108" height="104" class="nc-token-slot" data-token-slot="{{ref}}">
+                <div xmlns="http://www.w3.org/1999/xhtml" class="nc-map-token {{kind}}{{#if selected}} selected{{/if}}{{#if targeted}} targeted{{/if}}{{#if derezzed}} derezzed{{/if}}" data-console-token="{{ref}}" {{#if iceType}}data-ice-type="{{iceType}}"{{/if}} data-floor-index="{{floorIndex}}">
+                  <button type="button" class="nc-token-main" data-can-move="{{#if canMove}}true{{else}}false{{/if}}" data-entity-ref="{{ref}}" aria-label="{{kindLabel}}: {{name}}, этаж {{../number}}" aria-pressed="{{#if (crnsEq kind 'runner')}}{{#if selected}}true{{else}}false{{/if}}{{else}}{{#if targeted}}true{{else}}false{{/if}}{{/if}}" data-tooltip="{{name}} · {{kindLabel}}{{#if canMove}} · перетащите на этаж{{/if}}">
+                    <img class="nc-token-portrait" src="{{img}}" alt="" draggable="false"/><span class="nc-token-name">{{shortName}}</span><small>{{#if targeted}}ЦЕЛЬ · {{/if}}{{kindLabel}}</small>
+                  </button>
+                  <button type="button" class="nc-token-target" data-console-target-token="{{ref}}" aria-label="Цель: {{name}}" aria-pressed="{{#if targeted}}true{{else}}false{{/if}}" data-tooltip="Выбрать целью: {{name}}"><i class="fas fa-crosshairs" aria-hidden="true"></i></button>
+                </div>
+              </foreignObject>{{/each}}
+              {{/each}}
+              <defs><mask id="{{console.graph.wireId}}-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="{{console.graph.width}}" height="{{console.graph.height}}">
+                <rect x="0" y="0" width="{{console.graph.width}}" height="{{console.graph.height}}" fill="white"/>
+                {{#each console.graph.nodes}}{{#each wireMasks}}<rect x="{{x}}" y="{{y}}" width="{{width}}" height="{{height}}" fill="black"/>{{/each}}{{/each}}
+              </mask>{{#each console.graph.edges}}<clipPath id="{{../console.graph.wireId}}-{{from}}-{{to}}"><polygon points="{{sourceSurface}}"/><polygon points="{{targetSurface}}"/></clipPath>{{/each}}</defs>
+              <g class="nc-wire-continuity" aria-hidden="true" mask="url(#{{console.graph.wireId}}-mask)">{{#each console.graph.edges}}<path d="{{path}}" clip-path="url(#{{../console.graph.wireId}}-{{from}}-{{to}})" class="{{#if active}}active{{/if}}{{#if hidden}} unknown{{/if}}{{#if underpass}} underpass{{/if}}"/><g class="nc-connection-line{{#if active}} active{{/if}}{{#if hidden}} unknown{{/if}}"><polygon points="{{arrow}}" class="nc-edge-arrow"/></g>{{/each}}</g>
+            </svg>
+          </div>
+          <div class="nc-map-footer"><span><i class="fas fa-route"></i> Связи этажа</span>{{#if console.graph.hasConnections}}<select data-console-link-select aria-label="Показать связанный этаж" data-tooltip="Показать этаж, соединённый с выбранным. Это просмотр, не перемещение персонажа."><option value="">Выберите переход · {{console.graph.connections.length}}</option>{{#each console.graph.connections}}<option value="{{index}}">{{label}}</option>{{/each}}</select>{{else}}<span>Нет видимых переходов</span>{{/if}}<span class="nc-route-legend">Стрелки показывают направление связей. Выберите этаж, чтобы выделить его связи.</span></div>
+        </div>{{/unless}}
+        <div class="crns-viewport">{{> "modules/cpr-netrunning/templates/arch-canvas.hbs"}}</div>
+        {{/if}}
+      </section>
+      <div class="nc-collapse nc-log-collapse" id="nc-panel-log" data-console-panel="log"><div class="nc-collapse-inner"><section class="nc-panel nc-log"><h2>{{localize 'CRNS.Console.Journal'}} <small>{{localize 'CRNS.Console.JournalScope'}}</small><button type="button" data-console-clear-log aria-label="{{localize 'CRNS.Console.ClearLog'}}" data-tooltip="{{localize 'CRNS.Console.ClearLog'}}"><i class="fas fa-eraser" aria-hidden="true"></i></button></h2><div role="log" aria-label="{{localize 'CRNS.Console.Journal'}}" aria-live="off">{{#each console.events}}<p class="nc-event {{tone}}"><time datetime="{{stamp}}">{{time}}</time><i class="fas fa-angle-right" aria-hidden="true"></i><span>{{text}}</span></p>{{else}}<p>{{localize 'CRNS.Console.EmptyJournal'}}</p>{{/each}}</div></section></div></div>
+      {{#if isGM}}<section class="nc-panel nc-management"><h2>АРХИТЕКТУРЫ И УЧАСТНИКИ</h2>
+        <div class="nc-manage-grid">
+          <div class="crns-left">
+            {{#if state.collapsedLeft}}<button type="button" class="nc-manage-expand" data-action="tree-toggle" data-tooltip="Развернуть список архитектур для открытия и редактирования"><i class="fas fa-sitemap"></i> Развернуть архитектуры</button>
+            {{else}}{{> "modules/cpr-netrunning/templates/tree.hbs"}}{{/if}}
+          </div>
+          <div class="crns-right">
+            {{#if runners.collapsed}}<button type="button" class="nc-manage-expand" data-action="runners-toggle" data-tooltip="Развернуть список нетраннеров для выбора и подключения"><i class="fas fa-users"></i> Развернуть нетраннеров</button>
+            {{else}}{{> "modules/cpr-netrunning/templates/runners.hbs"}}{{/if}}
+          </div>
+        </div>
+      </section>{{/if}}
+    </main>
+    <aside class="nc-right" id="nc-panel-right" data-console-panel="right"><div class="nc-sidebar-inner">
+      {{#if console.floor}}<section class="nc-panel nc-floor-inspector"><h2>{{localize 'CRNS.Console.SelectedFloor'}}</h2><div class="nc-pad">
+        {{#if console.floor.encrypted}}<div class="nc-floor-readout"><i class="fas fa-lock" aria-hidden="true"></i><strong>{{localize 'CRNS.Console.UnknownFloor'}}</strong></div><p>{{localize 'CRNS.Console.EncryptedHint'}}</p>
+        {{else}}<div class="nc-floor-readout"><span class="nc-floor-badge">{{console.floor.number}}</span><strong>{{console.floor.label}}</strong></div>
+        <div class="nc-floor-tags">{{#if console.floor.breached}}<span class="success"><i class="fas fa-lock-open" aria-hidden="true"></i> {{localize 'CRNS.Console.Breached'}}</span>{{/if}}{{#if console.floor.controlled}}<span class="success"><i class="fas fa-toggle-on" aria-hidden="true"></i> {{localize 'CRNS.Console.Controlled'}}</span>{{/if}}{{#if console.floor.checkLabel}}<span>{{console.floor.checkLabel}}</span>{{/if}}{{#if console.floor.showDv}}<span>{{localize 'CRNS.Console.DV'}} {{console.floor.dv}}</span>{{/if}}</div>
+        {{#each console.floor.entities}}<div class="nc-floor-occupant"><img src="{{img}}" alt=""><span>{{name}}</span></div>{{/each}}
+        {{/if}}<button type="button" data-console-move-here><i class="fas fa-person-walking" aria-hidden="true"></i> Переместить выбранный токен сюда</button><button type="button" data-console-open-floor><i class="fas fa-arrow-up-right-from-square" aria-hidden="true"></i> {{localize 'CRNS.Console.InspectFloor'}}</button>
+      </div></section>{{/if}}
+      <section class="nc-panel nc-deck"><h2>КИБЕРДЕКА <small>// ОСНАЩЕНИЕ</small></h2><img src="modules/cpr-netrunning/assets/console/cyberdeck.png" alt="Кибердека в красной подсветке"><div class="nc-pad"><strong>{{console.deckName}}</strong><p>Установлено программ <b>{{console.programCount}}</b></p><p>Активно <b>{{console.activeCount}}</b></p>{{#if console.actorId}}<button type="button" data-console-sheet data-actor-uuid="{{console.actorUuid}}"><i class="fas fa-arrow-up-right-from-square"></i> Открыть оснащение</button>{{/if}}</div></section>
+      <section class="nc-panel nc-program-panel"><h2>ПРОГРАММЫ / В КИБЕРДЕКЕ</h2><div data-console-programs></div>{{#unless actions.programs.length}}<p class="nc-pad">У выбранного участника нет установленных программ.</p>{{/unless}}</section>
+      <section class="nc-panel nc-target"><h2>ЦЕЛЬ / СВЕДЕНИЯ</h2><div data-console-target></div></section>
+    </div></aside>
+  </div>
+  <div class="nc-action-source crns-actionbar">{{> "modules/cpr-netrunning/templates/actions.hbs"}}</div>
+</div>

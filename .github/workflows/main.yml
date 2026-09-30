@@ -103,6 +103,34 @@ jobs:
           DOWNLOAD: ${{ env.release_module_url }}
 
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Validate release and run regression checks
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          CRNS_HANDLEBARS_PACKAGE: ${{ runner.temp }}/crns-testdeps/package.json
+        run: |
+          npm install --prefix "$RUNNER_TEMP/crns-testdeps" --ignore-scripts --no-save handlebars@4.7.8
+          python3 - <<'PY'
+          import json, os, subprocess
+          from pathlib import Path
+          manifest = json.loads(Path('module.json').read_text())
+          version = os.environ['RELEASE_TAG'].removeprefix('v')
+          repository = os.environ['GITHUB_REPOSITORY']
+          assert manifest['version'] == version, 'Release tag and manifest version differ'
+          assert manifest['download'] == f"https://github.com/{repository}/releases/download/{os.environ['RELEASE_TAG']}/module.zip"
+          assert manifest['manifest'] == f'https://github.com/{repository}/releases/latest/download/module.json'
+          tests = sorted(Path('tools').glob('test-*.mjs')) + sorted(Path('tools/scanner').glob('*.test.mjs')) + [Path('tools/verify.mjs')]
+          assert len(tests) >= 37, 'Release regression tests are missing'
+          for test in tests:
+              print(f'Running {test}', flush=True)
+              subprocess.run(['node', str(test)], check=True)
+          PY
+
+
       # Create a "module.zip" archive containing all the module's required files.
       # If you have other directories or files that will need to be added to
       # your packaged module, add them here.
@@ -121,6 +149,7 @@ jobs:
             LICENSE                              \
             CHANGELOG.md                         \
             NOTICE-SCANNER.md                    \
+            NOTICE-CONSOLE-ASSETS.md             \
             assets/                              \
             docs/                                \
             templates                            \
@@ -139,7 +168,7 @@ jobs:
               manifest = json.loads(archive.read('module.json'))
               required = manifest['esmodules'] + manifest['styles']
               required += [language['path'] for language in manifest['languages']]
-              required += ['README.md', 'LICENSE', 'CHANGELOG.md', 'NOTICE-SCANNER.md']
+              required += ['README.md', 'LICENSE', 'CHANGELOG.md', 'NOTICE-SCANNER.md', 'NOTICE-CONSOLE-ASSETS.md']
               for directory in ('scripts', 'styles', 'templates', 'lang', 'assets', 'docs'):
                   required += [path.as_posix() for path in Path(directory).rglob('*') if path.is_file()]
               missing = set(required) - names

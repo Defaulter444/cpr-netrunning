@@ -12,6 +12,10 @@ import * as bridge from "./cpr-bridge.js";
 import * as archTree from "./rules/tree.js";
 import { floorHoldsFile } from "./rules/abilities.js";
 
+import {iceEventOperations} from "./ice-events.js";
+import {hydrateFindings,persistFindings,grantFindingAccess,findingOperations} from "./findings-store.js";
+import {normalizeFindings} from "./findings-model.js";
+
 const FLOOR_KINDS_SET = new Set(FLOOR_KINDS);
 
 /* Floors of an architecture, with the tree fixed up.
@@ -101,12 +105,15 @@ export const WORLD_OBJECTS = {
 /* ------------------------------------------------------------------ */
 
 export function getWorld(key) {
-  try { return foundry.utils.deepClone(game.settings.get(MODULE_ID, key)); }
+  try { const value=foundry.utils.deepClone(game.settings.get(MODULE_ID,key)); return key==="netArchs"?hydrateFindings(value):value; }
   catch (e) { return null; }
 }
 
 export async function setWorld(key, value) {
-  return game.settings.set(MODULE_ID, key, value);
+  return game.settings.set(MODULE_ID, key, key==="netArchs"?await persistFindings(value,(archId,floorId)=>{
+    const session=getWorld('session')??{},pids=session.floorState?.[`${archId}:${floorId}`]?.eyedee??[];
+    return game.users.filter(u=>pids.some(pid=>ownsParticipant(session.participants?.[pid],u.id)));
+  }):value);
 }
 
 export function primaryGM() {
@@ -1046,6 +1053,8 @@ function customTypeUsage(kind, key) {
 }
 
 const OPS = {
+  ...findingOperations({getWorld,ownsParticipant,requesterIsGM}),
+  ...iceEventOperations({getWorld,ownsParticipant,requesterIsGM}),
   /* ---- diagnostics ---- */
   async ping({ echo } = {}, userId) {
     return { pong: true, echo: echo ?? null, gm: requesterIsGM(userId) };
@@ -1456,6 +1465,7 @@ const OPS = {
         check: typeof floor.check === "string" ? floor.check : "",
         contents: typeof floor.contents === "string" ? floor.contents : "",
         contentsImage: typeof floor.contentsImage === "string" ? floor.contentsImage : "",
+        ...(Array.isArray(floor.findings)?{findings:normalizeFindings(floor.findings)}:{}),
         virusPlan: floor.virusPlan ? foundry.utils.deepClone(floor.virusPlan) : null,
         kind, label: typeof floor?.label === "string" ? floor.label : "",
         dv: Number.isFinite(Number(floor?.dv)) ? Number(floor.dv) : 0,
@@ -1623,6 +1633,27 @@ const OPS = {
       await endRunnerRun(session, pid);
       part.archId = ""; part.floorIndex = 0;
     }
+    await setWorld("session", session);
+    return true;
+  },
+
+  // The GM's overview placement tool moves one runner without simulating a turn.
+  // Break only this runner's pursuit so the ICE cannot jump after them next turn.
+  async "session.reposition"({ pid, floorIndex } = {}, callerId) {
+    if (!requesterIsGM(callerId)) return false;
+    const session = getWorld("session") || {};
+    const part = session.participants?.[pid];
+    if (!part || part.kind !== "runner" || !part.archId || !part.jackedIn) return false;
+    const floors = floorsOf(getWorld("netArchs") || {}, part.archId);
+    if (!Number.isInteger(floorIndex) || floorIndex < 0 || floorIndex >= floors.length) return false;
+    if (part.floorIndex === floorIndex) return true;
+    markVisited(part, floors[part.floorIndex]?.id);
+    markVisited(part, floors[floorIndex]?.id);
+    part.floorIndex = floorIndex;
+    part.maxFloor = Math.max(Number(part.maxFloor) || 0, floorIndex);
+    pruneAttachments(session, a => a.pid === pid && a.archId === part.archId);
+    prunePendingTests(session, t => t.pid === pid);
+    delete part.slidePending;
     await setWorld("session", session);
     return true;
   },
@@ -2254,7 +2285,8 @@ const OPS = {
         // put a marker on the card: the runner "had access" to a file whose
         // contents he could not see anywhere.
         if (applied) {
-          const text = String(floor.contents || "").trim();
+          await grantFindingAccess(floor,game.users.filter(u=>u.isGM||ownsParticipant(part,u.id)));
+          const text = floor.findingSourceId ? "Файлы доступны на этаже. Откройте находку, чтобы сохранить её в коллекцию." : String(floor.contents || "").trim();
           const pic = String(floor.contentsImage || "").trim();
           const audience = [
             ...game.users.filter((u) => u.isGM).map((u) => u.id),
